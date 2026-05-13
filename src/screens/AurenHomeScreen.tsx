@@ -5,6 +5,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AurenActionPill } from '../components/AurenActionPill';
 import { AurenComposer } from '../components/AurenComposer';
 import { CalendarIcon, ChevronIcon, ListIcon, MenuIcon, SparkIcon } from '../components/AurenIcons';
+import { AurenPlusSheet } from '../components/AurenPlusSheet';
 import { AurenSidebar } from '../components/AurenSidebar';
 import { colors, spacing } from '../theme';
 
@@ -28,6 +29,7 @@ function runHaptic(type: 'open' | 'close') {
 export function AurenHomeScreen() {
   const insets = useSafeAreaInsets();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [plusSheetOpen, setPlusSheetOpen] = useState(false);
   const composerBottom = useRef(new Animated.Value(COMPOSER_CLOSED_BOTTOM)).current;
   const contentTranslateY = useRef(new Animated.Value(0)).current;
   const pillsOpacity = useRef(new Animated.Value(1)).current;
@@ -35,6 +37,7 @@ export function AurenHomeScreen() {
 
   function openSidebar() {
     Keyboard.dismiss();
+    setPlusSheetOpen(false);
     setSidebarOpen((current) => {
       if (current) return current;
       runHaptic('open');
@@ -44,6 +47,24 @@ export function AurenHomeScreen() {
 
   function closeSidebar() {
     setSidebarOpen((current) => {
+      if (!current) return current;
+      runHaptic('close');
+      return false;
+    });
+  }
+
+  function openPlusSheet() {
+    Keyboard.dismiss();
+    setSidebarOpen(false);
+    setPlusSheetOpen((current) => {
+      if (current) return current;
+      runHaptic('open');
+      return true;
+    });
+  }
+
+  function closePlusSheet() {
+    setPlusSheetOpen((current) => {
       if (!current) return current;
       runHaptic('close');
       return false;
@@ -138,7 +159,7 @@ export function AurenHomeScreen() {
       onOpenRecentChat={closeSidebar}
     >
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        <Pressable style={styles.dismissArea} onPress={Keyboard.dismiss}>
+        <Pressable style={styles.dismissArea} onPress={plusSheetOpen ? closePlusSheet : Keyboard.dismiss}>
           <View style={styles.header}>
             <Pressable
               onPress={openSidebar}
@@ -182,8 +203,11 @@ export function AurenHomeScreen() {
         </Pressable>
 
         <Animated.View style={[styles.composerWrap, { bottom: composerBottom }]}> 
-          <AurenComposer />
+          <AurenComposer onOpenPlus={openPlusSheet} plusActive={plusSheetOpen} />
         </Animated.View>
+
+        {plusSheetOpen ? <Pressable style={styles.plusBackdrop} onPress={closePlusSheet} /> : null}
+        <AurenPlusSheet open={plusSheetOpen} />
       </SafeAreaView>
     </AurenSidebar>
   );
@@ -275,5 +299,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 16,
     right: 16,
+  },
+  plusBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 30,
   },
 });
