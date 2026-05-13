@@ -118,8 +118,8 @@ const styles = StyleSheet.create({
   },
   composerWrap: {
     position: 'absolute',
-    left: 24,
-    right: 24,
-    bottom: 52,
+    left: 16,
+    right: 16,
+    bottom: 34,
   },
 });
