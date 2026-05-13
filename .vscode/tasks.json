@@ -9,9 +9,43 @@
       "problemMatcher": []
     },
     {
+      "label": "Auren: Stop Expo",
+      "type": "shell",
+      "command": "npm run stop",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": false
+      }
+    },
+    {
+      "label": "Auren: Stop All Expo Processes",
+      "type": "shell",
+      "command": "npm run stop:all",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": false
+      }
+    },
+    {
       "label": "Auren: Start Expo Go",
       "type": "shell",
-      "command": "npx expo start",
+      "command": "npm run start",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    },
+    {
+      "label": "Auren: Start Expo Go Clear",
+      "type": "shell",
+      "command": "npm run start:clear",
       "isBackground": true,
       "problemMatcher": [],
       "presentation": {
@@ -23,7 +57,19 @@
     {
       "label": "Auren: Start Expo Go Tunnel",
       "type": "shell",
-      "command": "npx expo start --tunnel",
+      "command": "npm run start:tunnel",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    },
+    {
+      "label": "Auren: Start Expo Go Tunnel Clear",
+      "type": "shell",
+      "command": "npm run start:tunnel:clear",
       "isBackground": true,
       "problemMatcher": [],
       "presentation": {
@@ -42,7 +88,7 @@
     {
       "label": "Auren: Start Web Preview",
       "type": "shell",
-      "command": "npx expo start --web",
+      "command": "npm run web",
       "isBackground": true,
       "problemMatcher": [],
       "presentation": {
