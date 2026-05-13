@@ -9,11 +9,15 @@ import { colors, spacing } from '../theme';
 const COMPOSER_CLOSED_BOTTOM = 34;
 const COMPOSER_KEYBOARD_GAP = 12;
 const COMPOSER_KEYBOARD_EXTRA_LIFT = 34;
+const CONTENT_KEYBOARD_LIFT = 34;
+const PILLS_KEYBOARD_LIFT = 20;
 
 export function AurenHomeScreen() {
   const insets = useSafeAreaInsets();
   const composerBottom = useRef(new Animated.Value(COMPOSER_CLOSED_BOTTOM)).current;
   const contentTranslateY = useRef(new Animated.Value(0)).current;
+  const pillsOpacity = useRef(new Animated.Value(1)).current;
+  const pillsTranslateY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -35,7 +39,19 @@ export function AurenHomeScreen() {
           useNativeDriver: false,
         }),
         Animated.timing(contentTranslateY, {
-          toValue: -COMPOSER_KEYBOARD_EXTRA_LIFT,
+          toValue: -CONTENT_KEYBOARD_LIFT,
+          duration,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pillsOpacity, {
+          toValue: 0,
+          duration: Math.min(duration, 190),
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pillsTranslateY, {
+          toValue: -PILLS_KEYBOARD_LIFT,
           duration,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
@@ -59,6 +75,18 @@ export function AurenHomeScreen() {
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
+        Animated.timing(pillsOpacity, {
+          toValue: 1,
+          duration,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pillsTranslateY, {
+          toValue: 0,
+          duration,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
       ]).start();
     });
 
@@ -66,7 +94,7 @@ export function AurenHomeScreen() {
       showSubscription.remove();
       hideSubscription.remove();
     };
-  }, [composerBottom, contentTranslateY, insets.bottom]);
+  }, [composerBottom, contentTranslateY, insets.bottom, pillsOpacity, pillsTranslateY]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
@@ -90,11 +118,20 @@ export function AurenHomeScreen() {
             <Text style={styles.subtitle}>I&apos;m here to help you focus and get things done.</Text>
           </View>
 
-          <View style={styles.pillsRow}>
+          <Animated.View
+            pointerEvents="box-none"
+            style={[
+              styles.pillsRow,
+              {
+                opacity: pillsOpacity,
+                transform: [{ translateY: pillsTranslateY }],
+              },
+            ]}
+          >
             <AurenActionPill width={106} icon={<CalendarIcon />} label="Plan my day" />
             <AurenActionPill width={124} icon={<ListIcon />} label="Organize tasks" />
             <AurenActionPill width={110} icon={<SparkIcon />} label="Ask anything" />
-          </View>
+          </Animated.View>
         </Animated.View>
       </Pressable>
 
