@@ -8,7 +8,7 @@ type IconProps = {
 export function MenuIcon() {
   return (
     <View style={styles.menu}>
-      <View style={[styles.menuLine, { width: 25 }]} />
+      <View style={[styles.menuLine, { width: 24 }]} />
       <View style={[styles.menuLine, { width: 18 }]} />
     </View>
   );
@@ -49,15 +49,15 @@ export function ControlsIcon() {
     <View style={styles.controlsWrap}>
       <View style={styles.sliderRow}>
         <View style={styles.sliderLine} />
-        <View style={[styles.sliderDot, { left: 10 }]} />
+        <View style={[styles.sliderDot, { left: 8 }]} />
       </View>
       <View style={styles.sliderRow}>
         <View style={styles.sliderLine} />
-        <View style={[styles.sliderDot, { left: 23 }]} />
+        <View style={[styles.sliderDot, { left: 18 }]} />
       </View>
       <View style={styles.sliderRow}>
         <View style={styles.sliderLine} />
-        <View style={[styles.sliderDot, { left: 16 }]} />
+        <View style={[styles.sliderDot, { left: 12 }]} />
       </View>
     </View>
   );
@@ -87,8 +87,8 @@ export function SparkIcon() {
 
 const styles = StyleSheet.create({
   menu: {
-    gap: 9,
-    width: 30,
+    gap: 8,
+    width: 28,
     alignItems: 'flex-start',
   },
   menuLine: {
@@ -97,67 +97,67 @@ const styles = StyleSheet.create({
     backgroundColor: colors.muted,
   },
   iconText: {
-    fontSize: 31,
-    lineHeight: 32,
+    fontSize: 27,
+    lineHeight: 28,
     color: colors.icon,
     fontWeight: '300',
   },
   chevron: {
-    marginLeft: 17,
+    marginLeft: 15,
     marginTop: 2,
     color: colors.muted,
-    fontSize: 33,
-    lineHeight: 35,
+    fontSize: 28,
+    lineHeight: 30,
     fontWeight: '300',
   },
   chatBubble: {
-    width: 26,
-    height: 23,
-    borderWidth: 2.2,
+    width: 22,
+    height: 19,
+    borderWidth: 2,
     borderColor: colors.icon,
-    borderRadius: 10,
+    borderRadius: 9,
     transform: [{ rotate: '-3deg' }],
   },
   chatTail: {
     position: 'absolute',
     left: 4,
     bottom: -5,
-    width: 10,
-    height: 8,
-    borderLeftWidth: 2.2,
-    borderBottomWidth: 2.2,
+    width: 8,
+    height: 7,
+    borderLeftWidth: 2,
+    borderBottomWidth: 2,
     borderColor: colors.icon,
-    borderBottomLeftRadius: 7,
+    borderBottomLeftRadius: 6,
     backgroundColor: 'transparent',
   },
   micWrap: {
-    width: 28,
-    height: 32,
+    width: 24,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
   },
   micCapsule: {
-    width: 12,
-    height: 22,
-    borderWidth: 2.2,
+    width: 11,
+    height: 20,
+    borderWidth: 2,
     borderColor: colors.icon,
     borderRadius: 8,
   },
   micStem: {
-    width: 2.2,
-    height: 7,
+    width: 2,
+    height: 6,
     backgroundColor: colors.icon,
     borderRadius: 99,
   },
   micBase: {
-    width: 17,
-    height: 2.2,
+    width: 15,
+    height: 2,
     backgroundColor: colors.icon,
     borderRadius: 99,
   },
   sendText: {
-    fontSize: 27,
-    lineHeight: 30,
+    fontSize: 24,
+    lineHeight: 26,
     color: colors.mutedSoft,
     fontWeight: '300',
   },
@@ -165,55 +165,55 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   controlsWrap: {
-    width: 32,
-    height: 25,
+    width: 25,
+    height: 19,
     justifyContent: 'space-between',
   },
   sliderRow: {
-    height: 5,
+    height: 4,
     justifyContent: 'center',
   },
   sliderLine: {
-    height: 1.7,
+    height: 1.6,
     borderRadius: 99,
     backgroundColor: colors.icon,
     opacity: 0.82,
   },
   sliderDot: {
     position: 'absolute',
-    top: 0.3,
-    width: 4.5,
-    height: 4.5,
+    top: -0.1,
+    width: 4.2,
+    height: 4.2,
     borderRadius: 99,
     backgroundColor: colors.surfaceStrong,
-    borderWidth: 1.5,
+    borderWidth: 1.4,
     borderColor: colors.icon,
   },
   calendar: {
-    width: 22,
-    height: 23,
-    borderWidth: 1.8,
+    width: 17,
+    height: 18,
+    borderWidth: 1.6,
     borderColor: colors.muted,
-    borderRadius: 4,
+    borderRadius: 3.5,
   },
   calendarTop: {
-    height: 6,
-    borderBottomWidth: 1.8,
+    height: 5,
+    borderBottomWidth: 1.6,
     borderBottomColor: colors.muted,
   },
   listWrap: {
-    width: 24,
-    gap: 5,
+    width: 18,
+    gap: 4,
   },
   listRow: {
-    width: 22,
-    height: 2,
+    width: 18,
+    height: 1.7,
     borderRadius: 99,
     backgroundColor: colors.muted,
   },
   spark: {
     color: colors.muted,
-    fontSize: 22,
-    lineHeight: 24,
+    fontSize: 17,
+    lineHeight: 19,
   },
 });
