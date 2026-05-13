@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { colors, shadows } from '../theme';
+import { shadows } from '../theme';
 
 type AurenPlusSheetProps = {
   open: boolean;
@@ -39,6 +39,7 @@ export function AurenPlusSheet({ open }: AurenPlusSheetProps) {
         },
       ]}
     >
+      <View style={styles.solidFill} />
       <View style={styles.handle} />
     </Animated.View>
   );
@@ -51,12 +52,18 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 40,
+    elevation: 40,
     borderTopLeftRadius: 38,
     borderTopRightRadius: 38,
-    backgroundColor: colors.surfaceStrong,
+    backgroundColor: '#fbfbfa',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.86)',
+    borderColor: 'rgba(17,24,39,0.04)',
+    overflow: 'hidden',
     ...shadows.soft,
+  },
+  solidFill: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#fbfbfa',
   },
   handle: {
     alignSelf: 'center',
