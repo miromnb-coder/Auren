@@ -28,9 +28,9 @@ export function AurenHomeScreen() {
         </View>
 
         <View style={styles.pillsRow}>
-          <AurenActionPill icon={<CalendarIcon />} label="Plan my day" />
-          <AurenActionPill icon={<ListIcon />} label="Organize tasks" />
-          <AurenActionPill icon={<SparkIcon />} label="Ask anything" />
+          <AurenActionPill width={106} icon={<CalendarIcon />} label="Plan my day" />
+          <AurenActionPill width={124} icon={<ListIcon />} label="Organize tasks" />
+          <AurenActionPill width={110} icon={<SparkIcon />} label="Ask anything" />
         </View>
       </View>
 
@@ -84,15 +84,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 18,
-    paddingBottom: 98,
+    paddingBottom: 220,
   },
   hero: {
     alignItems: 'center',
-    marginTop: 30,
-    maxWidth: 350,
+    marginTop: 18,
+    maxWidth: 360,
   },
   title: {
-    color: '#666575',
+    color: '#686775',
     fontSize: 25,
     lineHeight: 31,
     letterSpacing: -0.75,
@@ -118,8 +118,8 @@ const styles = StyleSheet.create({
   },
   composerWrap: {
     position: 'absolute',
-    left: 28,
-    right: 28,
+    left: 24,
+    right: 24,
     bottom: 52,
   },
 });
