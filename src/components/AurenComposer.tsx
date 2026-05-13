@@ -14,8 +14,10 @@ const APPROX_CHARS_PER_LINE = 31;
 type AurenComposerProps = {
   onOpenPlus?: () => void;
   onOpenControls?: () => void;
+  onOpenChatMode?: () => void;
   plusActive?: boolean;
   controlsActive?: boolean;
+  chatModeActive?: boolean;
 };
 
 function getVisualLineCount(text: string) {
@@ -32,8 +34,10 @@ function getVisualLineCount(text: string) {
 export function AurenComposer({
   onOpenPlus,
   onOpenControls,
+  onOpenChatMode,
   plusActive = false,
   controlsActive = false,
+  chatModeActive = false,
 }: AurenComposerProps) {
   const [draft, setDraft] = useState('');
   const [visibleLineCount, setVisibleLineCount] = useState(MIN_VISIBLE_LINES);
@@ -98,7 +102,14 @@ export function AurenComposer({
           </Pressable>
         </View>
         <View style={styles.rightActions}>
-          <Pressable style={styles.iconButton} accessibilityLabel="Chat mode"><ChatIcon /></Pressable>
+          <Pressable
+            onPress={onOpenChatMode}
+            style={[styles.iconButton, chatModeActive && styles.iconButtonActive]}
+            accessibilityRole="button"
+            accessibilityLabel="Open chat mode"
+          >
+            <ChatIcon />
+          </Pressable>
           <Pressable style={styles.iconButton} accessibilityLabel="Voice input"><MicIcon /></Pressable>
           <Pressable
             disabled={!canSend}
