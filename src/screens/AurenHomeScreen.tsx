@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Keyboard, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,6 +14,17 @@ const COMPOSER_KEYBOARD_EXTRA_LIFT = 34;
 const CONTENT_KEYBOARD_LIFT = 34;
 const PILLS_KEYBOARD_LIFT = 20;
 
+function runHaptic(type: 'open' | 'close') {
+  if (Platform.OS === 'web') return;
+
+  if (type === 'open') {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    return;
+  }
+
+  void Haptics.selectionAsync();
+}
+
 export function AurenHomeScreen() {
   const insets = useSafeAreaInsets();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -23,11 +35,19 @@ export function AurenHomeScreen() {
 
   function openSidebar() {
     Keyboard.dismiss();
-    setSidebarOpen(true);
+    setSidebarOpen((current) => {
+      if (current) return current;
+      runHaptic('open');
+      return true;
+    });
   }
 
   function closeSidebar() {
-    setSidebarOpen(false);
+    setSidebarOpen((current) => {
+      if (!current) return current;
+      runHaptic('close');
+      return false;
+    });
   }
 
   useEffect(() => {
