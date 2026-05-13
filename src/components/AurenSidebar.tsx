@@ -38,6 +38,7 @@ const DRAWER_MAX_WIDTH = 620;
 const SWIPE_DISTANCE = 42;
 const SWIPE_EDGE_WIDTH = 96;
 const EDGE_SWIPE_TOP_OFFSET = 112;
+const EDGE_SWIPE_BOTTOM_OFFSET = 178;
 const HORIZONTAL_LOCK_RATIO = 1.25;
 
 const DEFAULT_RECENT_CHATS: RecentChat[] = [
@@ -263,7 +264,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: EDGE_SWIPE_TOP_OFFSET,
     left: 0,
-    bottom: 0,
+    bottom: EDGE_SWIPE_BOTTOM_OFFSET,
     width: SWIPE_EDGE_WIDTH,
     zIndex: 30,
   },
