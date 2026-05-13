@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import {
   Animated,
   Easing,
+  Image,
+  type ImageSourcePropType,
   PanResponder,
   Pressable,
   StyleSheet,
@@ -22,14 +24,40 @@ type ServiceItem = {
   id: string;
   name: string;
   status: string;
+  icon: ImageSourcePropType;
 };
 
 const SERVICES: ServiceItem[] = [
-  { id: 'google-drive', name: 'Google Drive', status: 'Connected' },
-  { id: 'gmail', name: 'Gmail', status: 'Connected' },
-  { id: 'google-calendar', name: 'Google Calendar', status: 'Connected' },
-  { id: 'outlook-calendar', name: 'Outlook Calendar', status: 'Connected' },
-  { id: 'outlook-mail', name: 'Outlook Mail', status: 'Connected' },
+  {
+    id: 'google-drive',
+    name: 'Google Drive',
+    status: 'Connected',
+    icon: require('../../assets/services/google-drive.PNG'),
+  },
+  {
+    id: 'gmail',
+    name: 'Gmail',
+    status: 'Connected',
+    icon: require('../../assets/services/gmail.PNG'),
+  },
+  {
+    id: 'google-calendar',
+    name: 'Google Calendar',
+    status: 'Connected',
+    icon: require('../../assets/services/google-calendar.PNG'),
+  },
+  {
+    id: 'outlook-calendar',
+    name: 'Outlook Calendar',
+    status: 'Connected',
+    icon: require('../../assets/services/outlook-calendar.PNG'),
+  },
+  {
+    id: 'outlook-mail',
+    name: 'Outlook Mail',
+    status: 'Connected',
+    icon: require('../../assets/services/outlook-mail.PNG'),
+  },
 ];
 
 const PEEK_HEIGHT_RATIO = 0.54;
@@ -178,7 +206,9 @@ export function AurenControlsSheet({ stage, onStageChange }: AurenControlsSheetP
               index === SERVICES.length - 1 && styles.serviceRowLast,
             ]}
           >
-            <View style={styles.iconSlot} />
+            <View style={styles.iconSlot}>
+              <Image source={service.icon} style={styles.serviceIcon} resizeMode="contain" />
+            </View>
 
             <View style={styles.serviceTextWrap}>
               <Text style={styles.serviceName} numberOfLines={1}>
@@ -256,6 +286,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(17,24,39,0.045)',
     backgroundColor: 'rgba(255,255,255,0.62)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  serviceIcon: {
+    width: 42,
+    height: 42,
   },
   serviceTextWrap: {
     flex: 1,
