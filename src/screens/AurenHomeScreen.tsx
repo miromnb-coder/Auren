@@ -1,4 +1,5 @@
 import * as Haptics from 'expo-haptics';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Keyboard, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -192,6 +193,7 @@ export function AurenHomeScreen() {
       onOpenRecentChat={closeSidebar}
     >
       <View style={styles.sceneRoot}>
+        <StatusBar style={plusSheetStage === 'expanded' ? 'light' : 'dark'} />
         <Animated.View style={[styles.darkFrame, { opacity: appDimOpacity }]} />
 
         <Animated.View
