@@ -6,6 +6,7 @@ import { ChatIcon, ControlsIcon, MicIcon, PlusIcon, SendIcon } from './AurenIcon
 const INPUT_LINE_HEIGHT = 22;
 const MIN_INPUT_HEIGHT = 22;
 const MAX_INPUT_HEIGHT = INPUT_LINE_HEIGHT * 5;
+const BASE_COMPOSER_HEIGHT = 112;
 
 export function AurenComposer() {
   const [draft, setDraft] = useState('');
@@ -14,11 +15,27 @@ export function AurenComposer() {
 
   const trimmedDraft = useMemo(() => draft.trim(), [draft]);
   const canSend = trimmedDraft.length > 0;
+  const composerHeight = BASE_COMPOSER_HEIGHT + inputHeight - MIN_INPUT_HEIGHT;
+
+  function handleContentSizeChange(contentHeight: number) {
+    const measuredHeight = Math.ceil(contentHeight);
+    const nextHeight = Math.min(Math.max(measuredHeight, MIN_INPUT_HEIGHT), MAX_INPUT_HEIGHT);
+
+    setInputHeight(nextHeight);
+    setInputScrollable(measuredHeight > MAX_INPUT_HEIGHT);
+  }
+
+  function handleChangeText(nextDraft: string) {
+    setDraft(nextDraft);
+
+    if (nextDraft.length === 0) {
+      setInputHeight(MIN_INPUT_HEIGHT);
+      setInputScrollable(false);
+    }
+  }
 
   function handleSend() {
-    if (!canSend) {
-      return;
-    }
+    if (!canSend) return;
 
     console.log('[Auren] User message:', trimmedDraft);
     setDraft('');
@@ -28,20 +45,11 @@ export function AurenComposer() {
   }
 
   return (
-    <View style={styles.shell}>
+    <View style={[styles.shell, { height: composerHeight }]}>
       <TextInput
         value={draft}
-        onChangeText={setDraft}
-        onContentSizeChange={(event) => {
-          const contentHeight = event.nativeEvent.contentSize.height;
-          const nextHeight = Math.min(
-            Math.max(contentHeight, MIN_INPUT_HEIGHT),
-            MAX_INPUT_HEIGHT,
-          );
-
-          setInputHeight(nextHeight);
-          setInputScrollable(contentHeight > MAX_INPUT_HEIGHT + 1);
-        }}
+        onChangeText={handleChangeText}
+        onContentSizeChange={(event) => handleContentSizeChange(event.nativeEvent.contentSize.height)}
         placeholder="Ask anything, or assign a task"
         placeholderTextColor={colors.mutedSoft}
         style={[styles.input, { height: inputHeight }]}
@@ -81,8 +89,8 @@ export function AurenComposer() {
 const styles = StyleSheet.create({
   shell: {
     width: '100%',
-    minHeight: 112,
-    maxHeight: 200,
+    minHeight: BASE_COMPOSER_HEIGHT,
+    maxHeight: BASE_COMPOSER_HEIGHT + MAX_INPUT_HEIGHT - MIN_INPUT_HEIGHT,
     borderRadius: 40,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.84)',
