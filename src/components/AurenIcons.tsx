@@ -66,11 +66,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.muted,
   },
   chevron: {
-    marginLeft: 15,
+    marginLeft: 8,
     marginTop: 2,
     color: colors.muted,
-    fontSize: 28,
-    lineHeight: 30,
+    fontSize: 22,
+    lineHeight: 24,
     fontWeight: '300',
   },
 });
