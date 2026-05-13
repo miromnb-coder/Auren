@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Keyboard, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AurenActionPill } from '../components/AurenActionPill';
+import { AurenChatModeSheet, type ChatModeSheetStage } from '../components/AurenChatModeSheet';
 import { AurenComposer } from '../components/AurenComposer';
 import { AurenControlsSheet, type ControlsSheetStage } from '../components/AurenControlsSheet';
 import { CalendarIcon, ChevronIcon, ListIcon, MenuIcon, SparkIcon } from '../components/AurenIcons';
@@ -33,6 +34,7 @@ export function AurenHomeScreen() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [plusSheetStage, setPlusSheetStage] = useState<PlusSheetStage>('closed');
   const [controlsSheetStage, setControlsSheetStage] = useState<ControlsSheetStage>('closed');
+  const [chatModeSheetStage, setChatModeSheetStage] = useState<ChatModeSheetStage>('closed');
   const composerBottom = useRef(new Animated.Value(COMPOSER_CLOSED_BOTTOM)).current;
   const contentTranslateY = useRef(new Animated.Value(0)).current;
   const pillsOpacity = useRef(new Animated.Value(1)).current;
@@ -41,8 +43,10 @@ export function AurenHomeScreen() {
 
   const plusSheetOpen = plusSheetStage !== 'closed';
   const controlsSheetOpen = controlsSheetStage !== 'closed';
-  const anySheetOpen = plusSheetOpen || controlsSheetOpen;
-  const anySheetExpanded = plusSheetStage === 'expanded' || controlsSheetStage === 'expanded';
+  const chatModeSheetOpen = chatModeSheetStage !== 'closed';
+  const anySheetOpen = plusSheetOpen || controlsSheetOpen || chatModeSheetOpen;
+  const anySheetExpanded =
+    plusSheetStage === 'expanded' || controlsSheetStage === 'expanded' || chatModeSheetStage === 'expanded';
 
   function setPlusStage(nextStage: PlusSheetStage) {
     setPlusSheetStage((current) => {
@@ -76,6 +80,22 @@ export function AurenHomeScreen() {
     });
   }
 
+  function setChatModeStage(nextStage: ChatModeSheetStage) {
+    setChatModeSheetStage((current) => {
+      if (current === nextStage) return current;
+
+      if (current === 'closed' && nextStage !== 'closed') {
+        runHaptic('open');
+      } else if (current !== 'closed' && nextStage === 'closed') {
+        runHaptic('close');
+      } else if (current !== nextStage) {
+        runHaptic('open');
+      }
+
+      return nextStage;
+    });
+  }
+
   function closeAllSheets() {
     if (plusSheetOpen) {
       setPlusStage('closed');
@@ -83,6 +103,10 @@ export function AurenHomeScreen() {
 
     if (controlsSheetOpen) {
       setControlsStage('closed');
+    }
+
+    if (chatModeSheetOpen) {
+      setChatModeStage('closed');
     }
   }
 
@@ -110,6 +134,9 @@ export function AurenHomeScreen() {
     if (controlsSheetOpen) {
       setControlsSheetStage('closed');
     }
+    if (chatModeSheetOpen) {
+      setChatModeSheetStage('closed');
+    }
     setPlusStage('peek');
   }
 
@@ -119,7 +146,22 @@ export function AurenHomeScreen() {
     if (plusSheetOpen) {
       setPlusSheetStage('closed');
     }
+    if (chatModeSheetOpen) {
+      setChatModeSheetStage('closed');
+    }
     setControlsStage('peek');
+  }
+
+  function openChatModeSheet() {
+    Keyboard.dismiss();
+    setSidebarOpen(false);
+    if (plusSheetOpen) {
+      setPlusSheetStage('closed');
+    }
+    if (controlsSheetOpen) {
+      setControlsSheetStage('closed');
+    }
+    setChatModeStage('peek');
   }
 
   function closeActiveSheet() {
@@ -296,8 +338,10 @@ export function AurenHomeScreen() {
               <AurenComposer
                 onOpenPlus={openPlusSheet}
                 onOpenControls={openControlsSheet}
+                onOpenChatMode={openChatModeSheet}
                 plusActive={plusSheetOpen}
                 controlsActive={controlsSheetOpen}
+                chatModeActive={chatModeSheetOpen}
               />
             </Animated.View>
           </SafeAreaView>
@@ -306,6 +350,7 @@ export function AurenHomeScreen() {
         {anySheetOpen ? <Pressable style={styles.plusBackdrop} onPress={closeActiveSheet} /> : null}
         <AurenPlusSheet stage={plusSheetStage} onStageChange={setPlusStage} />
         <AurenControlsSheet stage={controlsSheetStage} onStageChange={setControlsStage} />
+        <AurenChatModeSheet stage={chatModeSheetStage} onStageChange={setChatModeStage} />
       </View>
     </AurenSidebar>
   );
