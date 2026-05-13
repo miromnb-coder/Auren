@@ -3,8 +3,14 @@ import { Keyboard, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { colors, shadows } from '../theme';
 import { ChatIcon, ControlsIcon, MicIcon, PlusIcon, SendIcon } from './AurenIcons';
 
+const INPUT_LINE_HEIGHT = 22;
+const MIN_INPUT_HEIGHT = 22;
+const MAX_INPUT_HEIGHT = INPUT_LINE_HEIGHT * 5;
+
 export function AurenComposer() {
   const [draft, setDraft] = useState('');
+  const [inputHeight, setInputHeight] = useState(MIN_INPUT_HEIGHT);
+  const [inputScrollable, setInputScrollable] = useState(false);
 
   const trimmedDraft = useMemo(() => draft.trim(), [draft]);
   const canSend = trimmedDraft.length > 0;
@@ -16,6 +22,8 @@ export function AurenComposer() {
 
     console.log('[Auren] User message:', trimmedDraft);
     setDraft('');
+    setInputHeight(MIN_INPUT_HEIGHT);
+    setInputScrollable(false);
     Keyboard.dismiss();
   }
 
@@ -24,10 +32,21 @@ export function AurenComposer() {
       <TextInput
         value={draft}
         onChangeText={setDraft}
+        onContentSizeChange={(event) => {
+          const contentHeight = event.nativeEvent.contentSize.height;
+          const nextHeight = Math.min(
+            Math.max(contentHeight, MIN_INPUT_HEIGHT),
+            MAX_INPUT_HEIGHT,
+          );
+
+          setInputHeight(nextHeight);
+          setInputScrollable(contentHeight > MAX_INPUT_HEIGHT + 1);
+        }}
         placeholder="Ask anything, or assign a task"
         placeholderTextColor={colors.mutedSoft}
-        style={styles.input}
+        style={[styles.input, { height: inputHeight }]}
         multiline
+        scrollEnabled={inputScrollable}
         maxLength={1000}
         textAlignVertical="top"
         autoCorrect
@@ -62,7 +81,8 @@ export function AurenComposer() {
 const styles = StyleSheet.create({
   shell: {
     width: '100%',
-    height: 112,
+    minHeight: 112,
+    maxHeight: 200,
     borderRadius: 40,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.84)',
@@ -74,12 +94,11 @@ const styles = StyleSheet.create({
     ...shadows.soft,
   },
   input: {
-    minHeight: 22,
-    maxHeight: 36,
     padding: 0,
     margin: 0,
     color: colors.text,
     fontSize: 17,
+    lineHeight: INPUT_LINE_HEIGHT,
     letterSpacing: -0.25,
   },
   actionsRow: {
