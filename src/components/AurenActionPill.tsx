@@ -12,16 +12,16 @@ export function AurenActionPill({ icon, label, onPress }: Props) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.pill, pressed && styles.pressed]}>
       <View style={styles.icon}>{icon}</View>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.label} numberOfLines={1}>{label}</Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   pill: {
-    minWidth: 134,
-    height: 50,
-    paddingHorizontal: 18,
+    width: 104,
+    height: 38,
+    paddingHorizontal: 10,
     borderRadius: spacing.radiusFull,
     borderWidth: 1,
     borderColor: colors.border,
@@ -29,7 +29,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 11,
+    gap: 7,
     ...shadows.tiny,
   },
   pressed: {
@@ -37,14 +37,15 @@ const styles = StyleSheet.create({
     opacity: 0.82,
   },
   icon: {
-    width: 23,
+    width: 17,
     alignItems: 'center',
     justifyContent: 'center',
   },
   label: {
+    flexShrink: 1,
     color: colors.muted,
-    fontSize: 17,
-    letterSpacing: -0.2,
+    fontSize: 13.5,
+    letterSpacing: -0.15,
     fontWeight: '500',
   },
 });
