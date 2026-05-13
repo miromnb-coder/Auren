@@ -5,7 +5,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AurenActionPill } from '../components/AurenActionPill';
 import { AurenComposer } from '../components/AurenComposer';
 import { CalendarIcon, ChevronIcon, ListIcon, MenuIcon, SparkIcon } from '../components/AurenIcons';
-import { AurenPlusSheet } from '../components/AurenPlusSheet';
+import { AurenPlusSheet, type PlusSheetStage } from '../components/AurenPlusSheet';
 import { AurenSidebar } from '../components/AurenSidebar';
 import { colors, spacing } from '../theme';
 
@@ -29,15 +29,34 @@ function runHaptic(type: 'open' | 'close') {
 export function AurenHomeScreen() {
   const insets = useSafeAreaInsets();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [plusSheetOpen, setPlusSheetOpen] = useState(false);
+  const [plusSheetStage, setPlusSheetStage] = useState<PlusSheetStage>('closed');
   const composerBottom = useRef(new Animated.Value(COMPOSER_CLOSED_BOTTOM)).current;
   const contentTranslateY = useRef(new Animated.Value(0)).current;
   const pillsOpacity = useRef(new Animated.Value(1)).current;
   const pillsTranslateY = useRef(new Animated.Value(0)).current;
+  const appCardProgress = useRef(new Animated.Value(0)).current;
+
+  const plusSheetOpen = plusSheetStage !== 'closed';
+
+  function setPlusStage(nextStage: PlusSheetStage) {
+    setPlusSheetStage((current) => {
+      if (current === nextStage) return current;
+
+      if (current === 'closed' && nextStage !== 'closed') {
+        runHaptic('open');
+      } else if (current !== 'closed' && nextStage === 'closed') {
+        runHaptic('close');
+      } else if (current !== nextStage) {
+        runHaptic('open');
+      }
+
+      return nextStage;
+    });
+  }
 
   function openSidebar() {
     Keyboard.dismiss();
-    setPlusSheetOpen(false);
+    setPlusStage('closed');
     setSidebarOpen((current) => {
       if (current) return current;
       runHaptic('open');
@@ -56,20 +75,21 @@ export function AurenHomeScreen() {
   function openPlusSheet() {
     Keyboard.dismiss();
     setSidebarOpen(false);
-    setPlusSheetOpen((current) => {
-      if (current) return current;
-      runHaptic('open');
-      return true;
-    });
+    setPlusStage('peek');
   }
 
   function closePlusSheet() {
-    setPlusSheetOpen((current) => {
-      if (!current) return current;
-      runHaptic('close');
-      return false;
-    });
+    setPlusStage('closed');
   }
+
+  useEffect(() => {
+    Animated.timing(appCardProgress, {
+      toValue: plusSheetStage === 'expanded' ? 1 : 0,
+      duration: plusSheetStage === 'expanded' ? 320 : 260,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [appCardProgress, plusSheetStage]);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -148,6 +168,19 @@ export function AurenHomeScreen() {
     };
   }, [composerBottom, contentTranslateY, insets.bottom, pillsOpacity, pillsTranslateY]);
 
+  const appScale = appCardProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0.965],
+  });
+  const appTranslateY = appCardProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 16],
+  });
+  const appDimOpacity = appCardProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.12],
+  });
+
   return (
     <AurenSidebar
       open={sidebarOpen}
@@ -158,57 +191,71 @@ export function AurenHomeScreen() {
       onOpenProfile={closeSidebar}
       onOpenRecentChat={closeSidebar}
     >
-      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        <Pressable style={styles.dismissArea} onPress={plusSheetOpen ? closePlusSheet : Keyboard.dismiss}>
-          <View style={styles.header}>
-            <Pressable
-              onPress={openSidebar}
-              hitSlop={14}
-              style={({ pressed }) => [styles.menuButton, pressed && styles.menuButtonPressed]}
-              accessibilityRole="button"
-              accessibilityLabel="Open menu"
-            >
-              <MenuIcon />
+      <View style={styles.sceneRoot}>
+        <Animated.View style={[styles.darkFrame, { opacity: appDimOpacity }]} />
+
+        <Animated.View
+          style={[
+            styles.appCard,
+            {
+              borderRadius: plusSheetStage === 'expanded' ? 34 : 0,
+              transform: [{ scale: appScale }, { translateY: appTranslateY }],
+            },
+          ]}
+        >
+          <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+            <Pressable style={styles.dismissArea} onPress={plusSheetOpen ? closePlusSheet : Keyboard.dismiss}>
+              <View style={styles.header}>
+                <Pressable
+                  onPress={openSidebar}
+                  hitSlop={14}
+                  style={({ pressed }) => [styles.menuButton, pressed && styles.menuButtonPressed]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open menu"
+                >
+                  <MenuIcon />
+                </Pressable>
+
+                <View style={styles.brandWrap}>
+                  <Text style={styles.brand}>Auren</Text>
+                  <ChevronIcon />
+                </View>
+
+                <View style={styles.headerSpacer} />
+              </View>
+
+              <Animated.View style={[styles.content, { transform: [{ translateY: contentTranslateY }] }]}> 
+                <View style={styles.hero}>
+                  <Text style={styles.title}>Good evening, you&apos;ve got this.</Text>
+                  <Text style={styles.subtitle}>I&apos;m here to help you focus and get things done.</Text>
+                </View>
+
+                <Animated.View
+                  pointerEvents="box-none"
+                  style={[
+                    styles.pillsRow,
+                    {
+                      opacity: pillsOpacity,
+                      transform: [{ translateY: pillsTranslateY }],
+                    },
+                  ]}
+                >
+                  <AurenActionPill width={106} icon={<CalendarIcon />} label="Plan my day" />
+                  <AurenActionPill width={124} icon={<ListIcon />} label="Organize tasks" />
+                  <AurenActionPill width={110} icon={<SparkIcon />} label="Ask anything" />
+                </Animated.View>
+              </Animated.View>
             </Pressable>
 
-            <View style={styles.brandWrap}>
-              <Text style={styles.brand}>Auren</Text>
-              <ChevronIcon />
-            </View>
-
-            <View style={styles.headerSpacer} />
-          </View>
-
-          <Animated.View style={[styles.content, { transform: [{ translateY: contentTranslateY }] }]}> 
-            <View style={styles.hero}>
-              <Text style={styles.title}>Good evening, you&apos;ve got this.</Text>
-              <Text style={styles.subtitle}>I&apos;m here to help you focus and get things done.</Text>
-            </View>
-
-            <Animated.View
-              pointerEvents="box-none"
-              style={[
-                styles.pillsRow,
-                {
-                  opacity: pillsOpacity,
-                  transform: [{ translateY: pillsTranslateY }],
-                },
-              ]}
-            >
-              <AurenActionPill width={106} icon={<CalendarIcon />} label="Plan my day" />
-              <AurenActionPill width={124} icon={<ListIcon />} label="Organize tasks" />
-              <AurenActionPill width={110} icon={<SparkIcon />} label="Ask anything" />
+            <Animated.View style={[styles.composerWrap, { bottom: composerBottom }]}> 
+              <AurenComposer onOpenPlus={openPlusSheet} plusActive={plusSheetOpen} />
             </Animated.View>
-          </Animated.View>
-        </Pressable>
-
-        <Animated.View style={[styles.composerWrap, { bottom: composerBottom }]}> 
-          <AurenComposer onOpenPlus={openPlusSheet} plusActive={plusSheetOpen} />
+          </SafeAreaView>
         </Animated.View>
 
         {plusSheetOpen ? <Pressable style={styles.plusBackdrop} onPress={closePlusSheet} /> : null}
-        <AurenPlusSheet open={plusSheetOpen} />
-      </SafeAreaView>
+        <AurenPlusSheet stage={plusSheetStage} onStageChange={setPlusStage} />
+      </View>
     </AurenSidebar>
   );
 }
@@ -220,6 +267,19 @@ const serifFont = Platform.select({
 });
 
 const styles = StyleSheet.create({
+  sceneRoot: {
+    flex: 1,
+    backgroundColor: '#050507',
+  },
+  darkFrame: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#050507',
+  },
+  appCard: {
+    flex: 1,
+    overflow: 'hidden',
+    backgroundColor: colors.background,
+  },
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,
