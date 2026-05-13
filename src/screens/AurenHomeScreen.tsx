@@ -171,11 +171,11 @@ export function AurenHomeScreen() {
 
   const appScale = appCardProgress.interpolate({
     inputRange: [0, 1],
-    outputRange: [1, 0.965],
+    outputRange: [1, 0.945],
   });
   const appTranslateY = appCardProgress.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 16],
+    outputRange: [0, 42],
   });
   const appDimOpacity = appCardProgress.interpolate({
     inputRange: [0, 1],
