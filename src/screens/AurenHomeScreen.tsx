@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Keyboard, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AurenActionPill } from '../components/AurenActionPill';
 import { AurenComposer } from '../components/AurenComposer';
 import { CalendarIcon, ChevronIcon, ListIcon, MenuIcon, SparkIcon } from '../components/AurenIcons';
+import { AurenSidebar } from '../components/AurenSidebar';
 import { colors, spacing } from '../theme';
 
 const COMPOSER_CLOSED_BOTTOM = 34;
@@ -14,10 +15,20 @@ const PILLS_KEYBOARD_LIFT = 20;
 
 export function AurenHomeScreen() {
   const insets = useSafeAreaInsets();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const composerBottom = useRef(new Animated.Value(COMPOSER_CLOSED_BOTTOM)).current;
   const contentTranslateY = useRef(new Animated.Value(0)).current;
   const pillsOpacity = useRef(new Animated.Value(1)).current;
   const pillsTranslateY = useRef(new Animated.Value(0)).current;
+
+  function openSidebar() {
+    Keyboard.dismiss();
+    setSidebarOpen(true);
+  }
+
+  function closeSidebar() {
+    setSidebarOpen(false);
+  }
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -97,48 +108,63 @@ export function AurenHomeScreen() {
   }, [composerBottom, contentTranslateY, insets.bottom, pillsOpacity, pillsTranslateY]);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <Pressable style={styles.dismissArea} onPress={Keyboard.dismiss}>
-        <View style={styles.header}>
-          <View style={styles.menuSlot}>
-            <MenuIcon />
+    <AurenSidebar
+      open={sidebarOpen}
+      onClose={closeSidebar}
+      onNewChat={closeSidebar}
+      onViewAll={closeSidebar}
+      onOpenProfile={closeSidebar}
+      onOpenRecentChat={closeSidebar}
+    >
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+        <Pressable style={styles.dismissArea} onPress={Keyboard.dismiss}>
+          <View style={styles.header}>
+            <Pressable
+              onPress={openSidebar}
+              hitSlop={14}
+              style={({ pressed }) => [styles.menuButton, pressed && styles.menuButtonPressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Open menu"
+            >
+              <MenuIcon />
+            </Pressable>
+
+            <View style={styles.brandWrap}>
+              <Text style={styles.brand}>Auren</Text>
+              <ChevronIcon />
+            </View>
+
+            <View style={styles.headerSpacer} />
           </View>
 
-          <View style={styles.brandWrap}>
-            <Text style={styles.brand}>Auren</Text>
-            <ChevronIcon />
-          </View>
+          <Animated.View style={[styles.content, { transform: [{ translateY: contentTranslateY }] }]}> 
+            <View style={styles.hero}>
+              <Text style={styles.title}>Good evening, you&apos;ve got this.</Text>
+              <Text style={styles.subtitle}>I&apos;m here to help you focus and get things done.</Text>
+            </View>
 
-          <View style={styles.headerSpacer} />
-        </View>
-
-        <Animated.View style={[styles.content, { transform: [{ translateY: contentTranslateY }] }]}> 
-          <View style={styles.hero}>
-            <Text style={styles.title}>Good evening, you&apos;ve got this.</Text>
-            <Text style={styles.subtitle}>I&apos;m here to help you focus and get things done.</Text>
-          </View>
-
-          <Animated.View
-            pointerEvents="box-none"
-            style={[
-              styles.pillsRow,
-              {
-                opacity: pillsOpacity,
-                transform: [{ translateY: pillsTranslateY }],
-              },
-            ]}
-          >
-            <AurenActionPill width={106} icon={<CalendarIcon />} label="Plan my day" />
-            <AurenActionPill width={124} icon={<ListIcon />} label="Organize tasks" />
-            <AurenActionPill width={110} icon={<SparkIcon />} label="Ask anything" />
+            <Animated.View
+              pointerEvents="box-none"
+              style={[
+                styles.pillsRow,
+                {
+                  opacity: pillsOpacity,
+                  transform: [{ translateY: pillsTranslateY }],
+                },
+              ]}
+            >
+              <AurenActionPill width={106} icon={<CalendarIcon />} label="Plan my day" />
+              <AurenActionPill width={124} icon={<ListIcon />} label="Organize tasks" />
+              <AurenActionPill width={110} icon={<SparkIcon />} label="Ask anything" />
+            </Animated.View>
           </Animated.View>
-        </Animated.View>
-      </Pressable>
+        </Pressable>
 
-      <Animated.View style={[styles.composerWrap, { bottom: composerBottom }]}> 
-        <AurenComposer />
-      </Animated.View>
-    </SafeAreaView>
+        <Animated.View style={[styles.composerWrap, { bottom: composerBottom }]}> 
+          <AurenComposer />
+        </Animated.View>
+      </SafeAreaView>
+    </AurenSidebar>
   );
 }
 
@@ -163,9 +189,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  menuSlot: {
+  menuButton: {
     width: 68,
     alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  menuButtonPressed: {
+    opacity: 0.62,
   },
   brandWrap: {
     flexDirection: 'row',
