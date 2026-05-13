@@ -3,7 +3,6 @@ import {
   Animated,
   Easing,
   Image,
-  type ImageSourcePropType,
   PanResponder,
   Pressable,
   StyleSheet,
@@ -24,7 +23,7 @@ type ServiceItem = {
   id: string;
   name: string;
   status: string;
-  icon: ImageSourcePropType;
+  iconUri: string;
 };
 
 const SERVICES: ServiceItem[] = [
@@ -32,31 +31,31 @@ const SERVICES: ServiceItem[] = [
     id: 'google-drive',
     name: 'Google Drive',
     status: 'Connected',
-    icon: require('../../assets/services/google-drive.PNG'),
+    iconUri: 'https://raw.githubusercontent.com/miromnb-coder/Auren/main/assets/services/google-drive.PNG',
   },
   {
     id: 'gmail',
     name: 'Gmail',
     status: 'Connected',
-    icon: require('../../assets/services/gmail.PNG'),
+    iconUri: 'https://raw.githubusercontent.com/miromnb-coder/Auren/main/assets/services/gmail.PNG',
   },
   {
     id: 'google-calendar',
     name: 'Google Calendar',
     status: 'Connected',
-    icon: require('../../assets/services/google-calendar.PNG'),
+    iconUri: 'https://raw.githubusercontent.com/miromnb-coder/Auren/main/assets/services/google-calendar.PNG',
   },
   {
     id: 'outlook-calendar',
     name: 'Outlook Calendar',
     status: 'Connected',
-    icon: require('../../assets/services/outlook-calendar.PNG'),
+    iconUri: 'https://raw.githubusercontent.com/miromnb-coder/Auren/main/assets/services/outlook-calendar.PNG',
   },
   {
     id: 'outlook-mail',
     name: 'Outlook Mail',
     status: 'Connected',
-    icon: require('../../assets/services/outlook-mail.PNG'),
+    iconUri: 'https://raw.githubusercontent.com/miromnb-coder/Auren/main/assets/services/outlook-mail.PNG',
   },
 ];
 
@@ -207,7 +206,7 @@ export function AurenControlsSheet({ stage, onStageChange }: AurenControlsSheetP
             ]}
           >
             <View style={styles.iconSlot}>
-              <Image source={service.icon} style={styles.serviceIcon} resizeMode="contain" />
+              <Image source={{ uri: service.iconUri }} style={styles.serviceIcon} resizeMode="contain" />
             </View>
 
             <View style={styles.serviceTextWrap}>
