@@ -3,7 +3,9 @@ import {
   Animated,
   Easing,
   PanResponder,
+  Pressable,
   StyleSheet,
+  Text,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -15,6 +17,20 @@ type AurenControlsSheetProps = {
   stage: ControlsSheetStage;
   onStageChange: (stage: ControlsSheetStage) => void;
 };
+
+type ServiceItem = {
+  id: string;
+  name: string;
+  status: string;
+};
+
+const SERVICES: ServiceItem[] = [
+  { id: 'google-drive', name: 'Google Drive', status: 'Connected' },
+  { id: 'gmail', name: 'Gmail', status: 'Connected' },
+  { id: 'google-calendar', name: 'Google Calendar', status: 'Connected' },
+  { id: 'outlook-calendar', name: 'Outlook Calendar', status: 'Connected' },
+  { id: 'outlook-mail', name: 'Outlook Mail', status: 'Connected' },
+];
 
 const PEEK_HEIGHT_RATIO = 0.54;
 const EXPANDED_HEIGHT_RATIO = 0.92;
@@ -152,6 +168,34 @@ export function AurenControlsSheet({ stage, onStageChange }: AurenControlsSheetP
     >
       <View style={styles.solidFill} />
       <View style={styles.handle} />
+
+      <View style={styles.servicesCard}>
+        {SERVICES.map((service, index) => (
+          <Pressable
+            key={service.id}
+            style={[
+              styles.serviceRow,
+              index === SERVICES.length - 1 && styles.serviceRowLast,
+            ]}
+          >
+            <View style={styles.iconSlot} />
+
+            <View style={styles.serviceTextWrap}>
+              <Text style={styles.serviceName} numberOfLines={1}>
+                {service.name}
+              </Text>
+              <View style={styles.statusRow}>
+                <View style={styles.statusDot} />
+                <Text style={styles.serviceStatus} numberOfLines={1}>
+                  {service.status}
+                </Text>
+              </View>
+            </View>
+
+            <Text style={styles.chevron}>›</Text>
+          </Pressable>
+        ))}
+      </View>
     </Animated.View>
   );
 }
@@ -183,5 +227,70 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     marginTop: 18,
     backgroundColor: 'rgba(110,113,124,0.28)',
+  },
+  servicesCard: {
+    marginTop: 35,
+    marginHorizontal: 24,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(17,24,39,0.055)',
+    backgroundColor: 'rgba(255,255,255,0.72)',
+    overflow: 'hidden',
+    ...shadows.tiny,
+  },
+  serviceRow: {
+    minHeight: 82,
+    paddingHorizontal: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(17,24,39,0.055)',
+  },
+  serviceRowLast: {
+    borderBottomWidth: 0,
+  },
+  iconSlot: {
+    width: 58,
+    height: 58,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(17,24,39,0.045)',
+    backgroundColor: 'rgba(255,255,255,0.62)',
+  },
+  serviceTextWrap: {
+    flex: 1,
+    marginLeft: 18,
+  },
+  serviceName: {
+    color: '#202126',
+    fontSize: 22,
+    lineHeight: 27,
+    fontWeight: '500',
+    letterSpacing: -0.55,
+  },
+  statusRow: {
+    marginTop: 7,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    marginRight: 9,
+    backgroundColor: '#18bf62',
+  },
+  serviceStatus: {
+    color: '#858891',
+    fontSize: 16,
+    lineHeight: 20,
+    letterSpacing: -0.2,
+  },
+  chevron: {
+    marginLeft: 14,
+    color: '#9ca0a7',
+    fontSize: 36,
+    lineHeight: 38,
+    fontWeight: '300',
   },
 });
