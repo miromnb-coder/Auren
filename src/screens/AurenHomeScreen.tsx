@@ -8,10 +8,12 @@ import { colors, spacing } from '../theme';
 
 const COMPOSER_CLOSED_BOTTOM = 34;
 const COMPOSER_KEYBOARD_GAP = 12;
+const COMPOSER_KEYBOARD_EXTRA_LIFT = 34;
 
 export function AurenHomeScreen() {
   const insets = useSafeAreaInsets();
   const composerBottom = useRef(new Animated.Value(COMPOSER_CLOSED_BOTTOM)).current;
+  const contentTranslateY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -19,33 +21,52 @@ export function AurenHomeScreen() {
 
     const showSubscription = Keyboard.addListener(showEvent, (event) => {
       const keyboardHeight = event.endCoordinates.height;
+      const duration = event.duration ?? 250;
       const nextBottom = Math.max(
         COMPOSER_CLOSED_BOTTOM,
-        keyboardHeight - insets.bottom + COMPOSER_KEYBOARD_GAP,
+        keyboardHeight - insets.bottom + COMPOSER_KEYBOARD_GAP + COMPOSER_KEYBOARD_EXTRA_LIFT,
       );
 
-      Animated.timing(composerBottom, {
-        toValue: nextBottom,
-        duration: event.duration ?? 250,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: false,
-      }).start();
+      Animated.parallel([
+        Animated.timing(composerBottom, {
+          toValue: nextBottom,
+          duration,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
+        Animated.timing(contentTranslateY, {
+          toValue: -COMPOSER_KEYBOARD_EXTRA_LIFT,
+          duration,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start();
     });
 
     const hideSubscription = Keyboard.addListener(hideEvent, (event) => {
-      Animated.timing(composerBottom, {
-        toValue: COMPOSER_CLOSED_BOTTOM,
-        duration: event.duration ?? 220,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: false,
-      }).start();
+      const duration = event.duration ?? 220;
+
+      Animated.parallel([
+        Animated.timing(composerBottom, {
+          toValue: COMPOSER_CLOSED_BOTTOM,
+          duration,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
+        Animated.timing(contentTranslateY, {
+          toValue: 0,
+          duration,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start();
     });
 
     return () => {
       showSubscription.remove();
       hideSubscription.remove();
     };
-  }, [composerBottom, insets.bottom]);
+  }, [composerBottom, contentTranslateY, insets.bottom]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
@@ -63,7 +84,7 @@ export function AurenHomeScreen() {
           <View style={styles.headerSpacer} />
         </View>
 
-        <View style={styles.content}>
+        <Animated.View style={[styles.content, { transform: [{ translateY: contentTranslateY }] }]}> 
           <View style={styles.hero}>
             <Text style={styles.title}>Good evening, you&apos;ve got this.</Text>
             <Text style={styles.subtitle}>I&apos;m here to help you focus and get things done.</Text>
@@ -74,7 +95,7 @@ export function AurenHomeScreen() {
             <AurenActionPill width={124} icon={<ListIcon />} label="Organize tasks" />
             <AurenActionPill width={110} icon={<SparkIcon />} label="Ask anything" />
           </View>
-        </View>
+        </Animated.View>
       </Pressable>
 
       <Animated.View style={[styles.composerWrap, { bottom: composerBottom }]}> 
