@@ -9,11 +9,11 @@ import {
 } from 'react-native';
 import { shadows } from '../theme';
 
-export type PlusSheetStage = 'closed' | 'peek' | 'expanded';
+export type ControlsSheetStage = 'closed' | 'peek' | 'expanded';
 
-type AurenPlusSheetProps = {
-  stage: PlusSheetStage;
-  onStageChange: (stage: PlusSheetStage) => void;
+type AurenControlsSheetProps = {
+  stage: ControlsSheetStage;
+  onStageChange: (stage: ControlsSheetStage) => void;
 };
 
 const PEEK_HEIGHT_RATIO = 0.54;
@@ -28,7 +28,7 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-export function AurenPlusSheet({ stage, onStageChange }: AurenPlusSheetProps) {
+export function AurenControlsSheet({ stage, onStageChange }: AurenControlsSheetProps) {
   const { height } = useWindowDimensions();
 
   const { closedY, expandedHeight, expandedY, peekY } = useMemo(() => {
@@ -53,13 +53,13 @@ export function AurenPlusSheet({ stage, onStageChange }: AurenPlusSheetProps) {
   const currentY = useRef(stage === 'closed' ? closedY : stage === 'expanded' ? expandedY : peekY);
   const dragStartY = useRef(currentY.current);
 
-  function getTargetY(nextStage: PlusSheetStage) {
+  function getTargetY(nextStage: ControlsSheetStage) {
     if (nextStage === 'expanded') return expandedY;
     if (nextStage === 'peek') return peekY;
     return closedY;
   }
 
-  function animateToStage(nextStage: PlusSheetStage) {
+  function animateToStage(nextStage: ControlsSheetStage) {
     const targetY = getTargetY(nextStage);
     currentY.current = targetY;
 
