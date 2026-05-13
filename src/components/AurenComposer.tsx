@@ -5,7 +5,7 @@ import { ChatIcon, ControlsIcon, MicIcon, PlusIcon, SendIcon } from './AurenIcon
 export function AurenComposer() {
   return (
     <View style={styles.shell}>
-      <Text style={styles.placeholder}>Ask anything, or assign a task</Text>
+      <Text style={styles.placeholder} numberOfLines={1}>Ask anything, or assign a task</Text>
       <View style={styles.actionsRow}>
         <View style={styles.leftActions}>
           <Pressable style={styles.iconButton}><PlusIcon /></Pressable>
@@ -24,24 +24,24 @@ export function AurenComposer() {
 const styles = StyleSheet.create({
   shell: {
     width: '100%',
-    minHeight: 132,
-    borderRadius: 44,
+    height: 112,
+    borderRadius: 39,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.78)',
+    borderColor: 'rgba(255,255,255,0.82)',
     backgroundColor: colors.surfaceStrong,
-    paddingHorizontal: 22,
-    paddingTop: 20,
-    paddingBottom: 19,
+    paddingHorizontal: 19,
+    paddingTop: 17,
+    paddingBottom: 16,
     overflow: 'hidden',
     ...shadows.soft,
   },
   placeholder: {
     color: colors.mutedSoft,
-    fontSize: 21,
-    letterSpacing: -0.35,
+    fontSize: 17,
+    letterSpacing: -0.25,
   },
   actionsRow: {
-    marginTop: 16,
+    marginTop: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -49,16 +49,16 @@ const styles = StyleSheet.create({
   leftActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 18,
+    gap: 14,
   },
   rightActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
   },
   iconButton: {
-    width: 52,
-    height: 52,
+    width: 45,
+    height: 45,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: colors.border,
