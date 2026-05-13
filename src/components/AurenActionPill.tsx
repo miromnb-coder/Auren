@@ -5,12 +5,13 @@ import { colors, shadows, spacing } from '../theme';
 type Props = {
   icon: ReactNode;
   label: string;
+  width?: number;
   onPress?: () => void;
 };
 
-export function AurenActionPill({ icon, label, onPress }: Props) {
+export function AurenActionPill({ icon, label, width = 112, onPress }: Props) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.pill, pressed && styles.pressed]}>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.pill, { width }, pressed && styles.pressed]}>
       <View style={styles.icon}>{icon}</View>
       <Text style={styles.label} numberOfLines={1}>{label}</Text>
     </Pressable>
@@ -19,7 +20,6 @@ export function AurenActionPill({ icon, label, onPress }: Props) {
 
 const styles = StyleSheet.create({
   pill: {
-    width: 104,
     height: 38,
     paddingHorizontal: 10,
     borderRadius: spacing.radiusFull,
@@ -44,8 +44,8 @@ const styles = StyleSheet.create({
   label: {
     flexShrink: 1,
     color: colors.muted,
-    fontSize: 13.5,
-    letterSpacing: -0.15,
+    fontSize: 13.2,
+    letterSpacing: -0.18,
     fontWeight: '500',
   },
 });
