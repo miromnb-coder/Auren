@@ -36,7 +36,7 @@ const DRAWER_WIDTH_RATIO = 0.82;
 const DRAWER_MIN_WIDTH = 315;
 const DRAWER_MAX_WIDTH = 620;
 const SWIPE_DISTANCE = 46;
-const SWIPE_EDGE_WIDTH = 80;
+const SWIPE_EDGE_WIDTH = 86;
 const HORIZONTAL_LOCK_RATIO = 1.35;
 
 const DEFAULT_RECENT_CHATS: RecentChat[] = [
@@ -99,33 +99,29 @@ export function AurenSidebar({
           if (!isHorizontal) return false;
 
           if (open) {
-            return true;
+            return gestureState.dx < -14;
           }
 
           const startedNearLeftEdge = event.nativeEvent.pageX <= SWIPE_EDGE_WIDTH;
-          const swipeLeftToOpen = gestureState.dx < -14;
-          const edgeSwipeRightToOpen = startedNearLeftEdge && gestureState.dx > 14;
-
-          return swipeLeftToOpen || edgeSwipeRightToOpen;
+          return startedNearLeftEdge && gestureState.dx > 14;
         },
         onPanResponderRelease: (event, gestureState) => {
           if (open) {
-            if (gestureState.dx > SWIPE_DISTANCE || gestureState.dx < -SWIPE_DISTANCE) {
+            if (gestureState.dx < -SWIPE_DISTANCE) {
               onClose?.();
             }
             return;
           }
 
           const startedNearLeftEdge = event.nativeEvent.pageX <= SWIPE_EDGE_WIDTH;
-          const shouldOpenFromSwipeLeft = gestureState.dx < -SWIPE_DISTANCE;
           const shouldOpenFromLeftEdge = startedNearLeftEdge && gestureState.dx > SWIPE_DISTANCE;
 
-          if (shouldOpenFromSwipeLeft || shouldOpenFromLeftEdge) {
+          if (shouldOpenFromLeftEdge) {
             onOpen?.();
           }
         },
-        onPanResponderTerminate: (event, gestureState) => {
-          if (open && (gestureState.dx > SWIPE_DISTANCE || gestureState.dx < -SWIPE_DISTANCE)) {
+        onPanResponderTerminate: (_event, gestureState) => {
+          if (open && gestureState.dx < -SWIPE_DISTANCE) {
             onClose?.();
           }
         },
