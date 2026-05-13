@@ -11,6 +11,11 @@ const MIN_INPUT_HEIGHT = INPUT_LINE_HEIGHT * MIN_VISIBLE_LINES;
 const MAX_INPUT_HEIGHT = INPUT_LINE_HEIGHT * MAX_VISIBLE_LINES;
 const APPROX_CHARS_PER_LINE = 31;
 
+type AurenComposerProps = {
+  onOpenPlus?: () => void;
+  plusActive?: boolean;
+};
+
 function getVisualLineCount(text: string) {
   if (text.length === 0) {
     return MIN_VISIBLE_LINES;
@@ -22,7 +27,7 @@ function getVisualLineCount(text: string) {
   }, 0);
 }
 
-export function AurenComposer() {
+export function AurenComposer({ onOpenPlus, plusActive = false }: AurenComposerProps) {
   const [draft, setDraft] = useState('');
   const [visibleLineCount, setVisibleLineCount] = useState(MIN_VISIBLE_LINES);
 
@@ -68,7 +73,14 @@ export function AurenComposer() {
 
       <View style={styles.actionsRow}>
         <View style={styles.leftActions}>
-          <Pressable style={styles.iconButton} accessibilityLabel="Add attachment"><PlusIcon /></Pressable>
+          <Pressable
+            onPress={onOpenPlus}
+            style={[styles.iconButton, plusActive && styles.iconButtonActive]}
+            accessibilityRole="button"
+            accessibilityLabel="Open add menu"
+          >
+            <PlusIcon />
+          </Pressable>
           <Pressable style={styles.iconButton} accessibilityLabel="Open controls"><ControlsIcon /></Pressable>
         </View>
         <View style={styles.rightActions}>
@@ -137,6 +149,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.34)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  iconButtonActive: {
+    backgroundColor: 'rgba(225,226,232,0.72)',
   },
   sendButton: {
     backgroundColor: 'rgba(225,226,232,0.78)',
