@@ -5,6 +5,7 @@ import { Animated, Easing, Keyboard, Platform, Pressable, StyleSheet, Text, View
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AurenActionPill } from '../components/AurenActionPill';
 import { AurenComposer } from '../components/AurenComposer';
+import { AurenControlsSheet, type ControlsSheetStage } from '../components/AurenControlsSheet';
 import { CalendarIcon, ChevronIcon, ListIcon, MenuIcon, SparkIcon } from '../components/AurenIcons';
 import { AurenPlusSheet, type PlusSheetStage } from '../components/AurenPlusSheet';
 import { AurenSidebar } from '../components/AurenSidebar';
@@ -31,6 +32,7 @@ export function AurenHomeScreen() {
   const insets = useSafeAreaInsets();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [plusSheetStage, setPlusSheetStage] = useState<PlusSheetStage>('closed');
+  const [controlsSheetStage, setControlsSheetStage] = useState<ControlsSheetStage>('closed');
   const composerBottom = useRef(new Animated.Value(COMPOSER_CLOSED_BOTTOM)).current;
   const contentTranslateY = useRef(new Animated.Value(0)).current;
   const pillsOpacity = useRef(new Animated.Value(1)).current;
@@ -38,6 +40,9 @@ export function AurenHomeScreen() {
   const appCardProgress = useRef(new Animated.Value(0)).current;
 
   const plusSheetOpen = plusSheetStage !== 'closed';
+  const controlsSheetOpen = controlsSheetStage !== 'closed';
+  const anySheetOpen = plusSheetOpen || controlsSheetOpen;
+  const anySheetExpanded = plusSheetStage === 'expanded' || controlsSheetStage === 'expanded';
 
   function setPlusStage(nextStage: PlusSheetStage) {
     setPlusSheetStage((current) => {
@@ -55,9 +60,35 @@ export function AurenHomeScreen() {
     });
   }
 
+  function setControlsStage(nextStage: ControlsSheetStage) {
+    setControlsSheetStage((current) => {
+      if (current === nextStage) return current;
+
+      if (current === 'closed' && nextStage !== 'closed') {
+        runHaptic('open');
+      } else if (current !== 'closed' && nextStage === 'closed') {
+        runHaptic('close');
+      } else if (current !== nextStage) {
+        runHaptic('open');
+      }
+
+      return nextStage;
+    });
+  }
+
+  function closeAllSheets() {
+    if (plusSheetOpen) {
+      setPlusStage('closed');
+    }
+
+    if (controlsSheetOpen) {
+      setControlsStage('closed');
+    }
+  }
+
   function openSidebar() {
     Keyboard.dismiss();
-    setPlusStage('closed');
+    closeAllSheets();
     setSidebarOpen((current) => {
       if (current) return current;
       runHaptic('open');
@@ -76,21 +107,33 @@ export function AurenHomeScreen() {
   function openPlusSheet() {
     Keyboard.dismiss();
     setSidebarOpen(false);
+    if (controlsSheetOpen) {
+      setControlsSheetStage('closed');
+    }
     setPlusStage('peek');
   }
 
-  function closePlusSheet() {
-    setPlusStage('closed');
+  function openControlsSheet() {
+    Keyboard.dismiss();
+    setSidebarOpen(false);
+    if (plusSheetOpen) {
+      setPlusSheetStage('closed');
+    }
+    setControlsStage('peek');
+  }
+
+  function closeActiveSheet() {
+    closeAllSheets();
   }
 
   useEffect(() => {
     Animated.timing(appCardProgress, {
-      toValue: plusSheetStage === 'expanded' ? 1 : 0,
-      duration: plusSheetStage === 'expanded' ? 320 : 260,
+      toValue: anySheetExpanded ? 1 : 0,
+      duration: anySheetExpanded ? 320 : 260,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-  }, [appCardProgress, plusSheetStage]);
+  }, [anySheetExpanded, appCardProgress]);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -193,20 +236,20 @@ export function AurenHomeScreen() {
       onOpenRecentChat={closeSidebar}
     >
       <View style={styles.sceneRoot}>
-        <StatusBar style={plusSheetStage === 'expanded' ? 'light' : 'dark'} />
+        <StatusBar style={anySheetExpanded ? 'light' : 'dark'} />
         <Animated.View style={[styles.darkFrame, { opacity: appDimOpacity }]} />
 
         <Animated.View
           style={[
             styles.appCard,
             {
-              borderRadius: plusSheetStage === 'expanded' ? 34 : 0,
+              borderRadius: anySheetExpanded ? 34 : 0,
               transform: [{ scale: appScale }, { translateY: appTranslateY }],
             },
           ]}
         >
           <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-            <Pressable style={styles.dismissArea} onPress={plusSheetOpen ? closePlusSheet : Keyboard.dismiss}>
+            <Pressable style={styles.dismissArea} onPress={anySheetOpen ? closeActiveSheet : Keyboard.dismiss}>
               <View style={styles.header}>
                 <Pressable
                   onPress={openSidebar}
@@ -250,13 +293,19 @@ export function AurenHomeScreen() {
             </Pressable>
 
             <Animated.View style={[styles.composerWrap, { bottom: composerBottom }]}> 
-              <AurenComposer onOpenPlus={openPlusSheet} plusActive={plusSheetOpen} />
+              <AurenComposer
+                onOpenPlus={openPlusSheet}
+                onOpenControls={openControlsSheet}
+                plusActive={plusSheetOpen}
+                controlsActive={controlsSheetOpen}
+              />
             </Animated.View>
           </SafeAreaView>
         </Animated.View>
 
-        {plusSheetOpen ? <Pressable style={styles.plusBackdrop} onPress={closePlusSheet} /> : null}
+        {anySheetOpen ? <Pressable style={styles.plusBackdrop} onPress={closeActiveSheet} /> : null}
         <AurenPlusSheet stage={plusSheetStage} onStageChange={setPlusStage} />
+        <AurenControlsSheet stage={controlsSheetStage} onStageChange={setControlsStage} />
       </View>
     </AurenSidebar>
   );
