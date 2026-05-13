@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import {
   Animated,
   Easing,
+  PanResponder,
   Pressable,
   StyleSheet,
   Text,
@@ -22,6 +23,7 @@ type RecentChat = {
 type AurenSidebarProps = {
   open: boolean;
   children: ReactNode;
+  onOpen?: () => void;
   onClose?: () => void;
   onNewChat?: () => void;
   onViewAll?: () => void;
@@ -33,6 +35,9 @@ type AurenSidebarProps = {
 const DRAWER_WIDTH_RATIO = 0.82;
 const DRAWER_MIN_WIDTH = 315;
 const DRAWER_MAX_WIDTH = 620;
+const SWIPE_DISTANCE = 46;
+const SWIPE_EDGE_WIDTH = 80;
+const HORIZONTAL_LOCK_RATIO = 1.35;
 
 const DEFAULT_RECENT_CHATS: RecentChat[] = [
   {
@@ -58,6 +63,7 @@ const DEFAULT_RECENT_CHATS: RecentChat[] = [
 export function AurenSidebar({
   open,
   children,
+  onOpen,
   onClose,
   onNewChat,
   onViewAll,
@@ -82,6 +88,51 @@ export function AurenSidebar({
     }).start();
   }, [open, progress]);
 
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (event, gestureState) => {
+          const horizontalDistance = Math.abs(gestureState.dx);
+          const verticalDistance = Math.abs(gestureState.dy);
+          const isHorizontal = horizontalDistance > 14 && horizontalDistance > verticalDistance * HORIZONTAL_LOCK_RATIO;
+
+          if (!isHorizontal) return false;
+
+          if (open) {
+            return true;
+          }
+
+          const startedNearLeftEdge = event.nativeEvent.pageX <= SWIPE_EDGE_WIDTH;
+          const swipeLeftToOpen = gestureState.dx < -14;
+          const edgeSwipeRightToOpen = startedNearLeftEdge && gestureState.dx > 14;
+
+          return swipeLeftToOpen || edgeSwipeRightToOpen;
+        },
+        onPanResponderRelease: (event, gestureState) => {
+          if (open) {
+            if (gestureState.dx > SWIPE_DISTANCE || gestureState.dx < -SWIPE_DISTANCE) {
+              onClose?.();
+            }
+            return;
+          }
+
+          const startedNearLeftEdge = event.nativeEvent.pageX <= SWIPE_EDGE_WIDTH;
+          const shouldOpenFromSwipeLeft = gestureState.dx < -SWIPE_DISTANCE;
+          const shouldOpenFromLeftEdge = startedNearLeftEdge && gestureState.dx > SWIPE_DISTANCE;
+
+          if (shouldOpenFromSwipeLeft || shouldOpenFromLeftEdge) {
+            onOpen?.();
+          }
+        },
+        onPanResponderTerminate: (event, gestureState) => {
+          if (open && (gestureState.dx > SWIPE_DISTANCE || gestureState.dx < -SWIPE_DISTANCE)) {
+            onClose?.();
+          }
+        },
+      }),
+    [onClose, onOpen, open],
+  );
+
   const drawerTranslateX = progress.interpolate({
     inputRange: [0, 1],
     outputRange: [-drawerWidth, 0],
@@ -93,7 +144,7 @@ export function AurenSidebar({
   });
 
   return (
-    <View style={styles.root}>
+    <View style={styles.root} {...panResponder.panHandlers}>
       <Animated.View
         style={[
           styles.mainScreen,
