@@ -35,9 +35,9 @@ type AurenSidebarProps = {
 const DRAWER_WIDTH_RATIO = 0.82;
 const DRAWER_MIN_WIDTH = 315;
 const DRAWER_MAX_WIDTH = 620;
-const SWIPE_DISTANCE = 46;
-const SWIPE_EDGE_WIDTH = 86;
-const HORIZONTAL_LOCK_RATIO = 1.35;
+const SWIPE_DISTANCE = 42;
+const SWIPE_EDGE_WIDTH = 96;
+const HORIZONTAL_LOCK_RATIO = 1.25;
 
 const DEFAULT_RECENT_CHATS: RecentChat[] = [
   {
@@ -59,6 +59,12 @@ const DEFAULT_RECENT_CHATS: RecentChat[] = [
     icon: 'sparkles-outline',
   },
 ];
+
+function isHorizontalGesture(dx: number, dy: number) {
+  const horizontalDistance = Math.abs(dx);
+  const verticalDistance = Math.abs(dy);
+  return horizontalDistance > 10 && horizontalDistance > verticalDistance * HORIZONTAL_LOCK_RATIO;
+}
 
 export function AurenSidebar({
   open,
@@ -88,45 +94,54 @@ export function AurenSidebar({
     }).start();
   }, [open, progress]);
 
-  const panResponder = useMemo(
+  const openSwipeResponder = useMemo(
     () =>
       PanResponder.create({
-        onMoveShouldSetPanResponder: (event, gestureState) => {
-          const horizontalDistance = Math.abs(gestureState.dx);
-          const verticalDistance = Math.abs(gestureState.dy);
-          const isHorizontal = horizontalDistance > 14 && horizontalDistance > verticalDistance * HORIZONTAL_LOCK_RATIO;
-
-          if (!isHorizontal) return false;
-
-          if (open) {
-            return gestureState.dx < -14;
-          }
-
-          const startedNearLeftEdge = event.nativeEvent.pageX <= SWIPE_EDGE_WIDTH;
-          return startedNearLeftEdge && gestureState.dx > 14;
+        onMoveShouldSetPanResponder: (_event, gestureState) => {
+          if (open) return false;
+          return isHorizontalGesture(gestureState.dx, gestureState.dy) && gestureState.dx > 8;
         },
-        onPanResponderRelease: (event, gestureState) => {
-          if (open) {
-            if (gestureState.dx < -SWIPE_DISTANCE) {
-              onClose?.();
-            }
-            return;
-          }
-
-          const startedNearLeftEdge = event.nativeEvent.pageX <= SWIPE_EDGE_WIDTH;
-          const shouldOpenFromLeftEdge = startedNearLeftEdge && gestureState.dx > SWIPE_DISTANCE;
-
-          if (shouldOpenFromLeftEdge) {
+        onMoveShouldSetPanResponderCapture: (_event, gestureState) => {
+          if (open) return false;
+          return isHorizontalGesture(gestureState.dx, gestureState.dy) && gestureState.dx > 8;
+        },
+        onPanResponderRelease: (_event, gestureState) => {
+          if (gestureState.dx > SWIPE_DISTANCE) {
             onOpen?.();
           }
         },
         onPanResponderTerminate: (_event, gestureState) => {
-          if (open && gestureState.dx < -SWIPE_DISTANCE) {
+          if (gestureState.dx > SWIPE_DISTANCE) {
+            onOpen?.();
+          }
+        },
+      }),
+    [onOpen, open],
+  );
+
+  const closeSwipeResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_event, gestureState) => {
+          if (!open) return false;
+          return isHorizontalGesture(gestureState.dx, gestureState.dy) && gestureState.dx < -8;
+        },
+        onMoveShouldSetPanResponderCapture: (_event, gestureState) => {
+          if (!open) return false;
+          return isHorizontalGesture(gestureState.dx, gestureState.dy) && gestureState.dx < -8;
+        },
+        onPanResponderRelease: (_event, gestureState) => {
+          if (gestureState.dx < -SWIPE_DISTANCE) {
+            onClose?.();
+          }
+        },
+        onPanResponderTerminate: (_event, gestureState) => {
+          if (gestureState.dx < -SWIPE_DISTANCE) {
             onClose?.();
           }
         },
       }),
-    [onClose, onOpen, open],
+    [onClose, open],
   );
 
   const drawerTranslateX = progress.interpolate({
@@ -140,7 +155,7 @@ export function AurenSidebar({
   });
 
   return (
-    <View style={styles.root} {...panResponder.panHandlers}>
+    <View style={styles.root}>
       <Animated.View
         style={[
           styles.mainScreen,
@@ -152,10 +167,15 @@ export function AurenSidebar({
         {children}
       </Animated.View>
 
-      {open ? <Pressable style={styles.peekCloseArea} onPress={onClose} /> : null}
+      {!open ? <View style={styles.edgeSwipeArea} {...openSwipeResponder.panHandlers} /> : null}
+
+      {open ? (
+        <Pressable style={styles.peekCloseArea} onPress={onClose} {...closeSwipeResponder.panHandlers} />
+      ) : null}
 
       <Animated.View
         pointerEvents={open ? 'auto' : 'none'}
+        {...closeSwipeResponder.panHandlers}
         style={[
           styles.drawer,
           {
@@ -237,6 +257,14 @@ const styles = StyleSheet.create({
   },
   mainScreen: {
     ...StyleSheet.absoluteFillObject,
+  },
+  edgeSwipeArea: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: SWIPE_EDGE_WIDTH,
+    zIndex: 30,
   },
   peekCloseArea: {
     position: 'absolute',
