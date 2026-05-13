@@ -110,6 +110,7 @@ export function AurenHomeScreen() {
   return (
     <AurenSidebar
       open={sidebarOpen}
+      onOpen={openSidebar}
       onClose={closeSidebar}
       onNewChat={closeSidebar}
       onViewAll={closeSidebar}
