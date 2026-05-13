@@ -9,11 +9,11 @@ import {
 } from 'react-native';
 import { shadows } from '../theme';
 
-export type ControlsSheetStage = 'closed' | 'peek' | 'expanded';
+export type ChatModeSheetStage = 'closed' | 'peek' | 'expanded';
 
-type AurenControlsSheetProps = {
-  stage: ControlsSheetStage;
-  onStageChange: (stage: ControlsSheetStage) => void;
+type AurenChatModeSheetProps = {
+  stage: ChatModeSheetStage;
+  onStageChange: (stage: ChatModeSheetStage) => void;
 };
 
 const PEEK_HEIGHT_RATIO = 0.54;
@@ -28,7 +28,7 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-export function AurenControlsSheet({ stage, onStageChange }: AurenControlsSheetProps) {
+export function AurenChatModeSheet({ stage, onStageChange }: AurenChatModeSheetProps) {
   const { height } = useWindowDimensions();
 
   const { closedY, expandedHeight, expandedY, peekY } = useMemo(() => {
@@ -53,13 +53,13 @@ export function AurenControlsSheet({ stage, onStageChange }: AurenControlsSheetP
   const currentY = useRef(stage === 'closed' ? closedY : stage === 'expanded' ? expandedY : peekY);
   const dragStartY = useRef(currentY.current);
 
-  function getTargetY(nextStage: ControlsSheetStage) {
+  function getTargetY(nextStage: ChatModeSheetStage) {
     if (nextStage === 'expanded') return expandedY;
     if (nextStage === 'peek') return peekY;
     return closedY;
   }
 
-  function animateToStage(nextStage: ControlsSheetStage) {
+  function animateToStage(nextStage: ChatModeSheetStage) {
     const targetY = getTargetY(nextStage);
     currentY.current = targetY;
 
