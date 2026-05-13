@@ -1,42 +1,85 @@
-import { Platform, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useEffect, useRef } from 'react';
+import { Animated, Easing, Keyboard, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AurenActionPill } from '../components/AurenActionPill';
 import { AurenComposer } from '../components/AurenComposer';
 import { CalendarIcon, ChevronIcon, ListIcon, MenuIcon, SparkIcon } from '../components/AurenIcons';
 import { colors, spacing } from '../theme';
 
+const COMPOSER_CLOSED_BOTTOM = 34;
+const COMPOSER_KEYBOARD_GAP = 12;
+
 export function AurenHomeScreen() {
+  const insets = useSafeAreaInsets();
+  const composerBottom = useRef(new Animated.Value(COMPOSER_CLOSED_BOTTOM)).current;
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSubscription = Keyboard.addListener(showEvent, (event) => {
+      const keyboardHeight = event.endCoordinates.height;
+      const nextBottom = Math.max(
+        COMPOSER_CLOSED_BOTTOM,
+        keyboardHeight - insets.bottom + COMPOSER_KEYBOARD_GAP,
+      );
+
+      Animated.timing(composerBottom, {
+        toValue: nextBottom,
+        duration: event.duration ?? 250,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }).start();
+    });
+
+    const hideSubscription = Keyboard.addListener(hideEvent, (event) => {
+      Animated.timing(composerBottom, {
+        toValue: COMPOSER_CLOSED_BOTTOM,
+        duration: event.duration ?? 220,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }).start();
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, [composerBottom, insets.bottom]);
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <View style={styles.header}>
-        <View style={styles.menuSlot}>
-          <MenuIcon />
+      <Pressable style={styles.dismissArea} onPress={Keyboard.dismiss}>
+        <View style={styles.header}>
+          <View style={styles.menuSlot}>
+            <MenuIcon />
+          </View>
+
+          <View style={styles.brandWrap}>
+            <Text style={styles.brand}>Auren</Text>
+            <ChevronIcon />
+          </View>
+
+          <View style={styles.headerSpacer} />
         </View>
 
-        <View style={styles.brandWrap}>
-          <Text style={styles.brand}>Auren</Text>
-          <ChevronIcon />
+        <View style={styles.content}>
+          <View style={styles.hero}>
+            <Text style={styles.title}>Good evening, you&apos;ve got this.</Text>
+            <Text style={styles.subtitle}>I&apos;m here to help you focus and get things done.</Text>
+          </View>
+
+          <View style={styles.pillsRow}>
+            <AurenActionPill width={106} icon={<CalendarIcon />} label="Plan my day" />
+            <AurenActionPill width={124} icon={<ListIcon />} label="Organize tasks" />
+            <AurenActionPill width={110} icon={<SparkIcon />} label="Ask anything" />
+          </View>
         </View>
+      </Pressable>
 
-        <View style={styles.headerSpacer} />
-      </View>
-
-      <View style={styles.content}>
-        <View style={styles.hero}>
-          <Text style={styles.title}>Good evening, you&apos;ve got this.</Text>
-          <Text style={styles.subtitle}>I&apos;m here to help you focus and get things done.</Text>
-        </View>
-
-        <View style={styles.pillsRow}>
-          <AurenActionPill width={106} icon={<CalendarIcon />} label="Plan my day" />
-          <AurenActionPill width={124} icon={<ListIcon />} label="Organize tasks" />
-          <AurenActionPill width={110} icon={<SparkIcon />} label="Ask anything" />
-        </View>
-      </View>
-
-      <View style={styles.composerWrap}>
+      <Animated.View style={[styles.composerWrap, { bottom: composerBottom }]}> 
         <AurenComposer />
-      </View>
+      </Animated.View>
     </SafeAreaView>
   );
 }
@@ -51,6 +94,9 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  dismissArea: {
+    flex: 1,
   },
   header: {
     height: 88,
@@ -120,6 +166,5 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 16,
     right: 16,
-    bottom: 34,
   },
 });
