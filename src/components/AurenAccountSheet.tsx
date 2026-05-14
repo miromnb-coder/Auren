@@ -18,8 +18,9 @@ import { shadows } from '../theme';
 export type AccountSheetStage = 'closed' | 'peek' | 'expanded';
 
 type AccountSheetProfile = { name: string; email: string; initials: string };
-type SheetView = 'account' | 'profile' | 'dataMemory';
+type SheetView = 'account' | 'profile' | 'dataMemory' | 'subscription';
 type RowItem = { id: string; label: string; icon: keyof typeof Ionicons.glyphMap; danger?: boolean };
+type PlanId = 'free' | 'plus' | 'pro';
 
 type AurenAccountSheetProps = {
   stage: AccountSheetStage;
@@ -61,6 +62,12 @@ const DATA_PRIVACY_ROWS: RowItem[] = [
   { id: 'manage-permissions', label: 'Manage permissions', icon: 'shield-outline' },
   { id: 'remove-chat-history', label: 'Delete chat ' + 'history', icon: 'trash-outline' },
   { id: 'clear-memory', label: 'Clear ' + 'memory', icon: 'warning-outline', danger: true },
+];
+
+const PLAN_OPTIONS: { id: PlanId; name: string; caption: string; recommended?: boolean }[] = [
+  { id: 'free', name: 'Free', caption: '300 credits/day' },
+  { id: 'plus', name: 'Plus', caption: '3,000 credits/day', recommended: true },
+  { id: 'pro', name: 'Pro', caption: 'Highest limits' },
 ];
 
 function clamp(value: number, min: number, max: number) {
@@ -122,6 +129,7 @@ function SettingsRow({
 export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROFILE, onProfileUpdated }: AurenAccountSheetProps) {
   const { height } = useWindowDimensions();
   const [view, setView] = useState<SheetView>('account');
+  const [selectedPlan, setSelectedPlan] = useState<PlanId>('plus');
   const [signingOut, setSigningOut] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [localProfile, setLocalProfile] = useState<AccountSheetProfile>(profile);
@@ -158,6 +166,20 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
   function openDataMemory() {
     setView('dataMemory');
     onStageChange('expanded');
+  }
+
+  function openSubscription() {
+    setView('subscription');
+    onStageChange('expanded');
+  }
+
+  function handleUpgradePress() {
+    setSelectedPlan('plus');
+  }
+
+  function handleChoosePlanPress() {
+    // Payment will be connected later with RevenueCat, StoreKit, Stripe, or another billing provider.
+    // For now this keeps the selected plan active visually without changing the real account plan.
   }
 
   async function saveProfile() {
@@ -200,6 +222,7 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
   function handleRowPress(item: RowItem) {
     if (item.id === 'profile') return openProfile();
     if (item.id === 'data-memory') return openDataMemory();
+    if (item.id === 'subscription') return openSubscription();
     if (item.id === 'sign-out') void handleSignOut();
   }
 
@@ -255,7 +278,15 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
       <View style={styles.handle} />
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={view === 'profile' ? styles.profileContent : view === 'dataMemory' ? styles.dataMemoryContent : styles.content}
+        contentContainerStyle={
+          view === 'profile'
+            ? styles.profileContent
+            : view === 'dataMemory'
+              ? styles.dataMemoryContent
+              : view === 'subscription'
+                ? styles.subscriptionContent
+                : styles.content
+        }
         showsVerticalScrollIndicator={false}
         bounces={false}
         keyboardShouldPersistTaps="handled"
@@ -316,6 +347,86 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
             <Pressable style={({ pressed }) => [styles.saveButton, styles.dataSaveButton, pressed && styles.pressed]}><Text style={styles.saveButtonText}>Save changes</Text></Pressable>
             <Pressable onPress={() => setView('account')} style={({ pressed }) => [styles.backButton, styles.dataBackButton, pressed && styles.pressed]}><Text style={styles.backButtonText}>Back</Text></Pressable>
           </>
+        ) : view === 'subscription' ? (
+          <>
+            <Text style={styles.subscriptionTitle}>Subscription</Text>
+
+            <View style={styles.currentPlanCard}>
+              <View style={styles.planIconCircle}>
+                <Ionicons name="diamond-outline" size={36} color="#858891" />
+              </View>
+              <View style={styles.currentPlanTextWrap}>
+                <Text style={styles.currentPlanKicker}>Current plan</Text>
+                <Text style={styles.currentPlanName}>Free</Text>
+                <Text style={styles.currentPlanCredits}>300 daily credits</Text>
+                <View style={styles.refreshRow}>
+                  <Ionicons name="refresh-outline" size={16} color="#858891" />
+                  <Text style={styles.refreshText}>Resets every day</Text>
+                </View>
+              </View>
+              <Pressable onPress={handleUpgradePress} style={({ pressed }) => [styles.upgradeButton, pressed && styles.pressed]}>
+                <Text style={styles.upgradeButtonText}>Upgrade</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.creditsCard}>
+              <Text style={styles.creditsTitle}>Credits overview</Text>
+              <View style={[styles.creditRow, styles.creditBorder]}>
+                <View style={styles.creditIconWrap}><Ionicons name="server-outline" size={22} color="#858891" /></View>
+                <Text style={styles.creditLabel}>Credits balance</Text>
+                <Text style={styles.creditValueStrong}>184</Text>
+              </View>
+              <View style={[styles.creditRow, styles.creditBorder]}>
+                <View style={styles.creditIconWrap}><Ionicons name="refresh-outline" size={23} color="#858891" /></View>
+                <Text style={styles.creditLabel}>Daily refresh</Text>
+                <Text style={styles.creditValue}>300 / day</Text>
+              </View>
+              <View style={[styles.creditRow, styles.creditBorder]}>
+                <View style={styles.creditIconWrap}><Ionicons name="chatbubble-ellipses-outline" size={22} color="#858891" /></View>
+                <Text style={styles.creditLabel}>AI chat</Text>
+                <Text style={styles.creditValue}>from 5 credits</Text>
+                <Ionicons name="chevron-forward" size={22} color="#a7a9b0" />
+              </View>
+              <View style={styles.creditRow}>
+                <View style={styles.creditIconWrap}><Ionicons name="sparkles-outline" size={22} color="#858891" /></View>
+                <Text style={styles.creditLabel}>Advanced tasks</Text>
+                <Text style={styles.creditValue}>from 20 credits</Text>
+                <Ionicons name="chevron-forward" size={22} color="#a7a9b0" />
+              </View>
+            </View>
+
+            <Text style={styles.choosePlanLabel}>Choose a plan</Text>
+            <View style={styles.planOptionsRow}>
+              {PLAN_OPTIONS.map((plan) => {
+                const active = selectedPlan === plan.id;
+                return (
+                  <Pressable
+                    key={plan.id}
+                    onPress={() => setSelectedPlan(plan.id)}
+                    style={({ pressed }) => [styles.planOptionCard, active && styles.planOptionCardActive, pressed && styles.pressed]}
+                  >
+                    {plan.recommended ? (
+                      <View style={styles.recommendedBadge}>
+                        <Text style={styles.recommendedBadgeText}>Recommended</Text>
+                      </View>
+                    ) : null}
+                    <View style={styles.planOptionIconCircle}>
+                      <Ionicons name="diamond-outline" size={28} color="#858891" />
+                    </View>
+                    <Text style={styles.planOptionName}>{plan.name}</Text>
+                    <Text style={styles.planOptionCaption}>{plan.caption}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <Pressable onPress={handleChoosePlanPress} style={({ pressed }) => [styles.saveButton, styles.choosePlanButton, pressed && styles.pressed]}>
+              <Text style={styles.saveButtonText}>Choose plan</Text>
+            </Pressable>
+            <Pressable onPress={() => setView('account')} style={({ pressed }) => [styles.backButton, styles.subscriptionBackButton, pressed && styles.pressed]}>
+              <Text style={styles.backButtonText}>Back</Text>
+            </Pressable>
+          </>
         ) : (
           <>
             <Text style={styles.title}>Account</Text>
@@ -344,6 +455,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 23, paddingTop: 31, paddingBottom: 44 },
   profileContent: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 26 },
   dataMemoryContent: { paddingHorizontal: 24, paddingTop: 6, paddingBottom: 8 },
+  subscriptionContent: { paddingHorizontal: 24, paddingTop: 7, paddingBottom: 18 },
   title: { color: '#1d1d20', fontSize: 19, lineHeight: 25, fontWeight: '620', letterSpacing: -0.22, textAlign: 'center', marginBottom: 31 },
   profileCard: { minHeight: 98, borderRadius: 20, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', ...cardBase },
   largeAvatar: { width: 80, height: 80, borderRadius: 999, marginRight: 19, backgroundColor: '#eeedf2', alignItems: 'center', justifyContent: 'center' },
@@ -399,6 +511,36 @@ const styles = StyleSheet.create({
   storageMeta: { color: '#777b84', fontSize: 12, lineHeight: 15, fontWeight: '440', letterSpacing: -0.05 },
   dataSaveButton: { height: 46, marginTop: 10 },
   dataBackButton: { height: 44, marginTop: 8 },
+  subscriptionTitle: { color: '#1d1d20', fontSize: 20, lineHeight: 26, fontWeight: '620', letterSpacing: -0.26, textAlign: 'center', marginBottom: 29 },
+  currentPlanCard: { minHeight: 140, borderRadius: 18, paddingHorizontal: 22, paddingVertical: 18, flexDirection: 'row', alignItems: 'center', ...cardBase },
+  planIconCircle: { width: 78, height: 78, borderRadius: 999, marginRight: 22, backgroundColor: '#eeedf2', alignItems: 'center', justifyContent: 'center' },
+  currentPlanTextWrap: { flex: 1, minWidth: 0 },
+  currentPlanKicker: { color: '#777b84', fontSize: 15, lineHeight: 19, fontWeight: '440', letterSpacing: -0.1 },
+  currentPlanName: { marginTop: 5, color: '#111113', fontSize: 27, lineHeight: 33, fontWeight: '500', letterSpacing: -0.7 },
+  currentPlanCredits: { marginTop: 6, color: '#777b84', fontSize: 16, lineHeight: 20, fontWeight: '440', letterSpacing: -0.14 },
+  refreshRow: { marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  refreshText: { color: '#858891', fontSize: 12.5, lineHeight: 16, fontWeight: '440', letterSpacing: -0.06 },
+  upgradeButton: { width: 96, height: 48, borderRadius: 11, marginLeft: 12, backgroundColor: '#111113', alignItems: 'center', justifyContent: 'center', shadowColor: '#000000', shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 7 }, elevation: 6 },
+  upgradeButtonText: { color: '#ffffff', fontSize: 16, lineHeight: 20, fontWeight: '600', letterSpacing: -0.18 },
+  creditsCard: { marginTop: 23, borderRadius: 18, paddingHorizontal: 22, paddingTop: 22, paddingBottom: 4, ...cardBase },
+  creditsTitle: { color: '#33363d', fontSize: 15.5, lineHeight: 20, fontWeight: '500', letterSpacing: -0.12, marginBottom: 14 },
+  creditRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center' },
+  creditBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(17,24,39,0.08)' },
+  creditIconWrap: { width: 41, alignItems: 'flex-start', justifyContent: 'center' },
+  creditLabel: { flex: 1, color: '#1f2228', fontSize: 15, lineHeight: 19, fontWeight: '450', letterSpacing: -0.14 },
+  creditValue: { color: '#777b84', fontSize: 14.5, lineHeight: 19, fontWeight: '440', letterSpacing: -0.12, marginRight: 8 },
+  creditValueStrong: { color: '#111113', fontSize: 15.5, lineHeight: 20, fontWeight: '600', letterSpacing: -0.12 },
+  choosePlanLabel: { marginTop: 21, marginLeft: 11, color: '#33363d', fontSize: 15.5, lineHeight: 20, fontWeight: '500', letterSpacing: -0.13 },
+  planOptionsRow: { marginTop: 15, flexDirection: 'row', gap: 11 },
+  planOptionCard: { flex: 1, minHeight: 133, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(17,24,39,0.12)', backgroundColor: 'rgba(255,255,255,0.68)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, paddingTop: 18, paddingBottom: 15 },
+  planOptionCardActive: { borderColor: '#111113', borderWidth: 1.25, backgroundColor: 'rgba(246,246,250,0.78)' },
+  recommendedBadge: { position: 'absolute', top: 11, height: 23, borderRadius: 999, paddingHorizontal: 12, backgroundColor: '#20232a', alignItems: 'center', justifyContent: 'center' },
+  recommendedBadgeText: { color: '#ffffff', fontSize: 10.5, lineHeight: 13, fontWeight: '600', letterSpacing: -0.08 },
+  planOptionIconCircle: { width: 58, height: 58, borderRadius: 999, marginBottom: 13, backgroundColor: '#f0eff3', alignItems: 'center', justifyContent: 'center' },
+  planOptionName: { color: '#111113', fontSize: 16.5, lineHeight: 21, fontWeight: '500', letterSpacing: -0.18 },
+  planOptionCaption: { marginTop: 5, color: '#858891', fontSize: 12.5, lineHeight: 16, fontWeight: '440', textAlign: 'center', letterSpacing: -0.06 },
+  choosePlanButton: { height: 53, marginTop: 24 },
+  subscriptionBackButton: { height: 52, marginTop: 13 },
   pressed: { opacity: 0.68, transform: [{ scale: 0.993 }] },
   disabled: { opacity: 0.55 },
 });
