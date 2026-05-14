@@ -14,14 +14,7 @@
           "isAccessMediaLocationEnabled": false
         }
       ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/icon.png",
-          "color": "#111113",
-          "defaultChannel": "default"
-        }
-      ]
+      "expo-notifications"
     ],
     "ios": {
       "infoPlist": {
