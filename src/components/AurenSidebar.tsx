@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { AurenAccountSheet, type AccountSheetStage } from './AurenAccountSheet';
+import { AurenActivityScreen } from './AurenActivityScreen';
 import { colors } from '../theme';
 
 type RecentChat = {
@@ -98,6 +99,7 @@ export function AurenSidebar({
 }: AurenSidebarProps) {
   const { width } = useWindowDimensions();
   const [accountSheetStage, setAccountSheetStage] = useState<AccountSheetStage>('closed');
+  const [activityOpen, setActivityOpen] = useState(false);
   const [currentProfile, setCurrentProfile] = useState<SidebarProfile>(profile);
   const accountSheetOpen = accountSheetStage !== 'closed';
   const drawerWidth = useMemo(() => {
@@ -124,11 +126,11 @@ export function AurenSidebar({
     () =>
       PanResponder.create({
         onMoveShouldSetPanResponder: (_event, gestureState) => {
-          if (open) return false;
+          if (open || activityOpen) return false;
           return isHorizontalGesture(gestureState.dx, gestureState.dy) && gestureState.dx > 8;
         },
         onMoveShouldSetPanResponderCapture: (_event, gestureState) => {
-          if (open) return false;
+          if (open || activityOpen) return false;
           return isHorizontalGesture(gestureState.dx, gestureState.dy) && gestureState.dx > 8;
         },
         onPanResponderRelease: (_event, gestureState) => {
@@ -142,7 +144,7 @@ export function AurenSidebar({
           }
         },
       }),
-    [onOpen, open],
+    [activityOpen, onOpen, open],
   );
 
   const closeSwipeResponder = useMemo(
@@ -185,6 +187,12 @@ export function AurenSidebar({
     onOpenProfile?.();
   }
 
+  function openActivityScreen() {
+    setActivityOpen(true);
+    onOpenActivity?.();
+    onClose?.();
+  }
+
   return (
     <View style={styles.root}>
       <Animated.View
@@ -198,7 +206,7 @@ export function AurenSidebar({
         {children}
       </Animated.View>
 
-      {!open ? <View style={styles.edgeSwipeArea} {...openSwipeResponder.panHandlers} /> : null}
+      {!open && !activityOpen ? <View style={styles.edgeSwipeArea} {...openSwipeResponder.panHandlers} /> : null}
 
       {open ? (
         <Pressable style={styles.peekCloseArea} onPress={onClose} {...closeSwipeResponder.panHandlers} />
@@ -219,7 +227,7 @@ export function AurenSidebar({
           <View style={styles.drawerHeader}>
             <Text style={styles.brand}>Auren</Text>
             <Pressable
-              onPress={onOpenActivity}
+              onPress={openActivityScreen}
               hitSlop={16}
               style={({ pressed }) => [styles.activityButton, pressed && styles.pressed]}
               accessibilityRole="button"
@@ -279,6 +287,8 @@ export function AurenSidebar({
         profile={currentProfile}
         onProfileUpdated={setCurrentProfile}
       />
+
+      {activityOpen ? <AurenActivityScreen onClose={() => setActivityOpen(false)} /> : null}
     </View>
   );
 }
