@@ -361,7 +361,7 @@ export function AurenHomeScreen() {
           ]}
         >
           <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-            <Pressable style={styles.dismissArea} onPress={anySheetOpen ? closeActiveSheet : Keyboard.dismiss}>
+            <View style={styles.dismissArea}>
               <View style={styles.header}>
                 <Pressable
                   onPress={openSidebar}
@@ -391,7 +391,7 @@ export function AurenHomeScreen() {
                 {hasMessages ? (
                   <AurenMessageList messages={messages} assistantThinking={assistantThinking} />
                 ) : (
-                  <>
+                  <Pressable style={styles.startDismissArea} onPress={Keyboard.dismiss}>
                     <View style={styles.hero}>
                       <Text style={styles.title}>Good evening, you&apos;ve got this.</Text>
                       <Text style={styles.subtitle}>I&apos;m here to help you focus and get things done.</Text>
@@ -411,10 +411,10 @@ export function AurenHomeScreen() {
                       <AurenActionPill width={124} icon={<ListIcon />} label="Organize tasks" />
                       <AurenActionPill width={110} icon={<SparkIcon />} label="Ask anything" />
                     </Animated.View>
-                  </>
+                  </Pressable>
                 )}
               </Animated.View>
-            </Pressable>
+            </View>
 
             <Animated.View style={[styles.composerWrap, { bottom: composerBottom }]}> 
               <AurenComposer
@@ -465,6 +465,12 @@ const styles = StyleSheet.create({
   },
   dismissArea: {
     flex: 1,
+  },
+  startDismissArea: {
+    flex: 1,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   header: {
     height: 88,
