@@ -55,9 +55,9 @@ function canRenderImageUri(uri?: string | null) {
 
 function GlobeIcon() {
   return (
-    <View style={styles.lineIconCircle}>
+    <View style={styles.globeIcon}>
       <View style={styles.globeHorizontal} />
-      <View style={styles.globeVertical} />
+      <View style={styles.globeVerticalOval} />
     </View>
   );
 }
@@ -310,7 +310,8 @@ export function AurenPlusSheet({ stage, onStageChange }: AurenPlusSheetProps) {
           })}
 
           {placeholderItems.map((photoKey) => (
-            <View key={photoKey} style={styles.photoTile}>
+            <View key={photoKey} style={[styles.photoTile, styles.placeholderTile]}>
+              <View style={styles.placeholderGlow} />
               <View style={styles.photoSelectCircle} />
             </View>
           ))}
@@ -319,26 +320,28 @@ export function AurenPlusSheet({ stage, onStageChange }: AurenPlusSheetProps) {
         <View style={styles.photoDivider} />
 
         <View style={styles.actionsCard}>
-          <Pressable style={styles.actionRow}>
+          <Pressable style={({ pressed }) => [styles.actionRow, pressed && styles.actionRowPressed]}>
             <View style={styles.actionIconWrap}>
               <GlobeIcon />
             </View>
             <View style={styles.actionTextWrap}>
               <Text style={styles.actionTitle}>Web search</Text>
-              <Text style={styles.actionSubtitle}>Search live information</Text>
+              <Text style={styles.actionSubtitle}>Search current information</Text>
             </View>
+            <Text style={styles.actionChevron}>›</Text>
           </Pressable>
 
           <View style={styles.actionDivider} />
 
-          <Pressable style={styles.actionRow}>
+          <Pressable style={({ pressed }) => [styles.actionRow, pressed && styles.actionRowPressed]}>
             <View style={styles.actionIconWrap}>
               <PaperclipIcon />
             </View>
             <View style={styles.actionTextWrap}>
               <Text style={styles.actionTitle}>Add files</Text>
-              <Text style={styles.actionSubtitle}>Analyze documents or images</Text>
+              <Text style={styles.actionSubtitle}>Docs, PDFs and images</Text>
             </View>
+            <Text style={styles.actionChevron}>›</Text>
           </Pressable>
         </View>
       </View>
@@ -381,7 +384,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(110,113,124,0.28)',
   },
   content: {
-    paddingTop: 36,
+    paddingTop: 34,
   },
   photoRail: {
     paddingHorizontal: 24,
@@ -389,9 +392,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   photoTile: {
-    width: 112,
-    height: 112,
-    borderRadius: 28,
+    width: 106,
+    height: 106,
+    borderRadius: 26,
     borderWidth: 1,
     borderColor: 'rgba(17,24,39,0.055)',
     backgroundColor: 'rgba(246,247,249,0.92)',
@@ -405,48 +408,57 @@ const styles = StyleSheet.create({
     borderColor: '#2f7df6',
   },
   cameraTile: {
-    backgroundColor: 'rgba(242,243,245,0.96)',
+    backgroundColor: 'rgba(240,242,244,0.96)',
   },
   cameraIcon: {
-    width: 42,
-    height: 32,
-    borderRadius: 9,
+    width: 46,
+    height: 34,
+    borderRadius: 10,
     borderWidth: 4,
-    borderColor: '#666a72',
+    borderColor: '#626771',
     alignItems: 'center',
     justifyContent: 'center',
   },
   cameraTop: {
     position: 'absolute',
-    top: -8,
-    width: 18,
-    height: 8,
-    borderTopLeftRadius: 5,
-    borderTopRightRadius: 5,
-    backgroundColor: '#666a72',
+    top: -9,
+    width: 20,
+    height: 9,
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+    backgroundColor: '#626771',
   },
   cameraLens: {
-    width: 13,
-    height: 13,
+    width: 14,
+    height: 14,
     borderRadius: 999,
     borderWidth: 4,
-    borderColor: '#666a72',
+    borderColor: '#626771',
   },
   photoImage: {
     ...StyleSheet.absoluteFillObject,
     width: '100%',
     height: '100%',
   },
+  placeholderTile: {
+    backgroundColor: 'rgba(244,245,247,0.92)',
+  },
+  placeholderGlow: {
+    width: 72,
+    height: 72,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.52)',
+  },
   photoSelectCircle: {
     position: 'absolute',
-    top: 9,
-    right: 9,
-    width: 25,
-    height: 25,
+    top: 8,
+    right: 8,
+    width: 24,
+    height: 24,
     borderRadius: 999,
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.92)',
-    backgroundColor: 'rgba(97,100,108,0.48)',
+    borderColor: 'rgba(255,255,255,0.94)',
+    backgroundColor: 'rgba(81,85,94,0.42)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -461,76 +473,91 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   photoDivider: {
-    marginTop: 24,
+    marginTop: 25,
     marginHorizontal: 24,
     height: 1,
-    backgroundColor: 'rgba(17,24,39,0.08)',
+    backgroundColor: 'rgba(17,24,39,0.07)',
   },
   actionsCard: {
-    marginTop: 20,
+    marginTop: 18,
     marginHorizontal: 24,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.46)',
+    overflow: 'hidden',
   },
   actionRow: {
-    minHeight: 82,
+    minHeight: 70,
+    paddingHorizontal: 10,
     flexDirection: 'row',
     alignItems: 'center',
   },
+  actionRowPressed: {
+    backgroundColor: 'rgba(17,24,39,0.035)',
+  },
   actionDivider: {
     height: 1,
-    marginLeft: 68,
-    backgroundColor: 'rgba(17,24,39,0.08)',
+    marginLeft: 58,
+    backgroundColor: 'rgba(17,24,39,0.07)',
   },
   actionIconWrap: {
-    width: 48,
-    height: 48,
+    width: 42,
+    height: 42,
     alignItems: 'center',
     justifyContent: 'center',
   },
   actionTextWrap: {
     flex: 1,
-    marginLeft: 20,
+    marginLeft: 14,
   },
   actionTitle: {
     color: '#111217',
-    fontSize: 21,
-    lineHeight: 26,
+    fontSize: 18,
+    lineHeight: 22,
     fontWeight: '700',
-    letterSpacing: -0.45,
+    letterSpacing: -0.34,
   },
   actionSubtitle: {
-    marginTop: 5,
-    color: '#8a8d95',
-    fontSize: 16,
-    lineHeight: 21,
-    letterSpacing: -0.2,
+    marginTop: 4,
+    color: '#8c8f98',
+    fontSize: 14,
+    lineHeight: 18,
+    letterSpacing: -0.14,
   },
-  lineIconCircle: {
-    width: 34,
-    height: 34,
+  actionChevron: {
+    marginLeft: 8,
+    color: '#a0a4ad',
+    fontSize: 28,
+    lineHeight: 30,
+    fontWeight: '300',
+  },
+  globeIcon: {
+    width: 29,
+    height: 29,
     borderRadius: 999,
-    borderWidth: 3,
+    borderWidth: 2.4,
     borderColor: '#111217',
     alignItems: 'center',
     justifyContent: 'center',
   },
   globeHorizontal: {
     position: 'absolute',
-    width: 26,
-    height: 3,
+    width: 23,
+    height: 2.4,
     borderRadius: 999,
     backgroundColor: '#111217',
   },
-  globeVertical: {
-    width: 3,
-    height: 28,
+  globeVerticalOval: {
+    width: 13,
+    height: 27,
     borderRadius: 999,
-    backgroundColor: '#111217',
+    borderWidth: 2.2,
+    borderColor: '#111217',
   },
   paperclipIcon: {
-    width: 18,
-    height: 36,
+    width: 17,
+    height: 32,
     borderRadius: 999,
-    borderWidth: 3,
+    borderWidth: 2.6,
     borderColor: '#111217',
     transform: [{ rotate: '8deg' }],
   },
@@ -538,8 +565,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 4,
     top: 6,
-    width: 8,
-    height: 22,
+    width: 7,
+    height: 19,
     borderRadius: 999,
     borderWidth: 2,
     borderColor: '#111217',
