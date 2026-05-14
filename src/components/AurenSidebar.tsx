@@ -20,6 +20,12 @@ type RecentChat = {
   icon: keyof typeof Ionicons.glyphMap;
 };
 
+type SidebarProfile = {
+  name: string;
+  email: string;
+  initials: string;
+};
+
 type AurenSidebarProps = {
   open: boolean;
   children: ReactNode;
@@ -30,6 +36,7 @@ type AurenSidebarProps = {
   onOpenProfile?: () => void;
   onOpenRecentChat?: (chatId: string) => void;
   recentChats?: RecentChat[];
+  profile?: SidebarProfile;
 };
 
 const DRAWER_WIDTH_RATIO = 0.82;
@@ -62,6 +69,12 @@ const DEFAULT_RECENT_CHATS: RecentChat[] = [
   },
 ];
 
+const DEFAULT_PROFILE: SidebarProfile = {
+  name: 'Auren user',
+  email: '',
+  initials: 'AU',
+};
+
 function isHorizontalGesture(dx: number, dy: number) {
   const horizontalDistance = Math.abs(dx);
   const verticalDistance = Math.abs(dy);
@@ -78,6 +91,7 @@ export function AurenSidebar({
   onOpenProfile,
   onOpenRecentChat,
   recentChats = DEFAULT_RECENT_CHATS,
+  profile = DEFAULT_PROFILE,
 }: AurenSidebarProps) {
   const { width } = useWindowDimensions();
   const drawerWidth = useMemo(() => {
@@ -228,12 +242,12 @@ export function AurenSidebar({
 
           <Pressable onPress={onOpenProfile} style={({ pressed }) => [styles.profileRow, pressed && styles.pressed]}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>AB</Text>
+              <Text style={styles.avatarText}>{profile.initials}</Text>
             </View>
 
             <View style={styles.profileTextWrap}>
-              <Text style={styles.profileName} numberOfLines={1}>Auren Bayu</Text>
-              <Text style={styles.profileEmail} numberOfLines={1}>auren.bayu@example.com</Text>
+              <Text style={styles.profileName} numberOfLines={1}>{profile.name}</Text>
+              <Text style={styles.profileEmail} numberOfLines={1}>{profile.email}</Text>
             </View>
 
             <Ionicons name="chevron-forward" size={22} color="#8d8f98" />
