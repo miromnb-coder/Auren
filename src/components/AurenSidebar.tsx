@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ReactNode } from 'react';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -11,6 +11,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { AurenAccountSheet, type AccountSheetStage } from './AurenAccountSheet';
 import { colors } from '../theme';
 
 type RecentChat = {
@@ -94,6 +95,8 @@ export function AurenSidebar({
   profile = DEFAULT_PROFILE,
 }: AurenSidebarProps) {
   const { width } = useWindowDimensions();
+  const [accountSheetStage, setAccountSheetStage] = useState<AccountSheetStage>('closed');
+  const accountSheetOpen = accountSheetStage !== 'closed';
   const drawerWidth = useMemo(() => {
     const measuredWidth = width * DRAWER_WIDTH_RATIO;
     return Math.min(Math.max(measuredWidth, DRAWER_MIN_WIDTH), Math.min(DRAWER_MAX_WIDTH, width - 72));
@@ -170,6 +173,11 @@ export function AurenSidebar({
     outputRange: [0, drawerWidth],
   });
 
+  function openAccountSheet() {
+    setAccountSheetStage('expanded');
+    onOpenProfile?.();
+  }
+
   return (
     <View style={styles.root}>
       <Animated.View
@@ -224,7 +232,7 @@ export function AurenSidebar({
           </View>
 
           <View style={styles.bottomArea}>
-            <Pressable onPress={onOpenProfile} style={({ pressed }) => [styles.profileRow, pressed && styles.pressed]}>
+            <Pressable onPress={openAccountSheet} style={({ pressed }) => [styles.profileRow, pressed && styles.pressed]}>
               <View style={styles.avatar}>
                 <Text style={styles.avatarText}>{profile.initials}</Text>
               </View>
@@ -243,6 +251,11 @@ export function AurenSidebar({
           </View>
         </View>
       </Animated.View>
+
+      {accountSheetOpen ? (
+        <Pressable style={styles.accountSheetBackdrop} onPress={() => setAccountSheetStage('closed')} />
+      ) : null}
+      <AurenAccountSheet stage={accountSheetStage} onStageChange={setAccountSheetStage} />
     </View>
   );
 }
@@ -390,5 +403,10 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 10 },
     elevation: 10,
+  },
+  accountSheetBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 35,
+    backgroundColor: 'rgba(5,5,7,0.08)',
   },
 });
