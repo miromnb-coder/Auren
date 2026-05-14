@@ -14,8 +14,12 @@ type AurenMessageListProps = {
   assistantThinking: boolean;
 };
 
+const BOX_DRAWINGS_LIGHT_HORIZONTAL = '\u2500';
+const BOX_DRAWINGS_LIGHT_VERTICAL = '\u2502';
+const ASSISTANT_DIVIDER = BOX_DRAWINGS_LIGHT_HORIZONTAL.repeat(8);
+
 function isHorizontalRule(line: string) {
-  return /^\s*(-{3,}|_{3,}|\*{3,})\s*$/.test(line);
+  return /^\s*(-{3,}|_{3,}|\*{3,}|\u2500{3,})\s*$/.test(line);
 }
 
 function isMarkdownTableDivider(line: string) {
@@ -28,6 +32,10 @@ function cleanTableLine(line: string) {
     .map((part) => part.trim())
     .filter(Boolean)
     .join(' · ');
+}
+
+function cleanQuoteLine(line: string) {
+  return line.replace(new RegExp(`^\\s*(>|${BOX_DRAWINGS_LIGHT_VERTICAL})\\s?`), '').trim();
 }
 
 function renderInlineText(text: string, keyPrefix: string, baseStyle = styles.assistantText) {
@@ -52,15 +60,46 @@ function renderInlineText(text: string, keyPrefix: string, baseStyle = styles.as
   );
 }
 
+function renderAssistantDivider(index: number) {
+  return (
+    <View key={`divider-${index}`} style={styles.assistantDividerWrap}>
+      <Text style={styles.assistantDividerText}>{ASSISTANT_DIVIDER}</Text>
+    </View>
+  );
+}
+
+function renderAssistantQuote(rawLine: string, index: number) {
+  const quoteText = cleanQuoteLine(rawLine);
+
+  if (quoteText.length === 0) {
+    return <View key={`quote-empty-${index}`} style={styles.assistantParagraphGap} />;
+  }
+
+  return (
+    <View key={`quote-${index}`} style={styles.assistantQuoteRow}>
+      <View style={styles.assistantQuoteBar} />
+      <View style={styles.assistantQuoteContent}>{renderInlineText(quoteText, `quote-${index}`, styles.assistantQuoteText)}</View>
+    </View>
+  );
+}
+
 function renderAssistantLine(rawLine: string, index: number) {
-  if (isHorizontalRule(rawLine) || isMarkdownTableDivider(rawLine)) {
-    return <View key={`spacer-${index}`} style={styles.assistantSmallSpacer} />;
+  if (isHorizontalRule(rawLine)) {
+    return renderAssistantDivider(index);
+  }
+
+  if (isMarkdownTableDivider(rawLine)) {
+    return <View key={`table-divider-${index}`} style={styles.assistantSmallSpacer} />;
   }
 
   const trimmedLine = rawLine.trim();
 
   if (trimmedLine.length === 0) {
     return <View key={`empty-${index}`} style={styles.assistantParagraphGap} />;
+  }
+
+  if (trimmedLine.startsWith('>') || trimmedLine.startsWith(BOX_DRAWINGS_LIGHT_VERTICAL)) {
+    return renderAssistantQuote(trimmedLine, index);
   }
 
   const headingMatch = trimmedLine.match(/^#{1,4}\s+(.+)$/);
@@ -236,6 +275,44 @@ const styles = StyleSheet.create({
   },
   assistantSmallSpacer: {
     height: 6,
+  },
+  assistantDividerWrap: {
+    marginTop: 12,
+    marginBottom: 16,
+    alignItems: 'flex-start',
+  },
+  assistantDividerText: {
+    color: 'rgba(17, 24, 39, 0.22)',
+    fontSize: 15,
+    lineHeight: 18,
+    letterSpacing: -1.6,
+    fontWeight: '600',
+  },
+  assistantQuoteRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 6,
+    marginBottom: 14,
+  },
+  assistantQuoteBar: {
+    width: 3,
+    minHeight: 28,
+    alignSelf: 'stretch',
+    borderRadius: 99,
+    backgroundColor: 'rgba(17, 24, 39, 0.18)',
+    marginRight: 13,
+    marginTop: 2,
+  },
+  assistantQuoteContent: {
+    flex: 1,
+  },
+  assistantQuoteText: {
+    color: 'rgba(17, 24, 39, 0.72)',
+    fontSize: 17.2,
+    lineHeight: 25.5,
+    letterSpacing: -0.28,
+    fontWeight: '560',
   },
   assistantListRow: {
     width: '100%',
