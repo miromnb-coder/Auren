@@ -8,6 +8,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Text,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -52,10 +53,29 @@ function canRenderImageUri(uri?: string | null) {
   );
 }
 
+function GlobeIcon() {
+  return (
+    <View style={styles.lineIconCircle}>
+      <View style={styles.globeHorizontal} />
+      <View style={styles.globeVertical} />
+    </View>
+  );
+}
+
+function PaperclipIcon() {
+  return (
+    <View style={styles.paperclipIcon}>
+      <View style={styles.paperclipInner} />
+    </View>
+  );
+}
+
 export function AurenPlusSheet({ stage, onStageChange }: AurenPlusSheetProps) {
   const { height } = useWindowDimensions();
   const [recentPhotos, setRecentPhotos] = useState<RecentPhoto[]>([]);
+  const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([]);
 
+  const selectedCount = selectedPhotoIds.length;
   const placeholderCount = Math.max(0, RECENT_PHOTO_LIMIT - recentPhotos.length);
   const placeholderItems = PHOTO_PLACEHOLDERS.slice(0, placeholderCount);
 
@@ -99,13 +119,26 @@ export function AurenPlusSheet({ stage, onStageChange }: AurenPlusSheetProps) {
     }).start();
   }
 
+  function togglePhotoSelection(photoId: string) {
+    setSelectedPhotoIds((currentIds) => {
+      if (currentIds.includes(photoId)) {
+        return currentIds.filter((id) => id !== photoId);
+      }
+
+      return [...currentIds, photoId];
+    });
+  }
+
   useEffect(() => {
     animateToStage(stage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, closedY, expandedY, peekY]);
 
   useEffect(() => {
-    if (stage === 'closed') return undefined;
+    if (stage === 'closed') {
+      setSelectedPhotoIds([]);
+      return undefined;
+    }
 
     let isMounted = true;
 
@@ -245,31 +278,76 @@ export function AurenPlusSheet({ stage, onStageChange }: AurenPlusSheetProps) {
       <View style={styles.solidFill} />
       <View style={styles.handle} />
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.photoRail}
-      >
-        <Pressable style={[styles.photoTile, styles.cameraTile]}>
-          <View style={styles.cameraIcon}>
-            <View style={styles.cameraTop} />
-            <View style={styles.cameraLens} />
-          </View>
-        </Pressable>
-
-        {recentPhotos.map((photo) => (
-          <Pressable key={photo.id} style={styles.photoTile}>
-            <Image source={{ uri: photo.uri }} style={styles.photoImage} resizeMode="cover" />
-            <View style={styles.photoSelectCircle} />
+      <View style={styles.content}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.photoRail}
+        >
+          <Pressable style={[styles.photoTile, styles.cameraTile]}>
+            <View style={styles.cameraIcon}>
+              <View style={styles.cameraTop} />
+              <View style={styles.cameraLens} />
+            </View>
           </Pressable>
-        ))}
 
-        {placeholderItems.map((photoKey) => (
-          <View key={photoKey} style={styles.photoTile}>
-            <View style={styles.photoSelectCircle} />
-          </View>
-        ))}
-      </ScrollView>
+          {recentPhotos.map((photo) => {
+            const selectedIndex = selectedPhotoIds.indexOf(photo.id);
+            const isSelected = selectedIndex >= 0;
+
+            return (
+              <Pressable
+                key={photo.id}
+                onPress={() => togglePhotoSelection(photo.id)}
+                style={[styles.photoTile, isSelected && styles.photoTileSelected]}
+              >
+                <Image source={{ uri: photo.uri }} style={styles.photoImage} resizeMode="cover" />
+                <View style={[styles.photoSelectCircle, isSelected && styles.photoSelectCircleSelected]}>
+                  {isSelected ? <Text style={styles.photoSelectNumber}>{selectedIndex + 1}</Text> : null}
+                </View>
+              </Pressable>
+            );
+          })}
+
+          {placeholderItems.map((photoKey) => (
+            <View key={photoKey} style={styles.photoTile}>
+              <View style={styles.photoSelectCircle} />
+            </View>
+          ))}
+        </ScrollView>
+
+        <View style={styles.photoDivider} />
+
+        <View style={styles.actionsCard}>
+          <Pressable style={styles.actionRow}>
+            <View style={styles.actionIconWrap}>
+              <GlobeIcon />
+            </View>
+            <View style={styles.actionTextWrap}>
+              <Text style={styles.actionTitle}>Web search</Text>
+              <Text style={styles.actionSubtitle}>Search live information</Text>
+            </View>
+          </Pressable>
+
+          <View style={styles.actionDivider} />
+
+          <Pressable style={styles.actionRow}>
+            <View style={styles.actionIconWrap}>
+              <PaperclipIcon />
+            </View>
+            <View style={styles.actionTextWrap}>
+              <Text style={styles.actionTitle}>Add files</Text>
+              <Text style={styles.actionSubtitle}>Analyze documents or images</Text>
+            </View>
+          </Pressable>
+        </View>
+      </View>
+
+      {selectedCount > 0 ? (
+        <Pressable style={styles.confirmButton}>
+          <Text style={styles.confirmText}>{selectedCount === 1 ? 'Add 1 photo' : `Add ${selectedCount} photos`}</Text>
+        </Pressable>
+      ) : null}
     </Animated.View>
   );
 }
@@ -302,8 +380,10 @@ const styles = StyleSheet.create({
     marginTop: 18,
     backgroundColor: 'rgba(110,113,124,0.28)',
   },
-  photoRail: {
+  content: {
     paddingTop: 36,
+  },
+  photoRail: {
     paddingHorizontal: 24,
     paddingBottom: 8,
     gap: 12,
@@ -319,6 +399,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
     ...shadows.tiny,
+  },
+  photoTileSelected: {
+    borderWidth: 3,
+    borderColor: '#2f7df6',
   },
   cameraTile: {
     backgroundColor: 'rgba(242,243,245,0.96)',
@@ -357,11 +441,126 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 9,
     right: 9,
-    width: 23,
-    height: 23,
+    width: 25,
+    height: 25,
     borderRadius: 999,
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.92)',
     backgroundColor: 'rgba(97,100,108,0.48)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoSelectCircleSelected: {
+    backgroundColor: '#ffffff',
+    borderColor: '#ffffff',
+  },
+  photoSelectNumber: {
+    color: '#111217',
+    fontSize: 13,
+    lineHeight: 16,
+    fontWeight: '800',
+  },
+  photoDivider: {
+    marginTop: 24,
+    marginHorizontal: 24,
+    height: 1,
+    backgroundColor: 'rgba(17,24,39,0.08)',
+  },
+  actionsCard: {
+    marginTop: 20,
+    marginHorizontal: 24,
+  },
+  actionRow: {
+    minHeight: 82,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionDivider: {
+    height: 1,
+    marginLeft: 68,
+    backgroundColor: 'rgba(17,24,39,0.08)',
+  },
+  actionIconWrap: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionTextWrap: {
+    flex: 1,
+    marginLeft: 20,
+  },
+  actionTitle: {
+    color: '#111217',
+    fontSize: 21,
+    lineHeight: 26,
+    fontWeight: '700',
+    letterSpacing: -0.45,
+  },
+  actionSubtitle: {
+    marginTop: 5,
+    color: '#8a8d95',
+    fontSize: 16,
+    lineHeight: 21,
+    letterSpacing: -0.2,
+  },
+  lineIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    borderWidth: 3,
+    borderColor: '#111217',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  globeHorizontal: {
+    position: 'absolute',
+    width: 26,
+    height: 3,
+    borderRadius: 999,
+    backgroundColor: '#111217',
+  },
+  globeVertical: {
+    width: 3,
+    height: 28,
+    borderRadius: 999,
+    backgroundColor: '#111217',
+  },
+  paperclipIcon: {
+    width: 18,
+    height: 36,
+    borderRadius: 999,
+    borderWidth: 3,
+    borderColor: '#111217',
+    transform: [{ rotate: '8deg' }],
+  },
+  paperclipInner: {
+    position: 'absolute',
+    left: 4,
+    top: 6,
+    width: 8,
+    height: 22,
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: '#111217',
+  },
+  confirmButton: {
+    position: 'absolute',
+    left: 24,
+    right: 24,
+    bottom: 28,
+    minHeight: 62,
+    borderRadius: 999,
+    backgroundColor: '#050507',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.soft,
+  },
+  confirmText: {
+    color: '#ffffff',
+    fontSize: 19,
+    lineHeight: 24,
+    fontWeight: '700',
+    letterSpacing: -0.35,
   },
 });
