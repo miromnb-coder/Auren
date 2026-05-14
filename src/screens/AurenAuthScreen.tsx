@@ -3,10 +3,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, shadows } from '../theme';
+import { colors } from '../theme';
 
 type AurenAuthScreenProps = {
   onContinue: () => void;
+  onEmailContinue: () => void;
 };
 
 type AuthButtonProps = {
@@ -44,7 +45,7 @@ function AuthButton({ label, icon, iconName, variant = 'light', iconColor, onPre
   );
 }
 
-export function AurenAuthScreen({ onContinue }: AurenAuthScreenProps) {
+export function AurenAuthScreen({ onContinue, onEmailContinue }: AurenAuthScreenProps) {
   return (
     <LinearGradient colors={['#fafaf8', '#f7f7f5', '#eff1f2']} locations={[0, 0.7, 1]} style={styles.root}>
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
@@ -59,9 +60,9 @@ export function AurenAuthScreen({ onContinue }: AurenAuthScreenProps) {
           <View style={styles.authCard}>
             <AuthButton label="Continue with Apple" iconName="logo-apple" variant="dark" onPress={onContinue} />
             <AuthButton label="Continue with Google" icon={<GoogleIcon />} onPress={onContinue} />
-            <AuthButton label="Continue with Email" iconName="mail-outline" onPress={onContinue} />
+            <AuthButton label="Continue with Email" iconName="mail-outline" onPress={onEmailContinue} />
 
-            <Pressable onPress={onContinue} hitSlop={12} style={styles.loginRow} accessibilityRole="button" accessibilityLabel="Log in">
+            <Pressable onPress={onEmailContinue} hitSlop={12} style={styles.loginRow} accessibilityRole="button" accessibilityLabel="Log in">
               <Text style={styles.loginText}>Already have an account? </Text>
               <Text style={styles.loginLink}>Log in</Text>
             </Pressable>
