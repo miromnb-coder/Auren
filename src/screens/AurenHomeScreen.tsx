@@ -7,7 +7,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AurenActionPill } from '../components/AurenActionPill';
 import { AurenComposer } from '../components/AurenComposer';
 import { AurenControlsSheet, type ControlsSheetStage } from '../components/AurenControlsSheet';
-import { CalendarIcon, ChevronIcon, ListIcon, MenuIcon, SparkIcon } from '../components/AurenIcons';
+import { CalendarIcon, ListIcon, MenuIcon, SparkIcon } from '../components/AurenIcons';
 import { AurenMessageList, type AurenMessage } from '../components/AurenMessageList';
 import { AurenPlusSheet, type PlusSheetStage } from '../components/AurenPlusSheet';
 import { AurenSidebar } from '../components/AurenSidebar';
@@ -457,7 +457,6 @@ export function AurenHomeScreen() {
                   <View style={styles.modeBadge}>
                     <Ionicons name={selectedModeOption.icon} size={15} color="#555863" />
                   </View>
-                  <ChevronIcon />
                 </Pressable>
 
                 <View style={styles.headerSpacer} />
