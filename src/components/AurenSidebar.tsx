@@ -140,6 +140,7 @@ export function AurenSidebar({
     setActivityOpen(true);
     onOpenActivity?.();
     onClose?.();
+    void registerForAurenPushNotifications();
   }, [onClose, onOpenActivity]);
 
   useEffect(() => {
@@ -157,7 +158,6 @@ export function AurenSidebar({
 
   useEffect(() => {
     void refreshUnreadCount();
-    void registerForAurenPushNotifications();
   }, [refreshUnreadCount]);
 
   useEffect(() => {
