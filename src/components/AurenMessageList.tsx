@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme';
 
@@ -16,6 +16,10 @@ type AurenMessageListProps = {
 
 export function AurenMessageList({ messages, assistantThinking }: AurenMessageListProps) {
   const scrollViewRef = useRef<ScrollView | null>(null);
+  const messageContentSignature = useMemo(
+    () => messages.map((message) => `${message.id}:${message.content.length}`).join('|'),
+    [messages],
+  );
 
   useEffect(() => {
     const scrollTimer = setTimeout(() => {
@@ -23,7 +27,7 @@ export function AurenMessageList({ messages, assistantThinking }: AurenMessageLi
     }, 40);
 
     return () => clearTimeout(scrollTimer);
-  }, [messages.length, assistantThinking]);
+  }, [assistantThinking, messageContentSignature]);
 
   return (
     <View style={styles.root}>
@@ -42,6 +46,10 @@ export function AurenMessageList({ messages, assistantThinking }: AurenMessageLi
                 </View>
               </View>
             );
+          }
+
+          if (message.content.length === 0) {
+            return null;
           }
 
           return (
