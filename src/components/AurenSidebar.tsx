@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ReactNode } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { AurenAccountSheet, type AccountSheetStage } from './AurenAccountSheet';
 import { AurenActivityScreen } from './AurenActivityScreen';
+import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
 
 type RecentChat = {
@@ -100,6 +101,7 @@ export function AurenSidebar({
   const { width } = useWindowDimensions();
   const [accountSheetStage, setAccountSheetStage] = useState<AccountSheetStage>('closed');
   const [activityOpen, setActivityOpen] = useState(false);
+  const [activityUnreadCount, setActivityUnreadCount] = useState(0);
   const [currentProfile, setCurrentProfile] = useState<SidebarProfile>(profile);
   const accountSheetOpen = accountSheetStage !== 'closed';
   const drawerWidth = useMemo(() => {
@@ -108,6 +110,30 @@ export function AurenSidebar({
   }, [width]);
 
   const progress = useRef(new Animated.Value(open ? 1 : 0)).current;
+
+  const refreshUnreadCount = useCallback(async () => {
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      const userId = userData.user?.id;
+      if (!userId) {
+        setActivityUnreadCount(0);
+        return;
+      }
+
+      const { count, error } = await supabase
+        .from('activity_items')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .is('read_at', null)
+        .is('archived_at', null);
+
+      if (error) throw error;
+      setActivityUnreadCount(count ?? 0);
+    } catch {
+      setActivityUnreadCount(0);
+    }
+  }, []);
 
   useEffect(() => {
     Animated.timing(progress, {
@@ -121,6 +147,16 @@ export function AurenSidebar({
   useEffect(() => {
     setCurrentProfile(profile);
   }, [profile.email, profile.initials, profile.name]);
+
+  useEffect(() => {
+    void refreshUnreadCount();
+  }, [refreshUnreadCount]);
+
+  useEffect(() => {
+    if (open || activityOpen) {
+      void refreshUnreadCount();
+    }
+  }, [activityOpen, open, refreshUnreadCount]);
 
   const openSwipeResponder = useMemo(
     () =>
@@ -193,6 +229,11 @@ export function AurenSidebar({
     onClose?.();
   }
 
+  function closeActivityScreen() {
+    setActivityOpen(false);
+    void refreshUnreadCount();
+  }
+
   return (
     <View style={styles.root}>
       <Animated.View
@@ -234,6 +275,11 @@ export function AurenSidebar({
               accessibilityLabel="Open activity"
             >
               <Ionicons name="notifications-outline" size={24} color="#343743" />
+              {activityUnreadCount > 0 ? (
+                <View style={styles.unreadBadge}>
+                  <Text style={styles.unreadBadgeText}>{activityUnreadCount > 99 ? '99+' : activityUnreadCount}</Text>
+                </View>
+              ) : null}
             </Pressable>
           </View>
 
@@ -288,7 +334,7 @@ export function AurenSidebar({
         onProfileUpdated={setCurrentProfile}
       />
 
-      {activityOpen ? <AurenActivityScreen onClose={() => setActivityOpen(false)} /> : null}
+      {activityOpen ? <AurenActivityScreen onClose={closeActivityScreen} onUnreadCountChange={setActivityUnreadCount} /> : null}
     </View>
   );
 }
@@ -359,6 +405,27 @@ const styles = StyleSheet.create({
     marginRight: -6,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  unreadBadge: {
+    position: 'absolute',
+    top: 5,
+    right: 2,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 999,
+    paddingHorizontal: 5,
+    backgroundColor: '#111113',
+    borderWidth: 2,
+    borderColor: '#f7f7f5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unreadBadgeText: {
+    color: '#ffffff',
+    fontSize: 9.5,
+    lineHeight: 11,
+    fontWeight: '700',
+    letterSpacing: -0.05,
   },
   emptyTopSpace: {
     height: 300,
