@@ -17,11 +17,7 @@ import { shadows } from '../theme';
 
 export type AccountSheetStage = 'closed' | 'peek' | 'expanded';
 
-type AccountSheetProfile = {
-  name: string;
-  email: string;
-  initials: string;
-};
+type AccountSheetProfile = { name: string; email: string; initials: string };
 
 type AurenAccountSheetProps = {
   stage: AccountSheetStage;
@@ -37,6 +33,7 @@ type AccountRow = {
   danger?: boolean;
 };
 
+const DEFAULT_PROFILE: AccountSheetProfile = { name: 'Auren user', email: '', initials: 'AU' };
 const PEEK_HEIGHT_RATIO = 0.54;
 const EXPANDED_HEIGHT_RATIO = 0.92;
 const PEEK_MIN_HEIGHT = 390;
@@ -44,12 +41,6 @@ const PEEK_MAX_HEIGHT = 520;
 const EXPANDED_MIN_HEIGHT = 690;
 const DRAG_THRESHOLD = 72;
 const FAST_SWIPE_VELOCITY = 0.85;
-
-const DEFAULT_PROFILE: AccountSheetProfile = {
-  name: 'Auren user',
-  email: '',
-  initials: 'AU',
-};
 
 const MAIN_ROWS: AccountRow[] = [
   { id: 'profile', label: 'Profile', icon: 'person-outline' },
@@ -88,17 +79,7 @@ function initialsFromName(name: string, email: string) {
   return initials || email.charAt(0).toUpperCase() || 'A';
 }
 
-function AccountListRow({
-  row,
-  last = false,
-  disabled = false,
-  onPress,
-}: {
-  row: AccountRow;
-  last?: boolean;
-  disabled?: boolean;
-  onPress?: () => void;
-}) {
+function AccountListRow({ row, last, disabled, onPress }: { row: AccountRow; last?: boolean; disabled?: boolean; onPress?: () => void }) {
   return (
     <Pressable
       onPress={onPress}
@@ -114,12 +95,7 @@ function AccountListRow({
   );
 }
 
-export function AurenAccountSheet({
-  stage,
-  onStageChange,
-  profile = DEFAULT_PROFILE,
-  onProfileUpdated,
-}: AurenAccountSheetProps) {
+export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROFILE, onProfileUpdated }: AurenAccountSheetProps) {
   const { height } = useWindowDimensions();
   const [view, setView] = useState<'account' | 'profile'>('account');
   const [signingOut, setSigningOut] = useState(false);
@@ -127,35 +103,34 @@ export function AurenAccountSheet({
   const [localProfile, setLocalProfile] = useState<AccountSheetProfile>(profile);
   const [draftName, setDraftName] = useState(profile.name);
 
-  const { closedY, expandedHeight, expandedY, peekY } = useMemo(() => {
-    const nextExpandedHeight = Math.min(Math.max(height * EXPANDED_HEIGHT_RATIO, EXPANDED_MIN_HEIGHT), height);
-    const nextPeekHeight = Math.min(
+  const sheet = useMemo(() => {
+    const expandedHeight = Math.min(Math.max(height * EXPANDED_HEIGHT_RATIO, EXPANDED_MIN_HEIGHT), height);
+    const peekHeight = Math.min(
       Math.max(height * PEEK_HEIGHT_RATIO, PEEK_MIN_HEIGHT),
-      Math.min(PEEK_MAX_HEIGHT, nextExpandedHeight - 80),
+      Math.min(PEEK_MAX_HEIGHT, expandedHeight - 80),
     );
 
     return {
-      expandedHeight: nextExpandedHeight,
+      expandedHeight,
       expandedY: 0,
-      peekY: nextExpandedHeight - nextPeekHeight,
-      closedY: nextExpandedHeight + 28,
+      peekY: expandedHeight - peekHeight,
+      closedY: expandedHeight + 28,
     };
   }, [height]);
 
-  const translateY = useRef(new Animated.Value(stage === 'closed' ? closedY : stage === 'expanded' ? expandedY : peekY)).current;
-  const currentY = useRef(stage === 'closed' ? closedY : stage === 'expanded' ? expandedY : peekY);
+  const translateY = useRef(new Animated.Value(stage === 'closed' ? sheet.closedY : stage === 'expanded' ? sheet.expandedY : sheet.peekY)).current;
+  const currentY = useRef(stage === 'closed' ? sheet.closedY : stage === 'expanded' ? sheet.expandedY : sheet.peekY);
   const dragStartY = useRef(currentY.current);
 
   function targetY(nextStage: AccountSheetStage) {
-    if (nextStage === 'expanded') return expandedY;
-    if (nextStage === 'peek') return peekY;
-    return closedY;
+    if (nextStage === 'expanded') return sheet.expandedY;
+    if (nextStage === 'peek') return sheet.peekY;
+    return sheet.closedY;
   }
 
   function animateToStage(nextStage: AccountSheetStage) {
     const nextY = targetY(nextStage);
     currentY.current = nextY;
-
     Animated.timing(translateY, {
       toValue: nextY,
       duration: nextStage === 'closed' ? 250 : 320,
@@ -173,37 +148,25 @@ export function AurenAccountSheet({
   async function saveProfile() {
     const nextName = draftName.replace(/\s+/g, ' ').trim();
     if (!nextName || savingProfile) return;
-
     setSavingProfile(true);
 
     try {
       const { data, error } = await supabase.auth.getUser();
       if (error) throw error;
-
       const userId = data.user?.id;
       const email = data.user?.email ?? localProfile.email;
       if (!userId) throw new Error('Missing user');
 
-      const nextProfile = {
-        name: nextName,
-        email,
-        initials: initialsFromName(nextName, email),
-      };
-
-      const { error: profileError } = await supabase.from('profiles').upsert({
-        id: userId,
-        email,
-        display_name: nextName,
-      });
+      const nextProfile = { name: nextName, email, initials: initialsFromName(nextName, email) };
+      const { error: profileError } = await supabase.from('profiles').upsert({ id: userId, email, display_name: nextName });
       if (profileError) throw profileError;
-
       await supabase.auth.updateUser({ data: { display_name: nextName, full_name: nextName } });
 
       setLocalProfile(nextProfile);
       setDraftName(nextName);
       onProfileUpdated?.(nextProfile);
     } catch {
-      // Keep current profile visible if save fails.
+      // Keep the existing visible profile if saving fails.
     } finally {
       setSavingProfile(false);
     }
@@ -211,7 +174,6 @@ export function AurenAccountSheet({
 
   async function handleSignOut() {
     if (signingOut) return;
-
     setSigningOut(true);
     onStageChange('closed');
 
@@ -225,21 +187,15 @@ export function AurenAccountSheet({
   }
 
   function handleRowPress(row: AccountRow) {
-    if (row.id === 'profile') {
-      openProfile();
-      return;
-    }
-
-    if (row.id === 'sign-out') {
-      void handleSignOut();
-    }
+    if (row.id === 'profile') return openProfile();
+    if (row.id === 'sign-out') void handleSignOut();
   }
 
   useEffect(() => {
     animateToStage(stage);
     if (stage === 'closed') setView('account');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, closedY, expandedY, peekY]);
+  }, [stage, sheet.closedY, sheet.expandedY, sheet.peekY]);
 
   useEffect(() => {
     setLocalProfile(profile);
@@ -269,7 +225,7 @@ export function AurenAccountSheet({
           });
         },
         onPanResponderMove: (_event, gestureState) => {
-          const nextY = clamp(dragStartY.current + gestureState.dy, expandedY, closedY);
+          const nextY = clamp(dragStartY.current + gestureState.dy, sheet.expandedY, sheet.closedY);
           currentY.current = nextY;
           translateY.setValue(nextY);
         },
@@ -292,14 +248,14 @@ export function AurenAccountSheet({
           onStageChange(stage === 'expanded' ? 'expanded' : stage === 'peek' ? 'peek' : 'closed');
         },
       }),
-    [closedY, expandedY, onStageChange, stage, translateY],
+    [onStageChange, sheet.closedY, sheet.expandedY, stage, translateY],
   );
 
   return (
     <Animated.View
       pointerEvents={stage === 'closed' ? 'none' : 'auto'}
       {...panResponder.panHandlers}
-      style={[styles.sheet, { height: expandedHeight, transform: [{ translateY }] }]}
+      style={[styles.sheet, { height: sheet.expandedHeight, transform: [{ translateY }] }]}
     >
       <View style={styles.solidFill} />
       <View style={styles.handle} />
@@ -313,7 +269,6 @@ export function AurenAccountSheet({
         {view === 'profile' ? (
           <>
             <Text style={styles.title}>Profile</Text>
-
             <View style={styles.profileHeroCard}>
               <View style={styles.profileHeroAvatar}>
                 <Text style={styles.profileHeroAvatarText}>{avatarInitial(localProfile.initials)}</Text>
@@ -339,7 +294,6 @@ export function AurenAccountSheet({
                 </View>
                 <Ionicons name="pencil-outline" size={25} color="#858891" />
               </View>
-
               <View style={[styles.profileFieldRow, styles.profileFieldBorder]}>
                 <View style={styles.profileFieldTextWrap}>
                   <Text style={styles.profileFieldLabel}>Email</Text>
@@ -347,7 +301,6 @@ export function AurenAccountSheet({
                 </View>
                 <Ionicons name="lock-closed-outline" size={24} color="#858891" />
               </View>
-
               <View style={styles.profileFieldRow}>
                 <View style={styles.profileFieldTextWrap}>
                   <Text style={styles.profileFieldLabel}>Username</Text>
@@ -360,7 +313,7 @@ export function AurenAccountSheet({
             <View style={styles.aboutCard}>
               <View style={styles.profileFieldTextWrap}>
                 <Text style={styles.profileFieldLabel}>About</Text>
-                <Text style={styles.aboutPlaceholder}>Add a short profile note.</Text>
+                <Text style={styles.aboutPlaceholder}>Tell others a little bit about yourself.</Text>
               </View>
               <Ionicons name="pencil-outline" size={25} color="#858891" />
             </View>
@@ -368,15 +321,10 @@ export function AurenAccountSheet({
             <Pressable
               onPress={saveProfile}
               disabled={savingProfile || draftName.trim().length === 0}
-              style={({ pressed }) => [
-                styles.saveButton,
-                pressed && styles.pressed,
-                (savingProfile || draftName.trim().length === 0) && styles.disabled,
-              ]}
+              style={({ pressed }) => [styles.saveButton, pressed && styles.pressed, (savingProfile || draftName.trim().length === 0) && styles.disabled]}
             >
               <Text style={styles.saveButtonText}>{savingProfile ? 'Saving…' : 'Save changes'}</Text>
             </Pressable>
-
             <Pressable onPress={() => setView('account')} style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
               <Text style={styles.backButtonText}>Back</Text>
             </Pressable>
@@ -384,7 +332,6 @@ export function AurenAccountSheet({
         ) : (
           <>
             <Text style={styles.title}>Account</Text>
-
             <Pressable onPress={openProfile} style={({ pressed }) => [styles.profileCard, pressed && styles.pressed]}>
               <View style={styles.largeAvatar}>
                 <Text style={styles.largeAvatarText}>{avatarInitial(localProfile.initials)}</Text>
@@ -395,21 +342,14 @@ export function AurenAccountSheet({
               </View>
               <Ionicons name="chevron-forward" size={27} color="#a7a9b0" />
             </Pressable>
-
             <View style={styles.groupCard}>
               {MAIN_ROWS.map((row, index) => (
                 <AccountListRow key={row.id} row={row} last={index === MAIN_ROWS.length - 1} onPress={() => handleRowPress(row)} />
               ))}
             </View>
-
             {SECONDARY_ROWS.map((row) => (
               <View key={row.id} style={styles.singleCard}>
-                <AccountListRow
-                  row={row}
-                  last
-                  disabled={row.id === 'sign-out' && signingOut}
-                  onPress={() => handleRowPress(row)}
-                />
+                <AccountListRow row={row} last disabled={row.id === 'sign-out' && signingOut} onPress={() => handleRowPress(row)} />
               </View>
             ))}
           </>
@@ -421,10 +361,17 @@ export function AurenAccountSheet({
 
 const baseCardShadow = {
   shadowColor: '#111827',
-  shadowOpacity: 0.035,
+  shadowOpacity: 0.032,
   shadowRadius: 14,
   shadowOffset: { width: 0, height: 8 },
   elevation: 4,
+};
+
+const cardBase = {
+  backgroundColor: 'rgba(255,255,255,0.82)',
+  borderWidth: 1,
+  borderColor: 'rgba(17,24,39,0.045)',
+  ...baseCardShadow,
 };
 
 const styles = StyleSheet.create({
@@ -454,7 +401,7 @@ const styles = StyleSheet.create({
   },
   scrollView: { flex: 1 },
   content: { paddingHorizontal: 23, paddingTop: 31, paddingBottom: 44 },
-  profileContent: { paddingHorizontal: 24, paddingTop: 31, paddingBottom: 38 },
+  profileContent: { paddingHorizontal: 24, paddingTop: 14, paddingBottom: 32 },
   title: {
     color: '#1d1d20',
     fontSize: 19,
@@ -462,7 +409,7 @@ const styles = StyleSheet.create({
     fontWeight: '620',
     letterSpacing: -0.22,
     textAlign: 'center',
-    marginBottom: 39,
+    marginBottom: 34,
   },
   profileCard: {
     minHeight: 98,
@@ -470,10 +417,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.78)',
-    borderWidth: 1,
-    borderColor: 'rgba(17,24,39,0.045)',
-    ...baseCardShadow,
+    ...cardBase,
   },
   largeAvatar: {
     width: 80,
@@ -488,96 +432,47 @@ const styles = StyleSheet.create({
   profileTextWrap: { flex: 1, minWidth: 0 },
   profileName: { color: '#1d1d20', fontSize: 22, lineHeight: 27, fontWeight: '650', letterSpacing: -0.45 },
   profileEmail: { marginTop: 2, color: '#7f838c', fontSize: 14.5, lineHeight: 19, fontWeight: '440', letterSpacing: -0.12 },
-  groupCard: {
-    marginTop: 27,
-    borderRadius: 18,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.82)',
-    borderWidth: 1,
-    borderColor: 'rgba(17,24,39,0.045)',
-    ...baseCardShadow,
-  },
-  singleCard: {
-    marginTop: 22,
-    borderRadius: 18,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.82)',
-    borderWidth: 1,
-    borderColor: 'rgba(17,24,39,0.045)',
-    ...baseCardShadow,
-  },
-  row: {
-    minHeight: 67,
-    paddingHorizontal: 22,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.82)',
-  },
+  groupCard: { marginTop: 27, borderRadius: 18, overflow: 'hidden', ...cardBase },
+  singleCard: { marginTop: 22, borderRadius: 18, overflow: 'hidden', ...cardBase },
+  row: { minHeight: 67, paddingHorizontal: 22, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.82)' },
   rowBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(17,24,39,0.07)' },
   rowIconWrap: { width: 39, marginRight: 15, alignItems: 'flex-start', justifyContent: 'center' },
   rowLabel: { flex: 1, color: '#1f2228', fontSize: 16, lineHeight: 21, fontWeight: '450', letterSpacing: -0.17 },
   dangerText: { color: '#d4474b' },
   profileHeroCard: {
-    minHeight: 214,
+    minHeight: 176,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
-    backgroundColor: 'rgba(255,255,255,0.78)',
-    borderWidth: 1,
-    borderColor: 'rgba(17,24,39,0.045)',
-    ...baseCardShadow,
+    paddingVertical: 22,
+    ...cardBase,
   },
   profileHeroAvatar: {
-    width: 112,
-    height: 112,
+    width: 84,
+    height: 84,
     borderRadius: 999,
     backgroundColor: '#eeedf2',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 26,
+    marginBottom: 17,
   },
-  profileHeroAvatarText: { color: '#111113', fontSize: 58, lineHeight: 64, fontWeight: '400', letterSpacing: -1.8 },
-  profileHeroName: { color: '#111113', fontSize: 31, lineHeight: 36, fontWeight: '500', letterSpacing: -0.85 },
-  profileHeroEmail: { marginTop: 5, color: '#777b84', fontSize: 17, lineHeight: 22, fontWeight: '440', letterSpacing: -0.18 },
-  profileFieldsCard: {
-    marginTop: 28,
-    borderRadius: 18,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.82)',
-    borderWidth: 1,
-    borderColor: 'rgba(17,24,39,0.045)',
-    ...baseCardShadow,
-  },
-  profileFieldRow: {
-    minHeight: 82,
-    paddingHorizontal: 25,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.82)',
-  },
+  profileHeroAvatarText: { color: '#111113', fontSize: 46, lineHeight: 52, fontWeight: '400', letterSpacing: -1.4 },
+  profileHeroName: { color: '#111113', fontSize: 28, lineHeight: 33, fontWeight: '500', letterSpacing: -0.78 },
+  profileHeroEmail: { marginTop: 3, color: '#777b84', fontSize: 15.5, lineHeight: 20, fontWeight: '440', letterSpacing: -0.16 },
+  profileFieldsCard: { marginTop: 28, borderRadius: 18, overflow: 'hidden', ...cardBase },
+  profileFieldRow: { minHeight: 68, paddingHorizontal: 25, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.82)' },
   profileFieldBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(17,24,39,0.07)' },
   profileFieldTextWrap: { flex: 1, minWidth: 0 },
-  profileFieldLabel: { color: '#737780', fontSize: 13.5, lineHeight: 18, fontWeight: '500', letterSpacing: -0.06, marginBottom: 7 },
-  profileFieldInput: { minHeight: 32, padding: 0, color: '#1d1d20', fontSize: 18, lineHeight: 24, fontWeight: '440', letterSpacing: -0.24 },
-  profileFieldValue: { color: '#1d1d20', fontSize: 18, lineHeight: 24, fontWeight: '440', letterSpacing: -0.24 },
-  profileFieldLockedValue: { color: '#777b84', fontSize: 18, lineHeight: 24, fontWeight: '440', letterSpacing: -0.24 },
-  aboutCard: {
-    minHeight: 82,
-    marginTop: 25,
-    borderRadius: 18,
-    paddingHorizontal: 25,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.82)',
-    borderWidth: 1,
-    borderColor: 'rgba(17,24,39,0.045)',
-    ...baseCardShadow,
-  },
-  aboutPlaceholder: { color: '#777b84', fontSize: 15.5, lineHeight: 21, fontWeight: '430', letterSpacing: -0.12 },
+  profileFieldLabel: { color: '#737780', fontSize: 12.5, lineHeight: 16, fontWeight: '500', letterSpacing: -0.05, marginBottom: 5 },
+  profileFieldInput: { minHeight: 27, padding: 0, color: '#1d1d20', fontSize: 17, lineHeight: 22, fontWeight: '440', letterSpacing: -0.22 },
+  profileFieldValue: { color: '#1d1d20', fontSize: 17, lineHeight: 22, fontWeight: '440', letterSpacing: -0.22 },
+  profileFieldLockedValue: { color: '#777b84', fontSize: 17, lineHeight: 22, fontWeight: '440', letterSpacing: -0.22 },
+  aboutCard: { minHeight: 70, marginTop: 24, borderRadius: 18, paddingHorizontal: 25, flexDirection: 'row', alignItems: 'center', ...cardBase },
+  aboutPlaceholder: { color: '#777b84', fontSize: 14.5, lineHeight: 19, fontWeight: '430', letterSpacing: -0.11 },
   saveButton: {
     height: 58,
-    marginTop: 34,
+    marginTop: 33,
     borderRadius: 14,
     backgroundColor: '#111113',
     alignItems: 'center',
