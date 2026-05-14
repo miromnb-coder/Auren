@@ -51,6 +51,7 @@ export function AurenHomeScreen() {
   const [chatModeSheetStage, setChatModeSheetStage] = useState<ChatModeSheetStage>('closed');
   const [messages, setMessages] = useState<AurenMessage[]>([]);
   const [assistantThinking, setAssistantThinking] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const composerBottom = useRef(new Animated.Value(COMPOSER_CLOSED_BOTTOM)).current;
   const contentTranslateY = useRef(new Animated.Value(0)).current;
   const pillsOpacity = useRef(new Animated.Value(1)).current;
@@ -146,11 +147,22 @@ export function AurenHomeScreen() {
     });
   }
 
+  function stopGenerating() {
+    if (!abortControllerRef.current) return;
+
+    abortControllerRef.current.abort();
+    abortControllerRef.current = null;
+    setAssistantThinking(false);
+    setIsGenerating(false);
+    runHaptic('close');
+  }
+
   function startNewChat() {
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
     setMessages([]);
     setAssistantThinking(false);
+    setIsGenerating(false);
     closeSidebar();
   }
 
@@ -178,6 +190,7 @@ export function AurenHomeScreen() {
     abortControllerRef.current = abortController;
     setMessages([...nextMessages, assistantMessage]);
     setAssistantThinking(true);
+    setIsGenerating(true);
 
     try {
       await sendAurenChatMessageStream(
@@ -219,6 +232,7 @@ export function AurenHomeScreen() {
         abortControllerRef.current = null;
       }
       setAssistantThinking(false);
+      setIsGenerating(false);
     }
   }
 
@@ -452,6 +466,8 @@ export function AurenHomeScreen() {
                 onOpenControls={openControlsSheet}
                 onOpenChatMode={openChatModeSheet}
                 onSendMessage={handleSendMessage}
+                onStopGenerating={stopGenerating}
+                isGenerating={isGenerating}
                 plusActive={plusSheetOpen}
                 controlsActive={controlsSheetOpen}
                 chatModeActive={chatModeSheetOpen}
