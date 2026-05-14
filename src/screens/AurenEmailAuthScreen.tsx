@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme';
 
@@ -17,87 +17,101 @@ export function AurenEmailAuthScreen({ onBack, onContinue }: AurenEmailAuthScree
 
   return (
     <LinearGradient colors={['#fbfbfa', '#f7f7f5', '#eef1f2']} locations={[0, 0.7, 1]} style={styles.root}>
-      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        <View style={styles.hero}>
-          <Text style={styles.wordmark}>A U R E N</Text>
-          <Text style={styles.title}>Continue with Email</Text>
-          <Text style={styles.subtitle}>Sign in or create your account with your email.</Text>
-        </View>
-
-        <View style={styles.formCardOuter}>
-          <View style={styles.formCardHighlight} />
-          <View style={styles.formCard}>
-            <Text style={styles.label}>Email</Text>
-            <View style={styles.inputShell}>
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                placeholder="you@example.com"
-                placeholderTextColor="#858995"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                textContentType="emailAddress"
-                style={styles.input}
-              />
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+            <View style={styles.hero}>
+              <Text style={styles.wordmark}>A U R E N</Text>
+              <Text style={styles.title}>Continue with Email</Text>
+              <Text style={styles.subtitle}>Sign in or create your account with your email.</Text>
             </View>
 
-            <Text style={[styles.label, styles.passwordLabel]}>Password</Text>
-            <View style={styles.inputShell}>
-              <TextInput
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Enter your password"
-                placeholderTextColor="#858995"
-                secureTextEntry={!passwordVisible}
-                autoCapitalize="none"
-                autoCorrect={false}
-                textContentType="password"
-                style={styles.input}
-              />
-              <Pressable
-                onPress={() => setPasswordVisible((current) => !current)}
-                hitSlop={12}
-                style={styles.eyeButton}
-                accessibilityRole="button"
-                accessibilityLabel={passwordVisible ? 'Hide password' : 'Show password'}
-              >
-                <Ionicons name={passwordVisible ? 'eye-off-outline' : 'eye-outline'} size={24} color="#7c818b" />
-              </Pressable>
+            <View style={styles.formCardOuter}>
+              <View style={styles.formCardHighlight} />
+              <View style={styles.formCard}>
+                <Text style={styles.label}>Email</Text>
+                <View style={styles.inputShell}>
+                  <TextInput
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="you@example.com"
+                    placeholderTextColor="#858995"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    textContentType="emailAddress"
+                    style={styles.input}
+                  />
+                </View>
+
+                <Text style={[styles.label, styles.passwordLabel]}>Password</Text>
+                <View style={styles.inputShell}>
+                  <TextInput
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="Enter your password"
+                    placeholderTextColor="#858995"
+                    secureTextEntry={!passwordVisible}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    textContentType="password"
+                    style={styles.input}
+                  />
+                  <Pressable
+                    onPress={() => setPasswordVisible((current) => !current)}
+                    hitSlop={12}
+                    style={styles.eyeButton}
+                    accessibilityRole="button"
+                    accessibilityLabel={passwordVisible ? 'Hide password' : 'Show password'}
+                  >
+                    <Ionicons name={passwordVisible ? 'eye-off-outline' : 'eye-outline'} size={24} color="#7c818b" />
+                  </Pressable>
+                </View>
+
+                <Pressable hitSlop={10} style={styles.forgotButton} accessibilityRole="button" accessibilityLabel="Forgot password">
+                  <Text style={styles.forgotText}>Forgot password?</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={onContinue}
+                  style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Continue"
+                >
+                  <Text style={styles.primaryButtonText}>Continue</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={onContinue}
+                  style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Send magic link"
+                >
+                  <Text style={styles.secondaryButtonText}>Send magic link</Text>
+                </Pressable>
+
+                <View style={styles.backRow}>
+                  <View style={styles.backLine} />
+                  <Pressable onPress={onBack} hitSlop={12} accessibilityRole="button" accessibilityLabel="Back to sign in">
+                    <Text style={styles.backText}>Back to sign in</Text>
+                  </Pressable>
+                  <View style={styles.backLine} />
+                </View>
+              </View>
             </View>
-
-            <Pressable hitSlop={10} style={styles.forgotButton} accessibilityRole="button" accessibilityLabel="Forgot password">
-              <Text style={styles.forgotText}>Forgot password?</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={onContinue}
-              style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}
-              accessibilityRole="button"
-              accessibilityLabel="Continue"
-            >
-              <Text style={styles.primaryButtonText}>Continue</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={onContinue}
-              style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
-              accessibilityRole="button"
-              accessibilityLabel="Send magic link"
-            >
-              <Text style={styles.secondaryButtonText}>Send magic link</Text>
-            </Pressable>
-
-            <View style={styles.backRow}>
-              <View style={styles.backLine} />
-              <Pressable onPress={onBack} hitSlop={12} accessibilityRole="button" accessibilityLabel="Back to sign in">
-                <Text style={styles.backText}>Back to sign in</Text>
-              </Pressable>
-              <View style={styles.backLine} />
-            </View>
-          </View>
-        </View>
-      </SafeAreaView>
+          </SafeAreaView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </LinearGradient>
   );
 }
@@ -105,6 +119,15 @@ export function AurenEmailAuthScreen({ onBack, onContinue }: AurenEmailAuthScree
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   safeArea: {
     flex: 1,
