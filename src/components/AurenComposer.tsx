@@ -15,6 +15,7 @@ type AurenComposerProps = {
   onOpenPlus?: () => void;
   onOpenControls?: () => void;
   onOpenChatMode?: () => void;
+  onSendMessage?: (message: string) => void;
   plusActive?: boolean;
   controlsActive?: boolean;
   chatModeActive?: boolean;
@@ -35,6 +36,7 @@ export function AurenComposer({
   onOpenPlus,
   onOpenControls,
   onOpenChatMode,
+  onSendMessage,
   plusActive = false,
   controlsActive = false,
   chatModeActive = false,
@@ -56,7 +58,7 @@ export function AurenComposer({
   function handleSend() {
     if (!canSend) return;
 
-    console.log('[Auren] User message:', trimmedDraft);
+    onSendMessage?.(trimmedDraft);
     setDraft('');
     setVisibleLineCount(MIN_VISIBLE_LINES);
     Keyboard.dismiss();
