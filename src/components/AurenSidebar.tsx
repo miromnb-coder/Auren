@@ -11,7 +11,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { colors, shadows } from '../theme';
+import { colors } from '../theme';
 
 type RecentChat = {
   id: string;
@@ -87,7 +87,7 @@ export function AurenSidebar({
   onOpen,
   onClose,
   onNewChat,
-  onViewAll,
+  onViewAll: _onViewAll,
   onOpenProfile,
   onOpenRecentChat,
   recentChats = DEFAULT_RECENT_CHATS,
@@ -218,27 +218,14 @@ export function AurenSidebar({
                 onPress={() => onOpenRecentChat?.(chat.id)}
                 style={({ pressed }) => [styles.recentRow, pressed && styles.pressed]}
               >
-                <View style={styles.recentIconBox}>
-                  <Ionicons name={chat.icon} size={22} color="#6f7079" />
-                </View>
-
                 <Text style={styles.recentTitle} numberOfLines={1}>
                   {chat.title}
-                </Text>
-
-                <Text style={styles.recentTime} numberOfLines={1}>
-                  {chat.time}
                 </Text>
               </Pressable>
             ))}
           </View>
 
-          <Pressable onPress={onViewAll} style={({ pressed }) => [styles.viewAllRow, pressed && styles.pressed]}>
-            <Text style={styles.viewAllText}>View all</Text>
-            <Ionicons name="chevron-forward" size={22} color="#8d8f98" />
-          </Pressable>
-
-          <View style={styles.divider} />
+          <View style={styles.recentDivider} />
 
           <Pressable onPress={onOpenProfile} style={({ pressed }) => [styles.profileRow, pressed && styles.pressed]}>
             <View style={styles.avatar}>
@@ -250,14 +237,11 @@ export function AurenSidebar({
               <Text style={styles.profileEmail} numberOfLines={1}>{profile.email}</Text>
             </View>
 
-            <Ionicons name="chevron-forward" size={22} color="#8d8f98" />
+            <Ionicons name="chevron-forward" size={26} color="#8d8f98" />
           </Pressable>
 
           <Pressable onPress={onNewChat} style={({ pressed }) => [styles.newChatButton, pressed && styles.pressed]}>
-            <View style={styles.newChatIconCircle}>
-              <Ionicons name="add" size={30} color="#111113" />
-            </View>
-            <Text style={styles.newChatText}>New chat</Text>
+            <Ionicons name="create-outline" size={28} color="#ffffff" />
           </Pressable>
         </View>
       </Animated.View>
@@ -308,19 +292,19 @@ const styles = StyleSheet.create({
   },
   drawerInner: {
     flex: 1,
-    paddingTop: 92,
+    paddingTop: 100,
     paddingHorizontal: 28,
-    paddingBottom: 34,
+    paddingBottom: 42,
   },
   brand: {
     color: colors.text,
     fontFamily: 'Georgia',
-    fontSize: 42,
-    lineHeight: 49,
-    letterSpacing: -1.25,
+    fontSize: 30,
+    lineHeight: 37,
+    letterSpacing: -0.85,
   },
   emptyTopSpace: {
-    height: 164,
+    height: 230,
   },
   divider: {
     height: 1,
@@ -328,76 +312,48 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(17,24,39,0.07)',
   },
   recentHeaderRow: {
-    marginTop: 34,
-    marginBottom: 18,
+    marginTop: 38,
+    marginBottom: 25,
   },
   sectionTitle: {
     color: '#686b75',
-    fontSize: 15,
-    fontWeight: '600',
-    letterSpacing: -0.1,
+    fontSize: 16,
+    fontWeight: '650',
+    letterSpacing: -0.16,
   },
   recentList: {
-    gap: 18,
+    gap: 28,
   },
   recentRow: {
-    minHeight: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
+    minHeight: 30,
+    justifyContent: 'center',
   },
   pressed: {
     opacity: 0.68,
     transform: [{ scale: 0.992 }],
   },
-  recentIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 13,
-    borderWidth: 1,
-    borderColor: 'rgba(17,24,39,0.055)',
-    backgroundColor: 'rgba(255,255,255,0.58)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.tiny,
-  },
   recentTitle: {
-    flex: 1,
     color: '#555866',
-    fontSize: 16.5,
-    fontWeight: '500',
-    letterSpacing: -0.22,
+    fontSize: 19,
+    fontWeight: '520',
+    letterSpacing: -0.28,
   },
-  recentTime: {
-    width: 78,
-    color: '#888b95',
-    fontSize: 14.5,
-    textAlign: 'right',
-    letterSpacing: -0.08,
-  },
-  viewAllRow: {
-    marginTop: 28,
-    marginBottom: 32,
-    minHeight: 36,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  viewAllText: {
-    color: '#3f414b',
-    fontSize: 18,
-    letterSpacing: -0.3,
+  recentDivider: {
+    marginTop: 36,
+    height: 1,
+    width: '100%',
+    backgroundColor: 'rgba(17,24,39,0.07)',
   },
   profileRow: {
-    marginTop: 25,
+    marginTop: 38,
     minHeight: 58,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 16,
   },
   avatar: {
-    width: 46,
-    height: 46,
+    width: 52,
+    height: 52,
     borderRadius: 999,
     backgroundColor: '#ececef',
     alignItems: 'center',
@@ -405,7 +361,7 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     color: '#62646e',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     letterSpacing: -0.2,
   },
@@ -414,43 +370,29 @@ const styles = StyleSheet.create({
   },
   profileName: {
     color: '#4d505b',
-    fontSize: 17,
-    fontWeight: '600',
-    letterSpacing: -0.24,
+    fontSize: 20,
+    fontWeight: '650',
+    letterSpacing: -0.32,
   },
   profileEmail: {
-    marginTop: 3,
+    marginTop: 2,
     color: '#8b8e99',
-    fontSize: 13.5,
-    letterSpacing: -0.08,
+    fontSize: 15,
+    letterSpacing: -0.12,
   },
   newChatButton: {
     marginTop: 'auto',
-    height: 64,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(17,24,39,0.065)',
-    backgroundColor: 'rgba(255,255,255,0.72)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    gap: 14,
-    ...shadows.tiny,
-  },
-  newChatIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(17,24,39,0.055)',
-    backgroundColor: 'rgba(255,255,255,0.5)',
+    alignSelf: 'flex-end',
+    width: 52,
+    height: 52,
+    borderRadius: 13,
+    backgroundColor: '#111113',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  newChatText: {
-    color: '#4f515b',
-    fontSize: 18,
-    fontWeight: '500',
-    letterSpacing: -0.24,
+    shadowColor: '#000000',
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 10,
   },
 });
