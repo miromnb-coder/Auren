@@ -10,6 +10,7 @@ const BASE_COMPOSER_HEIGHT = 112;
 const MIN_INPUT_HEIGHT = INPUT_LINE_HEIGHT * MIN_VISIBLE_LINES;
 const MAX_INPUT_HEIGHT = INPUT_LINE_HEIGHT * MAX_VISIBLE_LINES;
 const APPROX_CHARS_PER_LINE = 31;
+const COMPOSER_SOLID_SURFACE = '#fefefd';
 
 type AurenComposerProps = {
   onOpenPlus?: () => void;
@@ -135,7 +136,7 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.84)',
-    backgroundColor: colors.surfaceStrong,
+    backgroundColor: COMPOSER_SOLID_SURFACE,
     paddingHorizontal: 20,
     paddingTop: 17,
     paddingBottom: 17,
