@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -67,6 +67,7 @@ const SERVICES: ServiceItem[] = [
 ];
 
 const FEATURED_SERVICES = [SERVICES[1], SERVICES[0], SERVICES[2]];
+const FEATURED_ROTATION_MS = 2600;
 
 const PEEK_HEIGHT_RATIO = 0.54;
 const EXPANDED_HEIGHT_RATIO = 0.92;
@@ -82,6 +83,19 @@ function clamp(value: number, min: number, max: number) {
 
 export function AurenControlsSheet({ stage, onStageChange }: AurenControlsSheetProps) {
   const { height } = useWindowDimensions();
+  const [featuredIndex, setFeaturedIndex] = useState(1);
+
+  const visibleFeaturedServices = useMemo(() => {
+    const serviceCount = FEATURED_SERVICES.length;
+    const previousIndex = (featuredIndex - 1 + serviceCount) % serviceCount;
+    const nextIndex = (featuredIndex + 1) % serviceCount;
+
+    return [
+      FEATURED_SERVICES[previousIndex],
+      FEATURED_SERVICES[featuredIndex],
+      FEATURED_SERVICES[nextIndex],
+    ];
+  }, [featuredIndex]);
 
   const { closedY, expandedHeight, expandedY, peekY } = useMemo(() => {
     const nextExpandedHeight = Math.min(
@@ -127,6 +141,16 @@ export function AurenControlsSheet({ stage, onStageChange }: AurenControlsSheetP
     animateToStage(stage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, closedY, expandedY, peekY]);
+
+  useEffect(() => {
+    if (stage === 'closed') return undefined;
+
+    const rotationTimer = setInterval(() => {
+      setFeaturedIndex((currentIndex) => (currentIndex + 1) % FEATURED_SERVICES.length);
+    }, FEATURED_ROTATION_MS);
+
+    return () => clearInterval(rotationTimer);
+  }, [stage]);
 
   const panResponder = useMemo(
     () =>
@@ -215,9 +239,9 @@ export function AurenControlsSheet({ stage, onStageChange }: AurenControlsSheetP
         </View>
 
         <View style={styles.featuredRow}>
-          {FEATURED_SERVICES.map((service, index) => (
+          {visibleFeaturedServices.map((service, index) => (
             <View
-              key={service.id}
+              key={`${service.id}-${index}`}
               style={[
                 styles.featuredCard,
                 index === 1 && styles.featuredCardActive,
@@ -231,9 +255,15 @@ export function AurenControlsSheet({ stage, onStageChange }: AurenControlsSheetP
         </View>
 
         <View style={styles.paginationRow}>
-          <View style={[styles.paginationDot, styles.paginationDotActive]} />
-          <View style={styles.paginationDot} />
-          <View style={styles.paginationDot} />
+          {FEATURED_SERVICES.map((service, index) => (
+            <View
+              key={service.id}
+              style={[
+                styles.paginationDot,
+                index === featuredIndex && styles.paginationDotActive,
+              ]}
+            />
+          ))}
         </View>
 
         <Text style={styles.sectionLabel}>Connected services</Text>
@@ -488,8 +518,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 19,
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: 'rgba(63,94,186,0.16)',
-    backgroundColor: 'rgba(235,240,255,0.72)',
+    borderColor: 'rgba(17,24,39,0.065)',
+    backgroundColor: 'rgba(246,247,249,0.88)',
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -497,7 +527,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 999,
-    backgroundColor: '#315bbb',
+    backgroundColor: '#585c66',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -510,14 +540,14 @@ const styles = StyleSheet.create({
   addMoreText: {
     flex: 1,
     marginLeft: 16,
-    color: '#254aa8',
+    color: '#3f424a',
     fontSize: 18,
     lineHeight: 23,
     fontWeight: '650',
     letterSpacing: -0.35,
   },
   addMoreChevron: {
-    color: '#315bbb',
+    color: '#727680',
     fontSize: 34,
     lineHeight: 36,
     fontWeight: '300',
