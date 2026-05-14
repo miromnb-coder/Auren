@@ -1,17 +1,17 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Keyboard, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AurenActionPill } from '../components/AurenActionPill';
-import { AurenChatModeSheet, type ChatModeSheetStage } from '../components/AurenChatModeSheet';
 import { AurenComposer } from '../components/AurenComposer';
 import { AurenControlsSheet, type ControlsSheetStage } from '../components/AurenControlsSheet';
 import { CalendarIcon, ChevronIcon, ListIcon, MenuIcon, SparkIcon } from '../components/AurenIcons';
 import { AurenMessageList, type AurenMessage } from '../components/AurenMessageList';
 import { AurenPlusSheet, type PlusSheetStage } from '../components/AurenPlusSheet';
 import { AurenSidebar } from '../components/AurenSidebar';
-import { sendAurenChatMessageStream } from '../lib/aurenChatApi';
+import { sendAurenChatMessageStream, type AurenChatMode } from '../lib/aurenChatApi';
 import { colors, spacing } from '../theme';
 
 const COMPOSER_CLOSED_BOTTOM = 34;
@@ -19,6 +19,32 @@ const COMPOSER_KEYBOARD_GAP = 12;
 const COMPOSER_KEYBOARD_EXTRA_LIFT = 34;
 const CONTENT_KEYBOARD_LIFT = 34;
 const PILLS_KEYBOARD_LIFT = 20;
+
+const CHAT_MODE_OPTIONS: Array<{
+  mode: AurenChatMode;
+  title: string;
+  subtitle: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}> = [
+  {
+    mode: 'personal',
+    title: 'Personal',
+    subtitle: 'Everyday tasks and decisions.',
+    icon: 'chatbubble-outline',
+  },
+  {
+    mode: 'study',
+    title: 'Study',
+    subtitle: 'Explain, quiz, learn and plan.',
+    icon: 'school-outline',
+  },
+  {
+    mode: 'money',
+    title: 'Money',
+    subtitle: 'Budget, spending and subscriptions.',
+    icon: 'wallet-outline',
+  },
+];
 
 function runHaptic(type: 'open' | 'close') {
   if (Platform.OS === 'web') return;
@@ -43,12 +69,17 @@ function getErrorMessage(error: unknown) {
   return 'Auren had trouble connecting. Try again in a moment.';
 }
 
+function getModeOption(mode: AurenChatMode) {
+  return CHAT_MODE_OPTIONS.find((option) => option.mode === mode) ?? CHAT_MODE_OPTIONS[0];
+}
+
 export function AurenHomeScreen() {
   const insets = useSafeAreaInsets();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [plusSheetStage, setPlusSheetStage] = useState<PlusSheetStage>('closed');
   const [controlsSheetStage, setControlsSheetStage] = useState<ControlsSheetStage>('closed');
-  const [chatModeSheetStage, setChatModeSheetStage] = useState<ChatModeSheetStage>('closed');
+  const [chatMode, setChatMode] = useState<AurenChatMode>('personal');
+  const [modeMenuOpen, setModeMenuOpen] = useState(false);
   const [messages, setMessages] = useState<AurenMessage[]>([]);
   const [assistantThinking, setAssistantThinking] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -61,11 +92,10 @@ export function AurenHomeScreen() {
 
   const plusSheetOpen = plusSheetStage !== 'closed';
   const controlsSheetOpen = controlsSheetStage !== 'closed';
-  const chatModeSheetOpen = chatModeSheetStage !== 'closed';
-  const anySheetOpen = plusSheetOpen || controlsSheetOpen || chatModeSheetOpen;
-  const anySheetExpanded =
-    plusSheetStage === 'expanded' || controlsSheetStage === 'expanded' || chatModeSheetStage === 'expanded';
+  const anySheetOpen = plusSheetOpen || controlsSheetOpen;
+  const anySheetExpanded = plusSheetStage === 'expanded' || controlsSheetStage === 'expanded';
   const hasMessages = messages.length > 0;
+  const selectedModeOption = getModeOption(chatMode);
 
   function setPlusStage(nextStage: PlusSheetStage) {
     setPlusSheetStage((current) => {
@@ -99,19 +129,11 @@ export function AurenHomeScreen() {
     });
   }
 
-  function setChatModeStage(nextStage: ChatModeSheetStage) {
-    setChatModeSheetStage((current) => {
-      if (current === nextStage) return current;
-
-      if (current === 'closed' && nextStage !== 'closed') {
-        runHaptic('open');
-      } else if (current !== 'closed' && nextStage === 'closed') {
-        runHaptic('close');
-      } else if (current !== nextStage) {
-        runHaptic('open');
-      }
-
-      return nextStage;
+  function closeModeMenu() {
+    setModeMenuOpen((current) => {
+      if (!current) return current;
+      runHaptic('close');
+      return false;
     });
   }
 
@@ -124,9 +146,31 @@ export function AurenHomeScreen() {
       setControlsStage('closed');
     }
 
-    if (chatModeSheetOpen) {
-      setChatModeStage('closed');
+    if (modeMenuOpen) {
+      setModeMenuOpen(false);
     }
+  }
+
+  function openModeMenu() {
+    Keyboard.dismiss();
+    setSidebarOpen(false);
+    if (plusSheetOpen) {
+      setPlusSheetStage('closed');
+    }
+    if (controlsSheetOpen) {
+      setControlsSheetStage('closed');
+    }
+
+    setModeMenuOpen((current) => {
+      runHaptic(current ? 'close' : 'open');
+      return !current;
+    });
+  }
+
+  function selectChatMode(nextMode: AurenChatMode) {
+    setChatMode(nextMode);
+    setModeMenuOpen(false);
+    runHaptic('close');
   }
 
   function openSidebar() {
@@ -199,6 +243,7 @@ export function AurenHomeScreen() {
           content: item.content,
         })),
         {
+          mode: chatMode,
           signal: abortController.signal,
           onToken: (token) => {
             receivedAnyToken = true;
@@ -239,11 +284,9 @@ export function AurenHomeScreen() {
   function openPlusSheet() {
     Keyboard.dismiss();
     setSidebarOpen(false);
+    setModeMenuOpen(false);
     if (controlsSheetOpen) {
       setControlsSheetStage('closed');
-    }
-    if (chatModeSheetOpen) {
-      setChatModeSheetStage('closed');
     }
     setPlusStage('peek');
   }
@@ -251,25 +294,11 @@ export function AurenHomeScreen() {
   function openControlsSheet() {
     Keyboard.dismiss();
     setSidebarOpen(false);
+    setModeMenuOpen(false);
     if (plusSheetOpen) {
       setPlusSheetStage('closed');
-    }
-    if (chatModeSheetOpen) {
-      setChatModeSheetStage('closed');
     }
     setControlsStage('peek');
-  }
-
-  function openChatModeSheet() {
-    Keyboard.dismiss();
-    setSidebarOpen(false);
-    if (plusSheetOpen) {
-      setPlusSheetStage('closed');
-    }
-    if (controlsSheetOpen) {
-      setControlsSheetStage('closed');
-    }
-    setChatModeStage('peek');
   }
 
   function closeActiveSheet() {
@@ -417,13 +446,58 @@ export function AurenHomeScreen() {
                   <MenuIcon />
                 </Pressable>
 
-                <View style={styles.brandWrap}>
+                <Pressable
+                  onPress={openModeMenu}
+                  hitSlop={12}
+                  style={({ pressed }) => [styles.brandButton, pressed && styles.brandButtonPressed]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Change Auren mode. Current mode is ${selectedModeOption.title}`}
+                >
                   <Text style={styles.brand}>Auren</Text>
+                  <View style={styles.modeBadge}>
+                    <Ionicons name={selectedModeOption.icon} size={15} color="#555863" />
+                  </View>
                   <ChevronIcon />
-                </View>
+                </Pressable>
 
                 <View style={styles.headerSpacer} />
               </View>
+
+              {modeMenuOpen ? (
+                <>
+                  <Pressable style={styles.modeMenuBackdrop} onPress={closeModeMenu} />
+                  <View style={styles.modeMenu}>
+                    {CHAT_MODE_OPTIONS.map((option, index) => {
+                      const selected = option.mode === chatMode;
+
+                      return (
+                        <Pressable
+                          key={option.mode}
+                          onPress={() => selectChatMode(option.mode)}
+                          style={({ pressed }) => [
+                            styles.modeMenuItem,
+                            index < CHAT_MODE_OPTIONS.length - 1 && styles.modeMenuItemBorder,
+                            pressed && styles.modeMenuItemPressed,
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Use ${option.title} mode`}
+                        >
+                          <View style={styles.modeCheckWrap}>
+                            {selected ? <Text style={styles.modeCheck}>✓</Text> : null}
+                          </View>
+                          <View style={[styles.modeIconBubble, selected && styles.modeIconBubbleSelected]}>
+                            <Ionicons name={option.icon} size={18} color="#1d1d1f" />
+                          </View>
+                          <View style={styles.modeTextWrap}>
+                            <Text style={styles.modeTitle}>{option.title}</Text>
+                            <Text style={styles.modeSubtitle}>{option.subtitle}</Text>
+                          </View>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </>
+              ) : null}
 
               <Animated.View
                 style={[
@@ -464,13 +538,13 @@ export function AurenHomeScreen() {
               <AurenComposer
                 onOpenPlus={openPlusSheet}
                 onOpenControls={openControlsSheet}
-                onOpenChatMode={openChatModeSheet}
+                onOpenChatMode={openModeMenu}
                 onSendMessage={handleSendMessage}
                 onStopGenerating={stopGenerating}
                 isGenerating={isGenerating}
                 plusActive={plusSheetOpen}
                 controlsActive={controlsSheetOpen}
-                chatModeActive={chatModeSheetOpen}
+                chatModeActive={modeMenuOpen}
               />
             </Animated.View>
           </SafeAreaView>
@@ -479,7 +553,6 @@ export function AurenHomeScreen() {
         {anySheetOpen ? <Pressable style={styles.plusBackdrop} onPress={closeActiveSheet} /> : null}
         <AurenPlusSheet stage={plusSheetStage} onStageChange={setPlusStage} />
         <AurenControlsSheet stage={controlsSheetStage} onStageChange={setControlsStage} />
-        <AurenChatModeSheet stage={chatModeSheetStage} onStageChange={setChatModeStage} />
       </View>
     </AurenSidebar>
   );
@@ -519,6 +592,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   header: {
+    zIndex: 60,
     height: 88,
     paddingHorizontal: spacing.screenX,
     flexDirection: 'row',
@@ -533,11 +607,14 @@ const styles = StyleSheet.create({
   menuButtonPressed: {
     opacity: 0.62,
   },
-  brandWrap: {
+  brandButton: {
+    minWidth: 148,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 148,
+  },
+  brandButtonPressed: {
+    opacity: 0.68,
   },
   brand: {
     color: colors.text,
@@ -546,8 +623,102 @@ const styles = StyleSheet.create({
     letterSpacing: -0.9,
     fontFamily: serifFont,
   },
+  modeBadge: {
+    width: 27,
+    height: 27,
+    borderRadius: 999,
+    marginLeft: 9,
+    borderWidth: 1,
+    borderColor: 'rgba(17,24,39,0.065)',
+    backgroundColor: 'rgba(255,255,255,0.54)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   headerSpacer: {
     width: 68,
+  },
+  modeMenuBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 45,
+  },
+  modeMenu: {
+    position: 'absolute',
+    top: 80,
+    alignSelf: 'center',
+    width: 342,
+    zIndex: 70,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(17,24,39,0.06)',
+    backgroundColor: 'rgba(252,252,251,0.96)',
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOpacity: 0.14,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 18 },
+    elevation: 20,
+  },
+  modeMenuItem: {
+    minHeight: 92,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.74)',
+  },
+  modeMenuItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(17,24,39,0.065)',
+  },
+  modeMenuItemPressed: {
+    backgroundColor: 'rgba(241,242,244,0.92)',
+  },
+  modeCheckWrap: {
+    width: 24,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  modeCheck: {
+    color: colors.text,
+    fontSize: 22,
+    lineHeight: 24,
+    fontWeight: '650',
+  },
+  modeIconBubble: {
+    width: 39,
+    height: 39,
+    borderRadius: 999,
+    marginRight: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(17,24,39,0.055)',
+    backgroundColor: 'rgba(255,255,255,0.62)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modeIconBubbleSelected: {
+    backgroundColor: 'rgba(232,233,237,0.92)',
+  },
+  modeTextWrap: {
+    flex: 1,
+  },
+  modeTitle: {
+    color: colors.text,
+    fontSize: 20,
+    lineHeight: 25,
+    letterSpacing: -0.38,
+    fontWeight: '620',
+  },
+  modeSubtitle: {
+    marginTop: 2,
+    color: colors.muted,
+    fontSize: 16,
+    lineHeight: 22,
+    letterSpacing: -0.22,
+    fontWeight: '480',
   },
   content: {
     flex: 1,
