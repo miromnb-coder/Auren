@@ -11,7 +11,7 @@ import { CalendarIcon, ChevronIcon, ListIcon, MenuIcon, SparkIcon } from '../com
 import { AurenMessageList, type AurenMessage } from '../components/AurenMessageList';
 import { AurenPlusSheet, type PlusSheetStage } from '../components/AurenPlusSheet';
 import { AurenSidebar } from '../components/AurenSidebar';
-import { sendAurenChatMessage } from '../lib/aurenChatApi';
+import { sendAurenChatMessageStream } from '../lib/aurenChatApi';
 import { colors, spacing } from '../theme';
 
 const COMPOSER_CLOSED_BOTTOM = 34;
@@ -56,6 +56,7 @@ export function AurenHomeScreen() {
   const pillsOpacity = useRef(new Animated.Value(1)).current;
   const pillsTranslateY = useRef(new Animated.Value(0)).current;
   const appCardProgress = useRef(new Animated.Value(0)).current;
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const plusSheetOpen = plusSheetStage !== 'closed';
   const controlsSheetOpen = controlsSheetStage !== 'closed';
@@ -146,6 +147,8 @@ export function AurenHomeScreen() {
   }
 
   function startNewChat() {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
     setMessages([]);
     setAssistantThinking(false);
     closeSidebar();
@@ -153,6 +156,7 @@ export function AurenHomeScreen() {
 
   async function handleSendMessage(message: string) {
     closeAllSheets();
+    abortControllerRef.current?.abort();
 
     const userMessage: AurenMessage = {
       id: createMessageId('user'),
@@ -160,38 +164,60 @@ export function AurenHomeScreen() {
       content: message,
       createdAt: Date.now(),
     };
-
+    const assistantMessageId = createMessageId('assistant');
+    const assistantMessage: AurenMessage = {
+      id: assistantMessageId,
+      role: 'assistant',
+      content: '',
+      createdAt: Date.now(),
+    };
     const nextMessages = [...messages, userMessage];
+    const abortController = new AbortController();
+    let receivedAnyToken = false;
 
-    setMessages(nextMessages);
+    abortControllerRef.current = abortController;
+    setMessages([...nextMessages, assistantMessage]);
     setAssistantThinking(true);
 
     try {
-      const assistantReply = await sendAurenChatMessage(
+      await sendAurenChatMessageStream(
         nextMessages.map((item) => ({
           role: item.role,
           content: item.content,
         })),
+        {
+          signal: abortController.signal,
+          onToken: (token) => {
+            receivedAnyToken = true;
+            setAssistantThinking(false);
+            setMessages((currentMessages) =>
+              currentMessages.map((currentMessage) =>
+                currentMessage.id === assistantMessageId
+                  ? { ...currentMessage, content: currentMessage.content + token }
+                  : currentMessage,
+              ),
+            );
+          },
+        },
       );
-
-      const assistantMessage: AurenMessage = {
-        id: createMessageId('assistant'),
-        role: 'assistant',
-        content: assistantReply,
-        createdAt: Date.now(),
-      };
-
-      setMessages((currentMessages) => [...currentMessages, assistantMessage]);
     } catch (error) {
-      const assistantMessage: AurenMessage = {
-        id: createMessageId('assistant'),
-        role: 'assistant',
-        content: getErrorMessage(error),
-        createdAt: Date.now(),
-      };
+      if (abortController.signal.aborted) return;
 
-      setMessages((currentMessages) => [...currentMessages, assistantMessage]);
+      const fallbackText = receivedAnyToken
+        ? '\n\nConnection stopped before Auren finished.'
+        : getErrorMessage(error);
+
+      setMessages((currentMessages) =>
+        currentMessages.map((currentMessage) =>
+          currentMessage.id === assistantMessageId
+            ? { ...currentMessage, content: currentMessage.content + fallbackText }
+            : currentMessage,
+        ),
+      );
     } finally {
+      if (abortControllerRef.current === abortController) {
+        abortControllerRef.current = null;
+      }
       setAssistantThinking(false);
     }
   }
@@ -244,6 +270,12 @@ export function AurenHomeScreen() {
       useNativeDriver: true,
     }).start();
   }, [anySheetExpanded, appCardProgress]);
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
