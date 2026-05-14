@@ -4,9 +4,11 @@ import { colors } from '../theme';
 
 type IconProps = {
   muted?: boolean;
+  active?: boolean;
 };
 
 const ink = '#1d1d1f';
+const lightInk = '#f8f8f6';
 const softInk = '#70717a';
 
 export function MenuIcon() {
@@ -34,8 +36,12 @@ export function MicIcon() {
   return <Ionicons name="mic-outline" size={22} color={ink} />;
 }
 
-export function SendIcon({ muted }: IconProps) {
-  return <Ionicons name="arrow-up" size={20} color={muted ? colors.mutedSoft : ink} />;
+export function SendIcon({ muted, active }: IconProps) {
+  return <Ionicons name="arrow-up" size={20} color={active ? lightInk : muted ? colors.mutedSoft : ink} />;
+}
+
+export function StopIcon() {
+  return <Ionicons name="stop" size={16} color={lightInk} />;
 }
 
 export function ControlsIcon() {
