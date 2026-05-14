@@ -5,6 +5,7 @@ import {
   Image,
   PanResponder,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -22,7 +23,8 @@ type AurenControlsSheetProps = {
 type ServiceItem = {
   id: string;
   name: string;
-  status: string;
+  description: string;
+  status: 'Connected' | 'Connect';
   iconUri: string;
 };
 
@@ -30,34 +32,41 @@ const SERVICES: ServiceItem[] = [
   {
     id: 'google-drive',
     name: 'Google Drive',
+    description: 'Files and documents',
     status: 'Connected',
     iconUri: 'https://raw.githubusercontent.com/miromnb-coder/Auren/main/assets/services/google-drive.PNG',
   },
   {
     id: 'gmail',
     name: 'Gmail',
+    description: 'Emails and receipts',
     status: 'Connected',
     iconUri: 'https://raw.githubusercontent.com/miromnb-coder/Auren/main/assets/services/gmail.PNG',
   },
   {
     id: 'google-calendar',
     name: 'Google Calendar',
+    description: 'Events and schedule',
     status: 'Connected',
     iconUri: 'https://raw.githubusercontent.com/miromnb-coder/Auren/main/assets/services/google-calendar.PNG',
   },
   {
     id: 'outlook-calendar',
     name: 'Outlook Calendar',
+    description: 'Work calendar',
     status: 'Connected',
     iconUri: 'https://raw.githubusercontent.com/miromnb-coder/Auren/main/assets/services/outlook-calendar.PNG',
   },
   {
     id: 'outlook-mail',
     name: 'Outlook Mail',
+    description: 'Work email',
     status: 'Connected',
     iconUri: 'https://raw.githubusercontent.com/miromnb-coder/Auren/main/assets/services/outlook-mail.PNG',
   },
 ];
+
+const FEATURED_SERVICES = [SERVICES[1], SERVICES[0], SERVICES[2]];
 
 const PEEK_HEIGHT_RATIO = 0.54;
 const EXPANDED_HEIGHT_RATIO = 0.92;
@@ -196,35 +205,81 @@ export function AurenControlsSheet({ stage, onStageChange }: AurenControlsSheetP
       <View style={styles.solidFill} />
       <View style={styles.handle} />
 
-      <View style={styles.servicesCard}>
-        {SERVICES.map((service, index) => (
-          <Pressable
-            key={service.id}
-            style={[
-              styles.serviceRow,
-              index === SERVICES.length - 1 && styles.serviceRowLast,
-            ]}
-          >
-            <View style={styles.iconSlot}>
-              <Image source={{ uri: service.iconUri }} style={styles.serviceIcon} resizeMode="contain" />
-            </View>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
+      >
+        <View style={styles.headerBlock}>
+          <Text style={styles.title}>Services</Text>
+          <Text style={styles.subtitle}>Connect the apps you use every day. Auren will bring everything together.</Text>
+        </View>
 
-            <View style={styles.serviceTextWrap}>
-              <Text style={styles.serviceName} numberOfLines={1}>
-                {service.name}
-              </Text>
-              <View style={styles.statusRow}>
+        <View style={styles.featuredRow}>
+          {FEATURED_SERVICES.map((service, index) => (
+            <View
+              key={service.id}
+              style={[
+                styles.featuredCard,
+                index === 1 && styles.featuredCardActive,
+              ]}
+            >
+              <Image source={{ uri: service.iconUri }} style={styles.featuredIcon} resizeMode="contain" />
+              <Text style={styles.featuredName} numberOfLines={1}>{service.name.replace('Google ', '')}</Text>
+              <Text style={styles.featuredDescription} numberOfLines={1}>{service.description}</Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.paginationRow}>
+          <View style={[styles.paginationDot, styles.paginationDotActive]} />
+          <View style={styles.paginationDot} />
+          <View style={styles.paginationDot} />
+        </View>
+
+        <Text style={styles.sectionLabel}>Connected services</Text>
+
+        <View style={styles.servicesCard}>
+          {SERVICES.map((service, index) => (
+            <Pressable
+              key={service.id}
+              style={[
+                styles.serviceRow,
+                index === SERVICES.length - 1 && styles.serviceRowLast,
+              ]}
+            >
+              <View style={styles.iconSlot}>
+                <Image source={{ uri: service.iconUri }} style={styles.serviceIcon} resizeMode="contain" />
+              </View>
+
+              <View style={styles.serviceTextWrap}>
+                <Text style={styles.serviceName} numberOfLines={1}>
+                  {service.name}
+                </Text>
+                <Text style={styles.serviceDescription} numberOfLines={1}>
+                  {service.description}
+                </Text>
+              </View>
+
+              <View style={styles.statusPill}>
                 <View style={styles.statusDot} />
-                <Text style={styles.serviceStatus} numberOfLines={1}>
+                <Text style={styles.statusPillText} numberOfLines={1}>
                   {service.status}
                 </Text>
               </View>
-            </View>
 
-            <Text style={styles.chevron}>›</Text>
-          </Pressable>
-        ))}
-      </View>
+              <Text style={styles.chevron}>›</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <Pressable style={styles.addMoreButton}>
+          <View style={styles.addMoreIcon}>
+            <Text style={styles.addMorePlus}>+</Text>
+          </View>
+          <Text style={styles.addMoreText}>Add more services</Text>
+          <Text style={styles.addMoreChevron}>›</Text>
+        </Pressable>
+      </ScrollView>
     </Animated.View>
   );
 }
@@ -257,75 +312,214 @@ const styles = StyleSheet.create({
     marginTop: 18,
     backgroundColor: 'rgba(110,113,124,0.28)',
   },
-  servicesCard: {
-    marginTop: 35,
-    marginHorizontal: 24,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(17,24,39,0.055)',
-    backgroundColor: 'rgba(255,255,255,0.72)',
-    overflow: 'hidden',
-    ...shadows.tiny,
+  content: {
+    paddingTop: 48,
+    paddingHorizontal: 24,
+    paddingBottom: 42,
   },
-  serviceRow: {
-    minHeight: 82,
-    paddingHorizontal: 18,
+  headerBlock: {
+    marginBottom: 26,
+  },
+  title: {
+    color: '#111217',
+    fontSize: 42,
+    lineHeight: 47,
+    fontWeight: '700',
+    letterSpacing: -1.35,
+  },
+  subtitle: {
+    marginTop: 12,
+    maxWidth: 320,
+    color: '#858891',
+    fontSize: 17,
+    lineHeight: 24,
+    letterSpacing: -0.28,
+  },
+  featuredRow: {
+    marginHorizontal: -8,
     flexDirection: 'row',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(17,24,39,0.055)',
+    gap: 10,
   },
-  serviceRowLast: {
-    borderBottomWidth: 0,
-  },
-  iconSlot: {
-    width: 58,
-    height: 58,
-    borderRadius: 18,
+  featuredCard: {
+    flex: 1,
+    minHeight: 126,
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: 'rgba(17,24,39,0.045)',
-    backgroundColor: 'rgba(255,255,255,0.62)',
+    backgroundColor: 'rgba(255,255,255,0.54)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    ...shadows.tiny,
+  },
+  featuredCardActive: {
+    minHeight: 146,
+    backgroundColor: 'rgba(255,255,255,0.86)',
+  },
+  featuredIcon: {
+    width: 48,
+    height: 48,
+    marginBottom: 14,
+  },
+  featuredName: {
+    color: '#18191f',
+    fontSize: 15,
+    lineHeight: 19,
+    fontWeight: '600',
+    letterSpacing: -0.34,
+  },
+  featuredDescription: {
+    marginTop: 5,
+    color: '#8b8e98',
+    fontSize: 12,
+    lineHeight: 15,
+    letterSpacing: -0.12,
+  },
+  paginationRow: {
+    marginTop: 18,
+    marginBottom: 28,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  paginationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: '#d8d9de',
+  },
+  paginationDotActive: {
+    backgroundColor: '#3f4654',
+  },
+  sectionLabel: {
+    marginBottom: 12,
+    color: '#8e919b',
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700',
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+  },
+  servicesCard: {
+    borderRadius: 23,
+    overflow: 'hidden',
+    gap: 8,
+  },
+  serviceRow: {
+    minHeight: 76,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(17,24,39,0.055)',
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    ...shadows.tiny,
+  },
+  serviceRowLast: {},
+  iconSlot: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(17,24,39,0.045)',
+    backgroundColor: 'rgba(255,255,255,0.72)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   serviceIcon: {
-    width: 42,
-    height: 42,
+    width: 34,
+    height: 34,
   },
   serviceTextWrap: {
     flex: 1,
-    marginLeft: 18,
+    marginLeft: 14,
+    marginRight: 10,
   },
   serviceName: {
     color: '#202126',
-    fontSize: 22,
-    lineHeight: 27,
-    fontWeight: '500',
-    letterSpacing: -0.55,
+    fontSize: 18,
+    lineHeight: 23,
+    fontWeight: '650',
+    letterSpacing: -0.45,
   },
-  statusRow: {
-    marginTop: 7,
+  serviceDescription: {
+    marginTop: 3,
+    color: '#858891',
+    fontSize: 14,
+    lineHeight: 18,
+    letterSpacing: -0.18,
+  },
+  statusPill: {
+    height: 32,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(34,197,94,0.18)',
+    backgroundColor: 'rgba(34,197,94,0.09)',
     flexDirection: 'row',
     alignItems: 'center',
   },
   statusDot: {
-    width: 8,
-    height: 8,
+    width: 7,
+    height: 7,
     borderRadius: 999,
-    marginRight: 9,
+    marginRight: 7,
     backgroundColor: '#18bf62',
   },
-  serviceStatus: {
-    color: '#858891',
-    fontSize: 16,
-    lineHeight: 20,
-    letterSpacing: -0.2,
+  statusPillText: {
+    color: '#3f8d52',
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: '600',
+    letterSpacing: -0.16,
   },
   chevron: {
-    marginLeft: 14,
-    color: '#9ca0a7',
-    fontSize: 36,
-    lineHeight: 38,
+    marginLeft: 9,
+    color: '#a2a5ad',
+    fontSize: 34,
+    lineHeight: 36,
+    fontWeight: '300',
+  },
+  addMoreButton: {
+    marginTop: 20,
+    minHeight: 66,
+    paddingHorizontal: 19,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(63,94,186,0.16)',
+    backgroundColor: 'rgba(235,240,255,0.72)',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  addMoreIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 999,
+    backgroundColor: '#315bbb',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addMorePlus: {
+    color: '#ffffff',
+    fontSize: 22,
+    lineHeight: 25,
+    fontWeight: '500',
+  },
+  addMoreText: {
+    flex: 1,
+    marginLeft: 16,
+    color: '#254aa8',
+    fontSize: 18,
+    lineHeight: 23,
+    fontWeight: '650',
+    letterSpacing: -0.35,
+  },
+  addMoreChevron: {
+    color: '#315bbb',
+    fontSize: 34,
+    lineHeight: 36,
     fontWeight: '300',
   },
 });
