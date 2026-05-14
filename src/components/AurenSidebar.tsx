@@ -96,6 +96,7 @@ export function AurenSidebar({
 }: AurenSidebarProps) {
   const { width } = useWindowDimensions();
   const [accountSheetStage, setAccountSheetStage] = useState<AccountSheetStage>('closed');
+  const [currentProfile, setCurrentProfile] = useState<SidebarProfile>(profile);
   const accountSheetOpen = accountSheetStage !== 'closed';
   const drawerWidth = useMemo(() => {
     const measuredWidth = width * DRAWER_WIDTH_RATIO;
@@ -112,6 +113,10 @@ export function AurenSidebar({
       useNativeDriver: true,
     }).start();
   }, [open, progress]);
+
+  useEffect(() => {
+    setCurrentProfile(profile);
+  }, [profile.email, profile.initials, profile.name]);
 
   const openSwipeResponder = useMemo(
     () =>
@@ -234,12 +239,12 @@ export function AurenSidebar({
           <View style={styles.bottomArea}>
             <Pressable onPress={openAccountSheet} style={({ pressed }) => [styles.profileRow, pressed && styles.pressed]}>
               <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{profile.initials}</Text>
+                <Text style={styles.avatarText}>{currentProfile.initials}</Text>
               </View>
 
               <View style={styles.profileTextWrap}>
-                <Text style={styles.profileName} numberOfLines={1}>{profile.name}</Text>
-                <Text style={styles.profileEmail} numberOfLines={1}>{profile.email}</Text>
+                <Text style={styles.profileName} numberOfLines={1}>{currentProfile.name}</Text>
+                <Text style={styles.profileEmail} numberOfLines={1}>{currentProfile.email}</Text>
               </View>
 
               <Ionicons name="chevron-forward" size={16} color="#8d8f98" />
@@ -255,7 +260,12 @@ export function AurenSidebar({
       {accountSheetOpen ? (
         <Pressable style={styles.accountSheetBackdrop} onPress={() => setAccountSheetStage('closed')} />
       ) : null}
-      <AurenAccountSheet stage={accountSheetStage} onStageChange={setAccountSheetStage} profile={profile} />
+      <AurenAccountSheet
+        stage={accountSheetStage}
+        onStageChange={setAccountSheetStage}
+        profile={currentProfile}
+        onProfileUpdated={setCurrentProfile}
+      />
     </View>
   );
 }
