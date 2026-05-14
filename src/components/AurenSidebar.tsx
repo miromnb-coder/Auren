@@ -205,8 +205,6 @@ export function AurenSidebar({
 
           <View style={styles.emptyTopSpace} />
 
-          <View style={styles.divider} />
-
           <View style={styles.recentHeaderRow}>
             <Text style={styles.sectionTitle}>Recent chats</Text>
           </View>
@@ -225,24 +223,24 @@ export function AurenSidebar({
             ))}
           </View>
 
-          <View style={styles.recentDivider} />
+          <View style={styles.bottomArea}>
+            <Pressable onPress={onOpenProfile} style={({ pressed }) => [styles.profileRow, pressed && styles.pressed]}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{profile.initials}</Text>
+              </View>
 
-          <Pressable onPress={onOpenProfile} style={({ pressed }) => [styles.profileRow, pressed && styles.pressed]}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{profile.initials}</Text>
-            </View>
+              <View style={styles.profileTextWrap}>
+                <Text style={styles.profileName} numberOfLines={1}>{profile.name}</Text>
+                <Text style={styles.profileEmail} numberOfLines={1}>{profile.email}</Text>
+              </View>
 
-            <View style={styles.profileTextWrap}>
-              <Text style={styles.profileName} numberOfLines={1}>{profile.name}</Text>
-              <Text style={styles.profileEmail} numberOfLines={1}>{profile.email}</Text>
-            </View>
+              <Ionicons name="chevron-forward" size={16} color="#8d8f98" />
+            </Pressable>
 
-            <Ionicons name="chevron-forward" size={26} color="#8d8f98" />
-          </Pressable>
-
-          <Pressable onPress={onNewChat} style={({ pressed }) => [styles.newChatButton, pressed && styles.pressed]}>
-            <Ionicons name="create-outline" size={28} color="#ffffff" />
-          </Pressable>
+            <Pressable onPress={onNewChat} style={({ pressed }) => [styles.newChatButton, pressed && styles.pressed]}>
+              <Ionicons name="create-outline" size={30} color="#ffffff" />
+            </Pressable>
+          </View>
         </View>
       </Animated.View>
     </View>
@@ -304,28 +302,22 @@ const styles = StyleSheet.create({
     letterSpacing: -0.85,
   },
   emptyTopSpace: {
-    height: 230,
-  },
-  divider: {
-    height: 1,
-    width: '100%',
-    backgroundColor: 'rgba(17,24,39,0.07)',
+    height: 300,
   },
   recentHeaderRow: {
-    marginTop: 38,
     marginBottom: 25,
   },
   sectionTitle: {
     color: '#686b75',
     fontSize: 16,
-    fontWeight: '650',
+    fontWeight: '520',
     letterSpacing: -0.16,
   },
   recentList: {
-    gap: 28,
+    gap: 36,
   },
   recentRow: {
-    minHeight: 30,
+    minHeight: 28,
     justifyContent: 'center',
   },
   pressed: {
@@ -335,25 +327,28 @@ const styles = StyleSheet.create({
   recentTitle: {
     color: '#555866',
     fontSize: 19,
-    fontWeight: '520',
+    fontWeight: '500',
     letterSpacing: -0.28,
   },
-  recentDivider: {
-    marginTop: 36,
-    height: 1,
-    width: '100%',
-    backgroundColor: 'rgba(17,24,39,0.07)',
-  },
-  profileRow: {
-    marginTop: 38,
-    minHeight: 58,
+  bottomArea: {
+    marginTop: 'auto',
+    minHeight: 76,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 16,
   },
+  profileRow: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 42,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   avatar: {
-    width: 52,
-    height: 52,
+    width: 31,
+    height: 31,
     borderRadius: 999,
     backgroundColor: '#ececef',
     alignItems: 'center',
@@ -361,37 +356,38 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     color: '#62646e',
-    fontSize: 18,
+    fontSize: 12.5,
     fontWeight: '600',
-    letterSpacing: -0.2,
+    letterSpacing: -0.12,
   },
   profileTextWrap: {
     flex: 1,
+    minWidth: 0,
   },
   profileName: {
     color: '#4d505b',
-    fontSize: 20,
-    fontWeight: '650',
-    letterSpacing: -0.32,
+    fontSize: 13.5,
+    lineHeight: 17,
+    fontWeight: '600',
+    letterSpacing: -0.18,
   },
   profileEmail: {
-    marginTop: 2,
+    marginTop: 1,
     color: '#8b8e99',
-    fontSize: 15,
-    letterSpacing: -0.12,
+    fontSize: 10.5,
+    lineHeight: 13,
+    letterSpacing: -0.06,
   },
   newChatButton: {
-    marginTop: 'auto',
-    alignSelf: 'flex-end',
-    width: 52,
-    height: 52,
-    borderRadius: 13,
+    width: 58,
+    height: 58,
+    borderRadius: 15,
     backgroundColor: '#111113',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000000',
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
     shadowOffset: { width: 0, height: 10 },
     elevation: 10,
   },
