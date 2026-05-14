@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, shadows } from '../theme';
@@ -9,13 +10,28 @@ type AurenAuthScreenProps = {
 
 type AuthButtonProps = {
   label: string;
-  iconName: keyof typeof Ionicons.glyphMap;
+  icon?: ReactNode;
+  iconName?: keyof typeof Ionicons.glyphMap;
   variant?: 'dark' | 'light';
   iconColor?: string;
   onPress: () => void;
 };
 
-function AuthButton({ label, iconName, variant = 'light', iconColor, onPress }: AuthButtonProps) {
+function GoogleIcon() {
+  return (
+    <View style={styles.googleIcon}>
+      <View style={[styles.googleArc, styles.googleArcBlue]} />
+      <View style={[styles.googleArc, styles.googleArcRed]} />
+      <View style={[styles.googleArc, styles.googleArcYellow]} />
+      <View style={[styles.googleArc, styles.googleArcGreen]} />
+      <View style={styles.googleInnerCutout} />
+      <View style={styles.googleGap} />
+      <View style={styles.googleBlueBar} />
+    </View>
+  );
+}
+
+function AuthButton({ label, icon, iconName, variant = 'light', iconColor, onPress }: AuthButtonProps) {
   const dark = variant === 'dark';
 
   return (
@@ -29,7 +45,7 @@ function AuthButton({ label, iconName, variant = 'light', iconColor, onPress }: 
       accessibilityRole="button"
       accessibilityLabel={label}
     >
-      <Ionicons name={iconName} size={25} color={iconColor ?? (dark ? '#ffffff' : colors.text)} />
+      {icon ?? <Ionicons name={iconName ?? 'ellipse-outline'} size={25} color={iconColor ?? (dark ? '#ffffff' : colors.text)} />}
       <Text style={[styles.authButtonText, dark ? styles.authButtonTextDark : styles.authButtonTextLight]}>{label}</Text>
     </Pressable>
   );
@@ -38,7 +54,6 @@ function AuthButton({ label, iconName, variant = 'light', iconColor, onPress }: 
 export function AurenAuthScreen({ onContinue }: AurenAuthScreenProps) {
   return (
     <View style={styles.root}>
-      <View style={styles.topGlow} />
       <View style={styles.bottomGlow} />
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         <View style={styles.hero}>
@@ -51,7 +66,7 @@ export function AurenAuthScreen({ onContinue }: AurenAuthScreenProps) {
           <View style={styles.authCardHighlight} />
           <View style={styles.authCard}>
             <AuthButton label="Continue with Apple" iconName="logo-apple" variant="dark" onPress={onContinue} />
-            <AuthButton label="Continue with Google" iconName="logo-google" iconColor="#4285F4" onPress={onContinue} />
+            <AuthButton label="Continue with Google" icon={<GoogleIcon />} onPress={onContinue} />
             <AuthButton label="Continue with Email" iconName="mail-outline" onPress={onContinue} />
 
             <Pressable onPress={onContinue} hitSlop={12} style={styles.loginRow} accessibilityRole="button" accessibilityLabel="Log in">
@@ -68,25 +83,16 @@ export function AurenAuthScreen({ onContinue }: AurenAuthScreenProps) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#f6f7f5',
-  },
-  topGlow: {
-    position: 'absolute',
-    top: -140,
-    left: -80,
-    right: -80,
-    height: 360,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.78)',
+    backgroundColor: '#f7f7f5',
   },
   bottomGlow: {
     position: 'absolute',
-    left: -80,
-    right: -80,
-    bottom: -110,
-    height: 360,
+    left: -90,
+    right: -90,
+    bottom: -154,
+    height: 420,
     borderRadius: 999,
-    backgroundColor: 'rgba(232,235,238,0.76)',
+    backgroundColor: 'rgba(231,234,237,0.56)',
   },
   safeArea: {
     flex: 1,
@@ -97,41 +103,43 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingBottom: 52,
+    paddingTop: 34,
+    paddingBottom: 38,
   },
   wordmark: {
     color: '#202126',
-    fontSize: 23,
-    lineHeight: 29,
+    fontSize: 22,
+    lineHeight: 28,
     letterSpacing: 11,
     marginLeft: 11,
     fontWeight: '300',
   },
   title: {
-    marginTop: 74,
+    marginTop: 56,
     color: '#1f2229',
-    fontSize: 38,
-    lineHeight: 48,
-    letterSpacing: -1.15,
+    fontSize: 37,
+    lineHeight: 47,
+    letterSpacing: -1.18,
     textAlign: 'center',
     fontWeight: '720',
   },
   subtitle: {
-    marginTop: 26,
+    marginTop: 25,
     color: '#737780',
-    fontSize: 19,
+    fontSize: 18.5,
     lineHeight: 27,
     letterSpacing: -0.2,
     textAlign: 'center',
     fontWeight: '430',
+    maxWidth: 342,
   },
   authCardOuter: {
-    marginBottom: 56,
+    marginBottom: 60,
     borderRadius: 34,
     padding: 1,
-    backgroundColor: 'rgba(255,255,255,0.68)',
+    backgroundColor: 'rgba(255,255,255,0.72)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.76)',
+    borderColor: 'rgba(255,255,255,0.86)',
     ...shadows.soft,
   },
   authCardHighlight: {
@@ -139,19 +147,19 @@ const styles = StyleSheet.create({
     left: 18,
     right: 18,
     bottom: -8,
-    height: 30,
+    height: 28,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.54)',
-    opacity: 0.8,
+    backgroundColor: 'rgba(255,255,255,0.48)',
+    opacity: 0.72,
   },
   authCard: {
     borderRadius: 33,
     paddingHorizontal: 17,
     paddingTop: 22,
     paddingBottom: 25,
-    backgroundColor: 'rgba(255,255,255,0.43)',
+    backgroundColor: 'rgba(255,255,255,0.46)',
     borderWidth: 1,
-    borderColor: 'rgba(17,24,39,0.04)',
+    borderColor: 'rgba(17,24,39,0.035)',
     overflow: 'hidden',
   },
   authButton: {
@@ -172,11 +180,11 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   authButtonLight: {
-    backgroundColor: 'rgba(255,255,255,0.75)',
+    backgroundColor: 'rgba(255,255,255,0.76)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.82)',
+    borderColor: 'rgba(255,255,255,0.88)',
     shadowColor: '#111827',
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.048,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 8 },
     elevation: 3,
@@ -196,6 +204,66 @@ const styles = StyleSheet.create({
   },
   authButtonTextLight: {
     color: '#2b2d33',
+  },
+  googleIcon: {
+    width: 25,
+    height: 25,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  googleArc: {
+    position: 'absolute',
+    width: 25,
+    height: 25,
+    borderRadius: 999,
+    borderWidth: 5,
+  },
+  googleArcBlue: {
+    borderColor: '#4285F4',
+  },
+  googleArcRed: {
+    borderColor: '#EA4335',
+    transform: [{ rotate: '-42deg' }],
+    borderRightColor: 'transparent',
+    borderBottomColor: 'transparent',
+  },
+  googleArcYellow: {
+    borderColor: '#FBBC05',
+    transform: [{ rotate: '42deg' }],
+    borderTopColor: 'transparent',
+    borderRightColor: 'transparent',
+  },
+  googleArcGreen: {
+    borderColor: '#34A853',
+    transform: [{ rotate: '134deg' }],
+    borderTopColor: 'transparent',
+    borderLeftColor: 'transparent',
+  },
+  googleInnerCutout: {
+    position: 'absolute',
+    left: 6,
+    top: 6,
+    width: 13,
+    height: 13,
+    borderRadius: 999,
+    backgroundColor: '#ffffff',
+  },
+  googleGap: {
+    position: 'absolute',
+    right: -2,
+    top: 5,
+    width: 12,
+    height: 11,
+    backgroundColor: '#ffffff',
+  },
+  googleBlueBar: {
+    position: 'absolute',
+    right: 1,
+    top: 10,
+    width: 12,
+    height: 5,
+    borderRadius: 99,
+    backgroundColor: '#4285F4',
   },
   loginRow: {
     marginTop: 12,
