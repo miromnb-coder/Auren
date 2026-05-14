@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, shadows } from '../theme';
 
@@ -17,18 +17,10 @@ type AuthButtonProps = {
   onPress: () => void;
 };
 
+const GOOGLE_LOGO_URL = 'https://developers.google.com/identity/images/g-logo.png';
+
 function GoogleIcon() {
-  return (
-    <View style={styles.googleIcon}>
-      <View style={[styles.googleArc, styles.googleArcBlue]} />
-      <View style={[styles.googleArc, styles.googleArcRed]} />
-      <View style={[styles.googleArc, styles.googleArcYellow]} />
-      <View style={[styles.googleArc, styles.googleArcGreen]} />
-      <View style={styles.googleInnerCutout} />
-      <View style={styles.googleGap} />
-      <View style={styles.googleBlueBar} />
-    </View>
-  );
+  return <Image source={{ uri: GOOGLE_LOGO_URL }} style={styles.googleLogo} resizeMode="contain" />;
 }
 
 function AuthButton({ label, icon, iconName, variant = 'light', iconColor, onPress }: AuthButtonProps) {
@@ -54,7 +46,7 @@ function AuthButton({ label, icon, iconName, variant = 'light', iconColor, onPre
 export function AurenAuthScreen({ onContinue }: AurenAuthScreenProps) {
   return (
     <View style={styles.root}>
-      <View style={styles.bottomGlow} />
+      <View style={styles.backgroundSheen} />
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         <View style={styles.hero}>
           <Text style={styles.wordmark}>A U R E N</Text>
@@ -83,16 +75,16 @@ export function AurenAuthScreen({ onContinue }: AurenAuthScreenProps) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#f7f7f5',
+    backgroundColor: '#f8f8f6',
   },
-  bottomGlow: {
+  backgroundSheen: {
     position: 'absolute',
-    left: -90,
-    right: -90,
-    bottom: -154,
+    top: -120,
+    left: -70,
+    right: -70,
     height: 420,
     borderRadius: 999,
-    backgroundColor: 'rgba(231,234,237,0.56)',
+    backgroundColor: 'rgba(255,255,255,0.72)',
   },
   safeArea: {
     flex: 1,
@@ -103,8 +95,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 34,
-    paddingBottom: 38,
+    paddingTop: 92,
+    paddingBottom: 18,
   },
   wordmark: {
     color: '#202126',
@@ -134,12 +126,12 @@ const styles = StyleSheet.create({
     maxWidth: 342,
   },
   authCardOuter: {
-    marginBottom: 60,
+    marginBottom: 42,
     borderRadius: 34,
     padding: 1,
     backgroundColor: 'rgba(255,255,255,0.72)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.86)',
+    borderColor: 'rgba(255,255,255,0.9)',
     ...shadows.soft,
   },
   authCardHighlight: {
@@ -205,65 +197,9 @@ const styles = StyleSheet.create({
   authButtonTextLight: {
     color: '#2b2d33',
   },
-  googleIcon: {
-    width: 25,
-    height: 25,
-    borderRadius: 999,
-    overflow: 'hidden',
-  },
-  googleArc: {
-    position: 'absolute',
-    width: 25,
-    height: 25,
-    borderRadius: 999,
-    borderWidth: 5,
-  },
-  googleArcBlue: {
-    borderColor: '#4285F4',
-  },
-  googleArcRed: {
-    borderColor: '#EA4335',
-    transform: [{ rotate: '-42deg' }],
-    borderRightColor: 'transparent',
-    borderBottomColor: 'transparent',
-  },
-  googleArcYellow: {
-    borderColor: '#FBBC05',
-    transform: [{ rotate: '42deg' }],
-    borderTopColor: 'transparent',
-    borderRightColor: 'transparent',
-  },
-  googleArcGreen: {
-    borderColor: '#34A853',
-    transform: [{ rotate: '134deg' }],
-    borderTopColor: 'transparent',
-    borderLeftColor: 'transparent',
-  },
-  googleInnerCutout: {
-    position: 'absolute',
-    left: 6,
-    top: 6,
-    width: 13,
-    height: 13,
-    borderRadius: 999,
-    backgroundColor: '#ffffff',
-  },
-  googleGap: {
-    position: 'absolute',
-    right: -2,
-    top: 5,
-    width: 12,
-    height: 11,
-    backgroundColor: '#ffffff',
-  },
-  googleBlueBar: {
-    position: 'absolute',
-    right: 1,
-    top: 10,
-    width: 12,
-    height: 5,
-    borderRadius: 99,
-    backgroundColor: '#4285F4',
+  googleLogo: {
+    width: 22,
+    height: 22,
   },
   loginRow: {
     marginTop: 12,
