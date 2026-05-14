@@ -3,6 +3,7 @@ import {
   Animated,
   Easing,
   PanResponder,
+  ScrollView,
   StyleSheet,
   useWindowDimensions,
   View,
@@ -15,6 +16,8 @@ type AurenPlusSheetProps = {
   stage: PlusSheetStage;
   onStageChange: (stage: PlusSheetStage) => void;
 };
+
+const PHOTO_PLACEHOLDERS = ['photo-1', 'photo-2', 'photo-3', 'photo-4', 'photo-5'];
 
 const PEEK_HEIGHT_RATIO = 0.54;
 const EXPANDED_HEIGHT_RATIO = 0.92;
@@ -152,6 +155,25 @@ export function AurenPlusSheet({ stage, onStageChange }: AurenPlusSheetProps) {
     >
       <View style={styles.solidFill} />
       <View style={styles.handle} />
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.photoRail}
+      >
+        <View style={[styles.photoTile, styles.cameraTile]}>
+          <View style={styles.cameraIcon}>
+            <View style={styles.cameraTop} />
+            <View style={styles.cameraLens} />
+          </View>
+        </View>
+
+        {PHOTO_PLACEHOLDERS.map((photoKey) => (
+          <View key={photoKey} style={styles.photoTile}>
+            <View style={styles.photoSelectCircle} />
+          </View>
+        ))}
+      </ScrollView>
     </Animated.View>
   );
 }
@@ -183,5 +205,62 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     marginTop: 18,
     backgroundColor: 'rgba(110,113,124,0.28)',
+  },
+  photoRail: {
+    paddingTop: 36,
+    paddingHorizontal: 24,
+    paddingBottom: 8,
+    gap: 12,
+  },
+  photoTile: {
+    width: 112,
+    height: 112,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(17,24,39,0.055)',
+    backgroundColor: 'rgba(246,247,249,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    ...shadows.tiny,
+  },
+  cameraTile: {
+    backgroundColor: 'rgba(242,243,245,0.96)',
+  },
+  cameraIcon: {
+    width: 42,
+    height: 32,
+    borderRadius: 9,
+    borderWidth: 4,
+    borderColor: '#666a72',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cameraTop: {
+    position: 'absolute',
+    top: -8,
+    width: 18,
+    height: 8,
+    borderTopLeftRadius: 5,
+    borderTopRightRadius: 5,
+    backgroundColor: '#666a72',
+  },
+  cameraLens: {
+    width: 13,
+    height: 13,
+    borderRadius: 999,
+    borderWidth: 4,
+    borderColor: '#666a72',
+  },
+  photoSelectCircle: {
+    position: 'absolute',
+    top: 9,
+    right: 9,
+    width: 23,
+    height: 23,
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.92)',
+    backgroundColor: 'rgba(97,100,108,0.48)',
   },
 });
