@@ -229,6 +229,32 @@ async function hasRecentDuplicate(input: CreateActivityItemInput) {
   return (data ?? []).length > 0;
 }
 
+async function sendActivityPush(input: {
+  userId: string;
+  activityItem: ActivityItemRow;
+  title: string;
+  body?: string;
+}) {
+  try {
+    await supabase.functions.invoke('send-activity-push', {
+      body: {
+        userId: input.userId,
+        activityItemId: input.activityItem.id,
+        title: input.title,
+        body: input.body ?? '',
+        data: {
+          screen: 'activity',
+          activityItemId: input.activityItem.id,
+          category: input.activityItem.category,
+          type: input.activityItem.type,
+        },
+      },
+    });
+  } catch {
+    // Activity is the source of truth. Push delivery is best-effort and should not break item creation.
+  }
+}
+
 export async function createActivityItem(input: CreateActivityItemInput) {
   const preferences = await getOrCreateNotificationPreferences(input.userId);
   const decision = decideNotificationDelivery({
@@ -284,5 +310,11 @@ export async function createActivityItem(input: CreateActivityItemInput) {
 
   if (error) throw error;
 
-  return { item: data as ActivityItemRow, decision };
+  const item = data as ActivityItemRow;
+
+  if (decision.shouldPush) {
+    void sendActivityPush({ userId: input.userId, activityItem: item, title: input.title, body: input.body });
+  }
+
+  return { item, decision };
 }
