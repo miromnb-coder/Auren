@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useRef } from 'react';
+import * as MediaLibrary from 'expo-media-library';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
+  Image,
   PanResponder,
+  Pressable,
   ScrollView,
   StyleSheet,
   useWindowDimensions,
@@ -17,7 +20,13 @@ type AurenPlusSheetProps = {
   onStageChange: (stage: PlusSheetStage) => void;
 };
 
+type RecentPhoto = {
+  id: string;
+  uri: string;
+};
+
 const PHOTO_PLACEHOLDERS = ['photo-1', 'photo-2', 'photo-3', 'photo-4', 'photo-5'];
+const RECENT_PHOTO_LIMIT = 5;
 
 const PEEK_HEIGHT_RATIO = 0.54;
 const EXPANDED_HEIGHT_RATIO = 0.92;
@@ -33,6 +42,10 @@ function clamp(value: number, min: number, max: number) {
 
 export function AurenPlusSheet({ stage, onStageChange }: AurenPlusSheetProps) {
   const { height } = useWindowDimensions();
+  const [recentPhotos, setRecentPhotos] = useState<RecentPhoto[]>([]);
+
+  const placeholderCount = Math.max(0, RECENT_PHOTO_LIMIT - recentPhotos.length);
+  const placeholderItems = PHOTO_PLACEHOLDERS.slice(0, placeholderCount);
 
   const { closedY, expandedHeight, expandedY, peekY } = useMemo(() => {
     const nextExpandedHeight = Math.min(
@@ -78,6 +91,52 @@ export function AurenPlusSheet({ stage, onStageChange }: AurenPlusSheetProps) {
     animateToStage(stage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, closedY, expandedY, peekY]);
+
+  useEffect(() => {
+    if (stage === 'closed') return undefined;
+
+    let isMounted = true;
+
+    async function loadRecentPhotos() {
+      try {
+        let permission = await MediaLibrary.getPermissionsAsync();
+
+        if (!permission.granted && permission.canAskAgain) {
+          permission = await MediaLibrary.requestPermissionsAsync();
+        }
+
+        if (!isMounted || !permission.granted) {
+          setRecentPhotos([]);
+          return;
+        }
+
+        const result = await MediaLibrary.getAssetsAsync({
+          first: RECENT_PHOTO_LIMIT,
+          mediaType: MediaLibrary.MediaType.photo,
+          sortBy: [[MediaLibrary.SortBy.creationTime, false]],
+        });
+
+        if (!isMounted) return;
+
+        setRecentPhotos(
+          result.assets.map((asset) => ({
+            id: asset.id,
+            uri: asset.uri,
+          })),
+        );
+      } catch (error) {
+        if (isMounted) {
+          setRecentPhotos([]);
+        }
+      }
+    }
+
+    void loadRecentPhotos();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [stage]);
 
   const panResponder = useMemo(
     () =>
@@ -161,14 +220,21 @@ export function AurenPlusSheet({ stage, onStageChange }: AurenPlusSheetProps) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.photoRail}
       >
-        <View style={[styles.photoTile, styles.cameraTile]}>
+        <Pressable style={[styles.photoTile, styles.cameraTile]}>
           <View style={styles.cameraIcon}>
             <View style={styles.cameraTop} />
             <View style={styles.cameraLens} />
           </View>
-        </View>
+        </Pressable>
 
-        {PHOTO_PLACEHOLDERS.map((photoKey) => (
+        {recentPhotos.map((photo) => (
+          <Pressable key={photo.id} style={styles.photoTile}>
+            <Image source={{ uri: photo.uri }} style={styles.photoImage} resizeMode="cover" />
+            <View style={styles.photoSelectCircle} />
+          </Pressable>
+        ))}
+
+        {placeholderItems.map((photoKey) => (
           <View key={photoKey} style={styles.photoTile}>
             <View style={styles.photoSelectCircle} />
           </View>
@@ -251,6 +317,11 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 4,
     borderColor: '#666a72',
+  },
+  photoImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
   },
   photoSelectCircle: {
     position: 'absolute',
