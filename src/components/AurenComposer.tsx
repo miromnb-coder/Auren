@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Keyboard, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { colors, shadows } from '../theme';
-import { ChatIcon, ControlsIcon, MicIcon, PlusIcon, SendIcon } from './AurenIcons';
+import { ChatIcon, ControlsIcon, MicIcon, PlusIcon, SendIcon, StopIcon } from './AurenIcons';
 
 const INPUT_LINE_HEIGHT = 22;
 const MIN_VISIBLE_LINES = 1;
@@ -17,9 +17,11 @@ type AurenComposerProps = {
   onOpenControls?: () => void;
   onOpenChatMode?: () => void;
   onSendMessage?: (message: string) => void;
+  onStopGenerating?: () => void;
   plusActive?: boolean;
   controlsActive?: boolean;
   chatModeActive?: boolean;
+  isGenerating?: boolean;
 };
 
 function getVisualLineCount(text: string) {
@@ -38,15 +40,18 @@ export function AurenComposer({
   onOpenControls,
   onOpenChatMode,
   onSendMessage,
+  onStopGenerating,
   plusActive = false,
   controlsActive = false,
   chatModeActive = false,
+  isGenerating = false,
 }: AurenComposerProps) {
   const [draft, setDraft] = useState('');
   const [visibleLineCount, setVisibleLineCount] = useState(MIN_VISIBLE_LINES);
 
   const trimmedDraft = useMemo(() => draft.trim(), [draft]);
   const canSend = trimmedDraft.length > 0;
+  const canPressPrimary = isGenerating || canSend;
   const inputHeight = Math.min(visibleLineCount, MAX_VISIBLE_LINES) * INPUT_LINE_HEIGHT;
   const inputScrollable = visibleLineCount > MAX_VISIBLE_LINES;
   const composerHeight = BASE_COMPOSER_HEIGHT + inputHeight - MIN_INPUT_HEIGHT;
@@ -56,7 +61,12 @@ export function AurenComposer({
     setVisibleLineCount(getVisualLineCount(nextDraft));
   }
 
-  function handleSend() {
+  function handlePrimaryAction() {
+    if (isGenerating) {
+      onStopGenerating?.();
+      return;
+    }
+
     if (!canSend) return;
 
     onSendMessage?.(trimmedDraft);
@@ -115,12 +125,12 @@ export function AurenComposer({
           </Pressable>
           <Pressable style={styles.iconButton} accessibilityLabel="Voice input"><MicIcon /></Pressable>
           <Pressable
-            disabled={!canSend}
-            onPress={handleSend}
-            style={[styles.iconButton, styles.sendButton, canSend && styles.sendButtonActive]}
-            accessibilityLabel="Send message"
+            disabled={!canPressPrimary}
+            onPress={handlePrimaryAction}
+            style={[styles.iconButton, styles.sendButton, canPressPrimary && styles.sendButtonActive]}
+            accessibilityLabel={isGenerating ? 'Stop generating' : 'Send message'}
           >
-            <SendIcon muted={!canSend} />
+            {isGenerating ? <StopIcon /> : <SendIcon muted={!canSend} active={canSend} />}
           </Pressable>
         </View>
       </View>
