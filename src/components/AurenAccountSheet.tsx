@@ -8,6 +8,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -26,6 +27,7 @@ type AurenAccountSheetProps = {
   stage: AccountSheetStage;
   onStageChange: (stage: AccountSheetStage) => void;
   profile?: AccountSheetProfile;
+  onProfileUpdated?: (profile: AccountSheetProfile) => void;
 };
 
 type AccountRow = {
@@ -66,9 +68,24 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-function getAvatarInitial(initials: string) {
-  const cleanInitials = initials.trim();
-  return cleanInitials.charAt(0).toUpperCase() || 'A';
+function avatarInitial(initials: string) {
+  return initials.trim().charAt(0).toUpperCase() || 'A';
+}
+
+function usernameFromEmail(email: string) {
+  return email.split('@')[0]?.trim() || 'auren-user';
+}
+
+function initialsFromName(name: string, email: string) {
+  const initials = name
+    .trim()
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('');
+
+  return initials || email.charAt(0).toUpperCase() || 'A';
 }
 
 function AccountListRow({
@@ -86,12 +103,7 @@ function AccountListRow({
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      style={({ pressed }) => [
-        styles.row,
-        !last && styles.rowBorder,
-        pressed && !disabled && styles.pressed,
-        disabled && styles.disabled,
-      ]}
+      style={({ pressed }) => [styles.row, !last && styles.rowBorder, pressed && !disabled && styles.pressed, disabled && styles.disabled]}
     >
       <View style={styles.rowIconWrap}>
         <Ionicons name={row.icon} size={24} color={row.danger ? '#d4474b' : '#858891'} />
@@ -102,15 +114,21 @@ function AccountListRow({
   );
 }
 
-export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROFILE }: AurenAccountSheetProps) {
+export function AurenAccountSheet({
+  stage,
+  onStageChange,
+  profile = DEFAULT_PROFILE,
+  onProfileUpdated,
+}: AurenAccountSheetProps) {
   const { height } = useWindowDimensions();
+  const [view, setView] = useState<'account' | 'profile'>('account');
   const [signingOut, setSigningOut] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [localProfile, setLocalProfile] = useState<AccountSheetProfile>(profile);
+  const [draftName, setDraftName] = useState(profile.name);
 
   const { closedY, expandedHeight, expandedY, peekY } = useMemo(() => {
-    const nextExpandedHeight = Math.min(
-      Math.max(height * EXPANDED_HEIGHT_RATIO, EXPANDED_MIN_HEIGHT),
-      height,
-    );
+    const nextExpandedHeight = Math.min(Math.max(height * EXPANDED_HEIGHT_RATIO, EXPANDED_MIN_HEIGHT), height);
     const nextPeekHeight = Math.min(
       Math.max(height * PEEK_HEIGHT_RATIO, PEEK_MIN_HEIGHT),
       Math.min(PEEK_MAX_HEIGHT, nextExpandedHeight - 80),
@@ -128,22 +146,67 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
   const currentY = useRef(stage === 'closed' ? closedY : stage === 'expanded' ? expandedY : peekY);
   const dragStartY = useRef(currentY.current);
 
-  function getTargetY(nextStage: AccountSheetStage) {
+  function targetY(nextStage: AccountSheetStage) {
     if (nextStage === 'expanded') return expandedY;
     if (nextStage === 'peek') return peekY;
     return closedY;
   }
 
   function animateToStage(nextStage: AccountSheetStage) {
-    const targetY = getTargetY(nextStage);
-    currentY.current = targetY;
+    const nextY = targetY(nextStage);
+    currentY.current = nextY;
 
     Animated.timing(translateY, {
-      toValue: targetY,
+      toValue: nextY,
       duration: nextStage === 'closed' ? 250 : 320,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
+  }
+
+  function openProfile() {
+    setDraftName(localProfile.name);
+    setView('profile');
+    onStageChange('expanded');
+  }
+
+  async function saveProfile() {
+    const nextName = draftName.replace(/\s+/g, ' ').trim();
+    if (!nextName || savingProfile) return;
+
+    setSavingProfile(true);
+
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) throw error;
+
+      const userId = data.user?.id;
+      const email = data.user?.email ?? localProfile.email;
+      if (!userId) throw new Error('Missing user');
+
+      const nextProfile = {
+        name: nextName,
+        email,
+        initials: initialsFromName(nextName, email),
+      };
+
+      const { error: profileError } = await supabase.from('profiles').upsert({
+        id: userId,
+        email,
+        display_name: nextName,
+      });
+      if (profileError) throw profileError;
+
+      await supabase.auth.updateUser({ data: { display_name: nextName, full_name: nextName } });
+
+      setLocalProfile(nextProfile);
+      setDraftName(nextName);
+      onProfileUpdated?.(nextProfile);
+    } catch {
+      // Keep current profile visible if save fails.
+    } finally {
+      setSavingProfile(false);
+    }
   }
 
   async function handleSignOut() {
@@ -154,10 +217,7 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
 
     try {
       const { error } = await supabase.auth.signOut();
-
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
     } catch {
       setSigningOut(false);
       onStageChange('expanded');
@@ -165,6 +225,11 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
   }
 
   function handleRowPress(row: AccountRow) {
+    if (row.id === 'profile') {
+      openProfile();
+      return;
+    }
+
     if (row.id === 'sign-out') {
       void handleSignOut();
     }
@@ -172,8 +237,14 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
 
   useEffect(() => {
     animateToStage(stage);
+    if (stage === 'closed') setView('account');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, closedY, expandedY, peekY]);
+
+  useEffect(() => {
+    setLocalProfile(profile);
+    setDraftName(profile.name);
+  }, [profile.email, profile.initials, profile.name]);
 
   const panResponder = useMemo(
     () =>
@@ -207,27 +278,14 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
           const draggedDown = gestureState.dy > DRAG_THRESHOLD || gestureState.vy > FAST_SWIPE_VELOCITY;
 
           if (stage === 'peek') {
-            if (draggedUp) {
-              onStageChange('expanded');
-              return;
-            }
-
-            if (draggedDown) {
-              onStageChange('closed');
-              return;
-            }
-
-            onStageChange('peek');
-            return;
+            if (draggedUp) return onStageChange('expanded');
+            if (draggedDown) return onStageChange('closed');
+            return onStageChange('peek');
           }
 
           if (stage === 'expanded') {
-            if (draggedDown) {
-              onStageChange('peek');
-              return;
-            }
-
-            onStageChange('expanded');
+            if (draggedDown) return onStageChange('peek');
+            return onStageChange('expanded');
           }
         },
         onPanResponderTerminate: () => {
@@ -241,60 +299,133 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
     <Animated.View
       pointerEvents={stage === 'closed' ? 'none' : 'auto'}
       {...panResponder.panHandlers}
-      style={[
-        styles.sheet,
-        {
-          height: expandedHeight,
-          transform: [{ translateY }],
-        },
-      ]}
+      style={[styles.sheet, { height: expandedHeight, transform: [{ translateY }] }]}
     >
       <View style={styles.solidFill} />
       <View style={styles.handle} />
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={view === 'profile' ? styles.profileContent : styles.content}
         showsVerticalScrollIndicator={false}
         bounces={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.title}>Account</Text>
+        {view === 'profile' ? (
+          <>
+            <Text style={styles.title}>Profile</Text>
 
-        <Pressable style={({ pressed }) => [styles.profileCard, pressed && styles.pressed]}>
-          <View style={styles.largeAvatar}>
-            <Text style={styles.largeAvatarText}>{getAvatarInitial(profile.initials)}</Text>
-          </View>
-          <View style={styles.profileTextWrap}>
-            <Text style={styles.profileName} numberOfLines={1}>{profile.name}</Text>
-            <Text style={styles.profileEmail} numberOfLines={1}>{profile.email}</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={27} color="#a7a9b0" />
-        </Pressable>
+            <View style={styles.profileHeroCard}>
+              <View style={styles.profileHeroAvatar}>
+                <Text style={styles.profileHeroAvatarText}>{avatarInitial(localProfile.initials)}</Text>
+              </View>
+              <Text style={styles.profileHeroName} numberOfLines={1}>{localProfile.name}</Text>
+              <Text style={styles.profileHeroEmail} numberOfLines={1}>{localProfile.email}</Text>
+            </View>
 
-        <View style={styles.groupCard}>
-          {MAIN_ROWS.map((row, index) => (
-            <AccountListRow
-              key={row.id}
-              row={row}
-              last={index === MAIN_ROWS.length - 1}
-              onPress={() => handleRowPress(row)}
-            />
-          ))}
-        </View>
+            <View style={styles.profileFieldsCard}>
+              <View style={[styles.profileFieldRow, styles.profileFieldBorder]}>
+                <View style={styles.profileFieldTextWrap}>
+                  <Text style={styles.profileFieldLabel}>Full name</Text>
+                  <TextInput
+                    value={draftName}
+                    onChangeText={setDraftName}
+                    placeholder="Your name"
+                    placeholderTextColor="#a4a7af"
+                    autoCapitalize="words"
+                    autoCorrect={false}
+                    returnKeyType="done"
+                    style={styles.profileFieldInput}
+                  />
+                </View>
+                <Ionicons name="pencil-outline" size={25} color="#858891" />
+              </View>
 
-        {SECONDARY_ROWS.map((row) => (
-          <View key={row.id} style={styles.singleCard}>
-            <AccountListRow
-              row={row}
-              last
-              disabled={row.id === 'sign-out' && signingOut}
-              onPress={() => handleRowPress(row)}
-            />
-          </View>
-        ))}
+              <View style={[styles.profileFieldRow, styles.profileFieldBorder]}>
+                <View style={styles.profileFieldTextWrap}>
+                  <Text style={styles.profileFieldLabel}>Email</Text>
+                  <Text style={styles.profileFieldLockedValue} numberOfLines={1}>{localProfile.email}</Text>
+                </View>
+                <Ionicons name="lock-closed-outline" size={24} color="#858891" />
+              </View>
+
+              <View style={styles.profileFieldRow}>
+                <View style={styles.profileFieldTextWrap}>
+                  <Text style={styles.profileFieldLabel}>Username</Text>
+                  <Text style={styles.profileFieldValue} numberOfLines={1}>{usernameFromEmail(localProfile.email)}</Text>
+                </View>
+                <Ionicons name="pencil-outline" size={25} color="#858891" />
+              </View>
+            </View>
+
+            <View style={styles.aboutCard}>
+              <View style={styles.profileFieldTextWrap}>
+                <Text style={styles.profileFieldLabel}>About</Text>
+                <Text style={styles.aboutPlaceholder}>Add a short profile note.</Text>
+              </View>
+              <Ionicons name="pencil-outline" size={25} color="#858891" />
+            </View>
+
+            <Pressable
+              onPress={saveProfile}
+              disabled={savingProfile || draftName.trim().length === 0}
+              style={({ pressed }) => [
+                styles.saveButton,
+                pressed && styles.pressed,
+                (savingProfile || draftName.trim().length === 0) && styles.disabled,
+              ]}
+            >
+              <Text style={styles.saveButtonText}>{savingProfile ? 'Saving…' : 'Save changes'}</Text>
+            </Pressable>
+
+            <Pressable onPress={() => setView('account')} style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
+              <Text style={styles.backButtonText}>Back</Text>
+            </Pressable>
+          </>
+        ) : (
+          <>
+            <Text style={styles.title}>Account</Text>
+
+            <Pressable onPress={openProfile} style={({ pressed }) => [styles.profileCard, pressed && styles.pressed]}>
+              <View style={styles.largeAvatar}>
+                <Text style={styles.largeAvatarText}>{avatarInitial(localProfile.initials)}</Text>
+              </View>
+              <View style={styles.profileTextWrap}>
+                <Text style={styles.profileName} numberOfLines={1}>{localProfile.name}</Text>
+                <Text style={styles.profileEmail} numberOfLines={1}>{localProfile.email}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={27} color="#a7a9b0" />
+            </Pressable>
+
+            <View style={styles.groupCard}>
+              {MAIN_ROWS.map((row, index) => (
+                <AccountListRow key={row.id} row={row} last={index === MAIN_ROWS.length - 1} onPress={() => handleRowPress(row)} />
+              ))}
+            </View>
+
+            {SECONDARY_ROWS.map((row) => (
+              <View key={row.id} style={styles.singleCard}>
+                <AccountListRow
+                  row={row}
+                  last
+                  disabled={row.id === 'sign-out' && signingOut}
+                  onPress={() => handleRowPress(row)}
+                />
+              </View>
+            ))}
+          </>
+        )}
       </ScrollView>
     </Animated.View>
   );
 }
+
+const baseCardShadow = {
+  shadowColor: '#111827',
+  shadowOpacity: 0.035,
+  shadowRadius: 14,
+  shadowOffset: { width: 0, height: 8 },
+  elevation: 4,
+};
 
 const styles = StyleSheet.create({
   sheet: {
@@ -312,10 +443,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...shadows.soft,
   },
-  solidFill: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#fbfbfa',
-  },
+  solidFill: { ...StyleSheet.absoluteFillObject, backgroundColor: '#fbfbfa' },
   handle: {
     alignSelf: 'center',
     width: 48,
@@ -324,14 +452,9 @@ const styles = StyleSheet.create({
     marginTop: 18,
     backgroundColor: 'rgba(110,113,124,0.28)',
   },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: 23,
-    paddingTop: 31,
-    paddingBottom: 44,
-  },
+  scrollView: { flex: 1 },
+  content: { paddingHorizontal: 23, paddingTop: 31, paddingBottom: 44 },
+  profileContent: { paddingHorizontal: 24, paddingTop: 31, paddingBottom: 38 },
   title: {
     color: '#1d1d20',
     fontSize: 19,
@@ -350,11 +473,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.78)',
     borderWidth: 1,
     borderColor: 'rgba(17,24,39,0.045)',
-    shadowColor: '#111827',
-    shadowOpacity: 0.045,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 5,
+    ...baseCardShadow,
   },
   largeAvatar: {
     width: 80,
@@ -365,32 +484,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  largeAvatarText: {
-    color: '#111113',
-    fontSize: 39,
-    lineHeight: 44,
-    fontWeight: '430',
-    letterSpacing: -1.2,
-  },
-  profileTextWrap: {
-    flex: 1,
-    minWidth: 0,
-  },
-  profileName: {
-    color: '#1d1d20',
-    fontSize: 22,
-    lineHeight: 27,
-    fontWeight: '650',
-    letterSpacing: -0.45,
-  },
-  profileEmail: {
-    marginTop: 2,
-    color: '#7f838c',
-    fontSize: 14.5,
-    lineHeight: 19,
-    fontWeight: '440',
-    letterSpacing: -0.12,
-  },
+  largeAvatarText: { color: '#111113', fontSize: 39, lineHeight: 44, fontWeight: '430', letterSpacing: -1.2 },
+  profileTextWrap: { flex: 1, minWidth: 0 },
+  profileName: { color: '#1d1d20', fontSize: 22, lineHeight: 27, fontWeight: '650', letterSpacing: -0.45 },
+  profileEmail: { marginTop: 2, color: '#7f838c', fontSize: 14.5, lineHeight: 19, fontWeight: '440', letterSpacing: -0.12 },
   groupCard: {
     marginTop: 27,
     borderRadius: 18,
@@ -398,11 +495,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.82)',
     borderWidth: 1,
     borderColor: 'rgba(17,24,39,0.045)',
-    shadowColor: '#111827',
-    shadowOpacity: 0.035,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
+    ...baseCardShadow,
   },
   singleCard: {
     marginTop: 22,
@@ -411,11 +504,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.82)',
     borderWidth: 1,
     borderColor: 'rgba(17,24,39,0.045)',
-    shadowColor: '#111827',
-    shadowOpacity: 0.035,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
+    ...baseCardShadow,
   },
   row: {
     minHeight: 67,
@@ -424,32 +513,93 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.82)',
   },
-  rowBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(17,24,39,0.07)',
+  rowBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(17,24,39,0.07)' },
+  rowIconWrap: { width: 39, marginRight: 15, alignItems: 'flex-start', justifyContent: 'center' },
+  rowLabel: { flex: 1, color: '#1f2228', fontSize: 16, lineHeight: 21, fontWeight: '450', letterSpacing: -0.17 },
+  dangerText: { color: '#d4474b' },
+  profileHeroCard: {
+    minHeight: 214,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    borderWidth: 1,
+    borderColor: 'rgba(17,24,39,0.045)',
+    ...baseCardShadow,
   },
-  rowIconWrap: {
-    width: 39,
-    marginRight: 15,
-    alignItems: 'flex-start',
+  profileHeroAvatar: {
+    width: 112,
+    height: 112,
+    borderRadius: 999,
+    backgroundColor: '#eeedf2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 26,
+  },
+  profileHeroAvatarText: { color: '#111113', fontSize: 58, lineHeight: 64, fontWeight: '400', letterSpacing: -1.8 },
+  profileHeroName: { color: '#111113', fontSize: 31, lineHeight: 36, fontWeight: '500', letterSpacing: -0.85 },
+  profileHeroEmail: { marginTop: 5, color: '#777b84', fontSize: 17, lineHeight: 22, fontWeight: '440', letterSpacing: -0.18 },
+  profileFieldsCard: {
+    marginTop: 28,
+    borderRadius: 18,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.82)',
+    borderWidth: 1,
+    borderColor: 'rgba(17,24,39,0.045)',
+    ...baseCardShadow,
+  },
+  profileFieldRow: {
+    minHeight: 82,
+    paddingHorizontal: 25,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.82)',
+  },
+  profileFieldBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(17,24,39,0.07)' },
+  profileFieldTextWrap: { flex: 1, minWidth: 0 },
+  profileFieldLabel: { color: '#737780', fontSize: 13.5, lineHeight: 18, fontWeight: '500', letterSpacing: -0.06, marginBottom: 7 },
+  profileFieldInput: { minHeight: 32, padding: 0, color: '#1d1d20', fontSize: 18, lineHeight: 24, fontWeight: '440', letterSpacing: -0.24 },
+  profileFieldValue: { color: '#1d1d20', fontSize: 18, lineHeight: 24, fontWeight: '440', letterSpacing: -0.24 },
+  profileFieldLockedValue: { color: '#777b84', fontSize: 18, lineHeight: 24, fontWeight: '440', letterSpacing: -0.24 },
+  aboutCard: {
+    minHeight: 82,
+    marginTop: 25,
+    borderRadius: 18,
+    paddingHorizontal: 25,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.82)',
+    borderWidth: 1,
+    borderColor: 'rgba(17,24,39,0.045)',
+    ...baseCardShadow,
+  },
+  aboutPlaceholder: { color: '#777b84', fontSize: 15.5, lineHeight: 21, fontWeight: '430', letterSpacing: -0.12 },
+  saveButton: {
+    height: 58,
+    marginTop: 34,
+    borderRadius: 14,
+    backgroundColor: '#111113',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOpacity: 0.15,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 7,
+  },
+  saveButtonText: { color: '#ffffff', fontSize: 17, lineHeight: 22, fontWeight: '520', letterSpacing: -0.2 },
+  backButton: {
+    height: 58,
+    marginTop: 18,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(17,24,39,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  rowLabel: {
-    flex: 1,
-    color: '#1f2228',
-    fontSize: 16,
-    lineHeight: 21,
-    fontWeight: '450',
-    letterSpacing: -0.17,
-  },
-  dangerText: {
-    color: '#d4474b',
-  },
-  pressed: {
-    opacity: 0.68,
-    transform: [{ scale: 0.993 }],
-  },
-  disabled: {
-    opacity: 0.55,
-  },
+  backButtonText: { color: '#777b84', fontSize: 17, lineHeight: 22, fontWeight: '500', letterSpacing: -0.2 },
+  pressed: { opacity: 0.68, transform: [{ scale: 0.993 }] },
+  disabled: { opacity: 0.55 },
 });
