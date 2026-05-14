@@ -35,6 +35,7 @@ type AurenSidebarProps = {
   onNewChat?: () => void;
   onViewAll?: () => void;
   onOpenProfile?: () => void;
+  onOpenActivity?: () => void;
   onOpenRecentChat?: (chatId: string) => void;
   recentChats?: RecentChat[];
   profile?: SidebarProfile;
@@ -90,6 +91,7 @@ export function AurenSidebar({
   onNewChat,
   onViewAll: _onViewAll,
   onOpenProfile,
+  onOpenActivity,
   onOpenRecentChat,
   recentChats = DEFAULT_RECENT_CHATS,
   profile = DEFAULT_PROFILE,
@@ -214,7 +216,18 @@ export function AurenSidebar({
         ]}
       >
         <View style={styles.drawerInner}>
-          <Text style={styles.brand}>Auren</Text>
+          <View style={styles.drawerHeader}>
+            <Text style={styles.brand}>Auren</Text>
+            <Pressable
+              onPress={onOpenActivity}
+              hitSlop={16}
+              style={({ pressed }) => [styles.activityButton, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Open activity"
+            >
+              <Ionicons name="notifications-outline" size={24} color="#343743" />
+            </Pressable>
+          </View>
 
           <View style={styles.emptyTopSpace} />
 
@@ -313,9 +326,15 @@ const styles = StyleSheet.create({
   },
   drawerInner: {
     flex: 1,
-    paddingTop: 100,
+    paddingTop: 72,
     paddingHorizontal: 28,
     paddingBottom: 42,
+  },
+  drawerHeader: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   brand: {
     color: colors.text,
@@ -323,6 +342,13 @@ const styles = StyleSheet.create({
     fontSize: 30,
     lineHeight: 37,
     letterSpacing: -0.85,
+  },
+  activityButton: {
+    width: 44,
+    height: 44,
+    marginRight: -6,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyTopSpace: {
     height: 300,
