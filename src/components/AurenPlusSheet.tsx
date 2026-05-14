@@ -40,6 +40,18 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
+function canRenderImageUri(uri?: string | null) {
+  if (!uri) return false;
+
+  return (
+    uri.startsWith('file://') ||
+    uri.startsWith('content://') ||
+    uri.startsWith('assets-library://') ||
+    uri.startsWith('http://') ||
+    uri.startsWith('https://')
+  );
+}
+
 export function AurenPlusSheet({ stage, onStageChange }: AurenPlusSheetProps) {
   const { height } = useWindowDimensions();
   const [recentPhotos, setRecentPhotos] = useState<RecentPhoto[]>([]);
@@ -116,14 +128,32 @@ export function AurenPlusSheet({ stage, onStageChange }: AurenPlusSheetProps) {
           sortBy: [[MediaLibrary.SortBy.creationTime, false]],
         });
 
+        const photos = await Promise.all(
+          result.assets.map(async (asset) => {
+            try {
+              const info = await MediaLibrary.getAssetInfoAsync(asset);
+              const uri = info.localUri ?? asset.uri;
+
+              if (!canRenderImageUri(uri)) return null;
+
+              return {
+                id: asset.id,
+                uri,
+              };
+            } catch {
+              if (!canRenderImageUri(asset.uri)) return null;
+
+              return {
+                id: asset.id,
+                uri: asset.uri,
+              };
+            }
+          }),
+        );
+
         if (!isMounted) return;
 
-        setRecentPhotos(
-          result.assets.map((asset) => ({
-            id: asset.id,
-            uri: asset.uri,
-          })),
-        );
+        setRecentPhotos(photos.filter((photo): photo is RecentPhoto => Boolean(photo)));
       } catch (error) {
         if (isMounted) {
           setRecentPhotos([]);
