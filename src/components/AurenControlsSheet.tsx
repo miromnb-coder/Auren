@@ -67,7 +67,7 @@ const SERVICES: ServiceItem[] = [
 ];
 
 const FEATURED_SERVICES = [SERVICES[1], SERVICES[0], SERVICES[2]];
-const FEATURED_ROTATION_MS = 2600;
+const FEATURED_ROTATION_MS = 3400;
 
 const PEEK_HEIGHT_RATIO = 0.54;
 const EXPANDED_HEIGHT_RATIO = 0.92;
@@ -84,6 +84,8 @@ function clamp(value: number, min: number, max: number) {
 export function AurenControlsSheet({ stage, onStageChange }: AurenControlsSheetProps) {
   const { height } = useWindowDimensions();
   const [featuredIndex, setFeaturedIndex] = useState(1);
+  const featuredOpacity = useRef(new Animated.Value(1)).current;
+  const featuredTranslateX = useRef(new Animated.Value(0)).current;
 
   const visibleFeaturedServices = useMemo(() => {
     const serviceCount = FEATURED_SERVICES.length;
@@ -145,12 +147,45 @@ export function AurenControlsSheet({ stage, onStageChange }: AurenControlsSheetP
   useEffect(() => {
     if (stage === 'closed') return undefined;
 
-    const rotationTimer = setInterval(() => {
-      setFeaturedIndex((currentIndex) => (currentIndex + 1) % FEATURED_SERVICES.length);
-    }, FEATURED_ROTATION_MS);
+    const rotateFeatured = () => {
+      Animated.parallel([
+        Animated.timing(featuredOpacity, {
+          toValue: 0.72,
+          duration: 280,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(featuredTranslateX, {
+          toValue: -14,
+          duration: 280,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setFeaturedIndex((currentIndex) => (currentIndex + 1) % FEATURED_SERVICES.length);
+        featuredTranslateX.setValue(14);
+
+        Animated.parallel([
+          Animated.timing(featuredOpacity, {
+            toValue: 1,
+            duration: 560,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(featuredTranslateX, {
+            toValue: 0,
+            duration: 560,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]).start();
+      });
+    };
+
+    const rotationTimer = setInterval(rotateFeatured, FEATURED_ROTATION_MS);
 
     return () => clearInterval(rotationTimer);
-  }, [stage]);
+  }, [featuredOpacity, featuredTranslateX, stage]);
 
   const panResponder = useMemo(
     () =>
@@ -238,7 +273,15 @@ export function AurenControlsSheet({ stage, onStageChange }: AurenControlsSheetP
           <Text style={styles.subtitle}>Connect the apps you use every day. Auren will bring everything together.</Text>
         </View>
 
-        <View style={styles.featuredRow}>
+        <Animated.View
+          style={[
+            styles.featuredRow,
+            {
+              opacity: featuredOpacity,
+              transform: [{ translateX: featuredTranslateX }],
+            },
+          ]}
+        >
           {visibleFeaturedServices.map((service, index) => (
             <View
               key={`${service.id}-${index}`}
@@ -252,7 +295,7 @@ export function AurenControlsSheet({ stage, onStageChange }: AurenControlsSheetP
               <Text style={styles.featuredDescription} numberOfLines={1}>{service.description}</Text>
             </View>
           ))}
-        </View>
+        </Animated.View>
 
         <View style={styles.paginationRow}>
           {FEATURED_SERVICES.map((service, index) => (
