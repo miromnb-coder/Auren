@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { AurenAccountSheet, type AccountSheetStage } from './AurenAccountSheet';
 import { AurenActivityScreen } from './AurenActivityScreen';
+import { addAurenNotificationResponseListener, registerForAurenPushNotifications } from '../lib/aurenPushNotifications';
 import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
 
@@ -135,6 +136,12 @@ export function AurenSidebar({
     }
   }, []);
 
+  const openActivityScreen = useCallback(() => {
+    setActivityOpen(true);
+    onOpenActivity?.();
+    onClose?.();
+  }, [onClose, onOpenActivity]);
+
   useEffect(() => {
     Animated.timing(progress, {
       toValue: open ? 1 : 0,
@@ -150,7 +157,13 @@ export function AurenSidebar({
 
   useEffect(() => {
     void refreshUnreadCount();
+    void registerForAurenPushNotifications();
   }, [refreshUnreadCount]);
+
+  useEffect(() => {
+    const subscription = addAurenNotificationResponseListener(openActivityScreen);
+    return () => subscription.remove();
+  }, [openActivityScreen]);
 
   useEffect(() => {
     if (open || activityOpen) {
@@ -221,12 +234,6 @@ export function AurenSidebar({
   function openAccountSheet() {
     setAccountSheetStage('expanded');
     onOpenProfile?.();
-  }
-
-  function openActivityScreen() {
-    setActivityOpen(true);
-    onOpenActivity?.();
-    onClose?.();
   }
 
   function closeActivityScreen() {
