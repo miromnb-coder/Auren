@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { Fragment, useEffect, useMemo, useRef } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme';
 
@@ -13,6 +13,106 @@ type AurenMessageListProps = {
   messages: AurenMessage[];
   assistantThinking: boolean;
 };
+
+function isHorizontalRule(line: string) {
+  return /^\s*(-{3,}|_{3,}|\*{3,})\s*$/.test(line);
+}
+
+function isMarkdownTableDivider(line: string) {
+  return /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line);
+}
+
+function cleanTableLine(line: string) {
+  return line
+    .split('|')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(' · ');
+}
+
+function renderInlineText(text: string, keyPrefix: string, baseStyle = styles.assistantText) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g).filter((part) => part.length > 0);
+
+  return (
+    <Text style={baseStyle}>
+      {parts.map((part, index) => {
+        const boldMatch = part.match(/^\*\*(.+)\*\*$/);
+
+        if (boldMatch) {
+          return (
+            <Text key={`${keyPrefix}-bold-${index}`} style={styles.assistantBoldText}>
+              {boldMatch[1]}
+            </Text>
+          );
+        }
+
+        return <Fragment key={`${keyPrefix}-text-${index}`}>{part}</Fragment>;
+      })}
+    </Text>
+  );
+}
+
+function renderAssistantLine(rawLine: string, index: number) {
+  if (isHorizontalRule(rawLine) || isMarkdownTableDivider(rawLine)) {
+    return <View key={`spacer-${index}`} style={styles.assistantSmallSpacer} />;
+  }
+
+  const trimmedLine = rawLine.trim();
+
+  if (trimmedLine.length === 0) {
+    return <View key={`empty-${index}`} style={styles.assistantParagraphGap} />;
+  }
+
+  const headingMatch = trimmedLine.match(/^#{1,4}\s+(.+)$/);
+
+  if (headingMatch) {
+    const headingText = headingMatch[1].replace(/\*\*/g, '').trim();
+
+    return (
+      <Text key={`heading-${index}`} style={styles.assistantHeadingText}>
+        {headingText}
+      </Text>
+    );
+  }
+
+  const bulletMatch = trimmedLine.match(/^[-*•]\s+(.+)$/);
+
+  if (bulletMatch) {
+    return (
+      <View key={`bullet-${index}`} style={styles.assistantListRow}>
+        <Text style={styles.assistantListMarker}>•</Text>
+        <View style={styles.assistantListContent}>
+          {renderInlineText(bulletMatch[1], `bullet-${index}`)}
+        </View>
+      </View>
+    );
+  }
+
+  const numberedMatch = trimmedLine.match(/^(\d+)[.)]\s+(.+)$/);
+
+  if (numberedMatch) {
+    return (
+      <View key={`number-${index}`} style={styles.assistantListRow}>
+        <Text style={styles.assistantNumberMarker}>{numberedMatch[1]}.</Text>
+        <View style={styles.assistantListContent}>
+          {renderInlineText(numberedMatch[2], `number-${index}`)}
+        </View>
+      </View>
+    );
+  }
+
+  const displayLine = trimmedLine.includes('|') ? cleanTableLine(trimmedLine) : trimmedLine;
+
+  return (
+    <View key={`paragraph-${index}`} style={styles.assistantParagraph}>
+      {renderInlineText(displayLine, `paragraph-${index}`)}
+    </View>
+  );
+}
+
+function AurenAssistantText({ content }: { content: string }) {
+  return <View style={styles.assistantTextWrap}>{content.split('\n').map(renderAssistantLine)}</View>;
+}
 
 export function AurenMessageList({ messages, assistantThinking }: AurenMessageListProps) {
   const scrollViewRef = useRef<ScrollView | null>(null);
@@ -54,7 +154,7 @@ export function AurenMessageList({ messages, assistantThinking }: AurenMessageLi
 
           return (
             <View key={message.id} style={styles.assistantRow}>
-              <Text style={styles.assistantText}>{message.content}</Text>
+              <AurenAssistantText content={message.content} />
             </View>
           );
         })}
@@ -106,13 +206,59 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 24,
   },
+  assistantTextWrap: {
+    width: '88%',
+  },
   assistantText: {
-    maxWidth: '88%',
     color: colors.text,
     fontSize: 17.5,
     lineHeight: 26,
     letterSpacing: -0.28,
     fontWeight: '500',
+  },
+  assistantBoldText: {
+    fontWeight: '760',
+  },
+  assistantHeadingText: {
+    marginTop: 10,
+    marginBottom: 8,
+    color: colors.text,
+    fontSize: 20,
+    lineHeight: 27,
+    letterSpacing: -0.45,
+    fontWeight: '760',
+  },
+  assistantParagraph: {
+    marginBottom: 8,
+  },
+  assistantParagraphGap: {
+    height: 8,
+  },
+  assistantSmallSpacer: {
+    height: 6,
+  },
+  assistantListRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  assistantListMarker: {
+    width: 18,
+    color: colors.text,
+    fontSize: 17.5,
+    lineHeight: 26,
+    fontWeight: '650',
+  },
+  assistantNumberMarker: {
+    width: 28,
+    color: colors.text,
+    fontSize: 17.5,
+    lineHeight: 26,
+    fontWeight: '700',
+  },
+  assistantListContent: {
+    flex: 1,
   },
   thinkingText: {
     color: colors.muted,
