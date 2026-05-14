@@ -255,7 +255,7 @@ export function AurenSidebar({
       {accountSheetOpen ? (
         <Pressable style={styles.accountSheetBackdrop} onPress={() => setAccountSheetStage('closed')} />
       ) : null}
-      <AurenAccountSheet stage={accountSheetStage} onStageChange={setAccountSheetStage} />
+      <AurenAccountSheet stage={accountSheetStage} onStageChange={setAccountSheetStage} profile={profile} />
     </View>
   );
 }
