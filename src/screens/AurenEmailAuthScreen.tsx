@@ -1,19 +1,126 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
 
 type AurenEmailAuthScreenProps = {
   onBack: () => void;
-  onContinue: () => void;
 };
 
-export function AurenEmailAuthScreen({ onBack, onContinue }: AurenEmailAuthScreenProps) {
+type LoadingAction = 'continue' | 'magic' | null;
+
+export function AurenEmailAuthScreen({ onBack }: AurenEmailAuthScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [loadingAction, setLoadingAction] = useState<LoadingAction>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [messageTone, setMessageTone] = useState<'error' | 'success'>('error');
+
+  const loading = loadingAction !== null;
+
+  function setNotice(nextMessage: string, tone: 'error' | 'success') {
+    setMessage(nextMessage);
+    setMessageTone(tone);
+  }
+
+  function clearNotice() {
+    setMessage(null);
+  }
+
+  function cleanEmail() {
+    return email.trim().toLowerCase();
+  }
+
+  function getValidEmail() {
+    const nextEmail = cleanEmail();
+
+    if (!nextEmail.includes('@') || !nextEmail.includes('.')) {
+      setNotice('Enter a valid email address.', 'error');
+      return null;
+    }
+
+    return nextEmail;
+  }
+
+  async function handleContinue() {
+    const nextEmail = getValidEmail();
+
+    if (!nextEmail) return;
+
+    if (password.length < 6) {
+      setNotice('Password must be at least 6 characters.', 'error');
+      return;
+    }
+
+    setLoadingAction('continue');
+    clearNotice();
+
+    try {
+      const login = await supabase.auth.signInWithPassword({ email: nextEmail, password });
+
+      if (!login.error) {
+        Keyboard.dismiss();
+        return;
+      }
+
+      const canCreateAccount = login.error.message.toLowerCase().includes('invalid login credentials');
+
+      if (!canCreateAccount) throw login.error;
+
+      const created = await supabase.auth.signUp({ email: nextEmail, password });
+
+      if (created.error) throw created.error;
+
+      Keyboard.dismiss();
+
+      if (!created.data.session) {
+        setNotice('Account created. Check your email to confirm it, then log in.', 'success');
+      }
+    } catch (error) {
+      const nextMessage = error instanceof Error ? error.message : 'Could not continue. Please try again.';
+      setNotice(nextMessage, 'error');
+    } finally {
+      setLoadingAction(null);
+    }
+  }
+
+  async function handleMagicLink() {
+    const nextEmail = getValidEmail();
+
+    if (!nextEmail) return;
+
+    setLoadingAction('magic');
+    clearNotice();
+
+    try {
+      const { error } = await supabase.auth.signInWithOtp({ email: nextEmail });
+
+      if (error) throw error;
+
+      Keyboard.dismiss();
+      setNotice('Magic link sent. Check your email to continue.', 'success');
+    } catch (error) {
+      const nextMessage = error instanceof Error ? error.message : 'Could not send magic link. Please try again.';
+      setNotice(nextMessage, 'error');
+    } finally {
+      setLoadingAction(null);
+    }
+  }
 
   return (
     <LinearGradient colors={['#fbfbfa', '#f7f7f5', '#eef1f2']} locations={[0, 0.7, 1]} style={styles.root}>
@@ -43,13 +150,17 @@ export function AurenEmailAuthScreen({ onBack, onContinue }: AurenEmailAuthScree
                 <View style={styles.inputShell}>
                   <TextInput
                     value={email}
-                    onChangeText={setEmail}
+                    onChangeText={(nextEmail) => {
+                      setEmail(nextEmail);
+                      clearNotice();
+                    }}
                     placeholder="you@example.com"
                     placeholderTextColor="#858995"
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
                     textContentType="emailAddress"
+                    editable={!loading}
                     style={styles.input}
                   />
                 </View>
@@ -58,13 +169,17 @@ export function AurenEmailAuthScreen({ onBack, onContinue }: AurenEmailAuthScree
                 <View style={styles.inputShell}>
                   <TextInput
                     value={password}
-                    onChangeText={setPassword}
+                    onChangeText={(nextPassword) => {
+                      setPassword(nextPassword);
+                      clearNotice();
+                    }}
                     placeholder="Enter your password"
                     placeholderTextColor="#858995"
                     secureTextEntry={!passwordVisible}
                     autoCapitalize="none"
                     autoCorrect={false}
                     textContentType="password"
+                    editable={!loading}
                     style={styles.input}
                   />
                   <Pressable
@@ -82,27 +197,31 @@ export function AurenEmailAuthScreen({ onBack, onContinue }: AurenEmailAuthScree
                   <Text style={styles.forgotText}>Forgot password?</Text>
                 </Pressable>
 
+                {message ? <Text style={messageTone === 'success' ? styles.successText : styles.errorText}>{message}</Text> : null}
+
                 <Pressable
-                  onPress={onContinue}
-                  style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}
+                  onPress={handleContinue}
+                  disabled={loading}
+                  style={({ pressed }) => [styles.primaryButton, pressed && !loading && styles.buttonPressed, loading && styles.buttonDisabled]}
                   accessibilityRole="button"
                   accessibilityLabel="Continue"
                 >
-                  <Text style={styles.primaryButtonText}>Continue</Text>
+                  {loadingAction === 'continue' ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.primaryButtonText}>Continue</Text>}
                 </Pressable>
 
                 <Pressable
-                  onPress={onContinue}
-                  style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
+                  onPress={handleMagicLink}
+                  disabled={loading}
+                  style={({ pressed }) => [styles.secondaryButton, pressed && !loading && styles.buttonPressed, loading && styles.buttonDisabled]}
                   accessibilityRole="button"
                   accessibilityLabel="Send magic link"
                 >
-                  <Text style={styles.secondaryButtonText}>Send magic link</Text>
+                  {loadingAction === 'magic' ? <ActivityIndicator color="#1f2229" /> : <Text style={styles.secondaryButtonText}>Send magic link</Text>}
                 </Pressable>
 
                 <View style={styles.backRow}>
                   <View style={styles.backLine} />
-                  <Pressable onPress={onBack} hitSlop={12} accessibilityRole="button" accessibilityLabel="Back to sign in">
+                  <Pressable onPress={onBack} disabled={loading} hitSlop={12} accessibilityRole="button" accessibilityLabel="Back to sign in">
                     <Text style={styles.backText}>Back to sign in</Text>
                   </Pressable>
                   <View style={styles.backLine} />
@@ -250,6 +369,24 @@ const styles = StyleSheet.create({
     letterSpacing: -0.13,
     fontWeight: '470',
   },
+  errorText: {
+    marginBottom: 12,
+    color: '#b42318',
+    fontSize: 13.5,
+    lineHeight: 18,
+    letterSpacing: -0.1,
+    textAlign: 'center',
+    fontWeight: '520',
+  },
+  successText: {
+    marginBottom: 12,
+    color: '#28784f',
+    fontSize: 13.5,
+    lineHeight: 18,
+    letterSpacing: -0.1,
+    textAlign: 'center',
+    fontWeight: '520',
+  },
   primaryButton: {
     height: 52,
     borderRadius: 16,
@@ -294,6 +431,9 @@ const styles = StyleSheet.create({
   buttonPressed: {
     transform: [{ scale: 0.985 }],
     opacity: 0.86,
+  },
+  buttonDisabled: {
+    opacity: 0.72,
   },
   backRow: {
     marginTop: 18,
