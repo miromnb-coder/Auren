@@ -8,6 +8,7 @@ import { AurenChatModeSheet, type ChatModeSheetStage } from '../components/Auren
 import { AurenComposer } from '../components/AurenComposer';
 import { AurenControlsSheet, type ControlsSheetStage } from '../components/AurenControlsSheet';
 import { CalendarIcon, ChevronIcon, ListIcon, MenuIcon, SparkIcon } from '../components/AurenIcons';
+import { AurenMessageList, type AurenMessage } from '../components/AurenMessageList';
 import { AurenPlusSheet, type PlusSheetStage } from '../components/AurenPlusSheet';
 import { AurenSidebar } from '../components/AurenSidebar';
 import { colors, spacing } from '../theme';
@@ -17,6 +18,7 @@ const COMPOSER_KEYBOARD_GAP = 12;
 const COMPOSER_KEYBOARD_EXTRA_LIFT = 34;
 const CONTENT_KEYBOARD_LIFT = 34;
 const PILLS_KEYBOARD_LIFT = 20;
+const FAKE_RESPONSE_DELAY_MS = 850;
 
 function runHaptic(type: 'open' | 'close') {
   if (Platform.OS === 'web') return;
@@ -29,17 +31,34 @@ function runHaptic(type: 'open' | 'close') {
   void Haptics.selectionAsync();
 }
 
+function createMessageId(role: AurenMessage['role']) {
+  return `${role}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function getFakeAurenResponse(message: string) {
+  const cleanMessage = message.replace(/\s+/g, ' ').trim();
+
+  if (cleanMessage.length === 0) {
+    return 'Got it. I can help you turn that into a clear next step.';
+  }
+
+  return `Got it. I can help with “${cleanMessage}”. First, I’d turn it into one clear next step, then keep the rest organized so it feels manageable.`;
+}
+
 export function AurenHomeScreen() {
   const insets = useSafeAreaInsets();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [plusSheetStage, setPlusSheetStage] = useState<PlusSheetStage>('closed');
   const [controlsSheetStage, setControlsSheetStage] = useState<ControlsSheetStage>('closed');
   const [chatModeSheetStage, setChatModeSheetStage] = useState<ChatModeSheetStage>('closed');
+  const [messages, setMessages] = useState<AurenMessage[]>([]);
+  const [assistantThinking, setAssistantThinking] = useState(false);
   const composerBottom = useRef(new Animated.Value(COMPOSER_CLOSED_BOTTOM)).current;
   const contentTranslateY = useRef(new Animated.Value(0)).current;
   const pillsOpacity = useRef(new Animated.Value(1)).current;
   const pillsTranslateY = useRef(new Animated.Value(0)).current;
   const appCardProgress = useRef(new Animated.Value(0)).current;
+  const responseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const plusSheetOpen = plusSheetStage !== 'closed';
   const controlsSheetOpen = controlsSheetStage !== 'closed';
@@ -47,6 +66,7 @@ export function AurenHomeScreen() {
   const anySheetOpen = plusSheetOpen || controlsSheetOpen || chatModeSheetOpen;
   const anySheetExpanded =
     plusSheetStage === 'expanded' || controlsSheetStage === 'expanded' || chatModeSheetStage === 'expanded';
+  const hasMessages = messages.length > 0;
 
   function setPlusStage(nextStage: PlusSheetStage) {
     setPlusSheetStage((current) => {
@@ -128,6 +148,48 @@ export function AurenHomeScreen() {
     });
   }
 
+  function startNewChat() {
+    if (responseTimerRef.current) {
+      clearTimeout(responseTimerRef.current);
+      responseTimerRef.current = null;
+    }
+
+    setMessages([]);
+    setAssistantThinking(false);
+    closeSidebar();
+  }
+
+  function handleSendMessage(message: string) {
+    closeAllSheets();
+
+    const userMessage: AurenMessage = {
+      id: createMessageId('user'),
+      role: 'user',
+      content: message,
+      createdAt: Date.now(),
+    };
+
+    setMessages((currentMessages) => [...currentMessages, userMessage]);
+    setAssistantThinking(true);
+
+    if (responseTimerRef.current) {
+      clearTimeout(responseTimerRef.current);
+    }
+
+    responseTimerRef.current = setTimeout(() => {
+      const assistantMessage: AurenMessage = {
+        id: createMessageId('assistant'),
+        role: 'assistant',
+        content: getFakeAurenResponse(message),
+        createdAt: Date.now(),
+      };
+
+      setMessages((currentMessages) => [...currentMessages, assistantMessage]);
+      setAssistantThinking(false);
+      responseTimerRef.current = null;
+    }, FAKE_RESPONSE_DELAY_MS);
+  }
+
   function openPlusSheet() {
     Keyboard.dismiss();
     setSidebarOpen(false);
@@ -176,6 +238,14 @@ export function AurenHomeScreen() {
       useNativeDriver: true,
     }).start();
   }, [anySheetExpanded, appCardProgress]);
+
+  useEffect(() => {
+    return () => {
+      if (responseTimerRef.current) {
+        clearTimeout(responseTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -272,7 +342,7 @@ export function AurenHomeScreen() {
       open={sidebarOpen}
       onOpen={openSidebar}
       onClose={closeSidebar}
-      onNewChat={closeSidebar}
+      onNewChat={startNewChat}
       onViewAll={closeSidebar}
       onOpenProfile={closeSidebar}
       onOpenRecentChat={closeSidebar}
@@ -311,26 +381,38 @@ export function AurenHomeScreen() {
                 <View style={styles.headerSpacer} />
               </View>
 
-              <Animated.View style={[styles.content, { transform: [{ translateY: contentTranslateY }] }]}> 
-                <View style={styles.hero}>
-                  <Text style={styles.title}>Good evening, you&apos;ve got this.</Text>
-                  <Text style={styles.subtitle}>I&apos;m here to help you focus and get things done.</Text>
-                </View>
+              <Animated.View
+                style={[
+                  styles.content,
+                  hasMessages ? styles.chatContent : styles.startContent,
+                  { transform: [{ translateY: contentTranslateY }] },
+                ]}
+              >
+                {hasMessages ? (
+                  <AurenMessageList messages={messages} assistantThinking={assistantThinking} />
+                ) : (
+                  <>
+                    <View style={styles.hero}>
+                      <Text style={styles.title}>Good evening, you&apos;ve got this.</Text>
+                      <Text style={styles.subtitle}>I&apos;m here to help you focus and get things done.</Text>
+                    </View>
 
-                <Animated.View
-                  pointerEvents="box-none"
-                  style={[
-                    styles.pillsRow,
-                    {
-                      opacity: pillsOpacity,
-                      transform: [{ translateY: pillsTranslateY }],
-                    },
-                  ]}
-                >
-                  <AurenActionPill width={106} icon={<CalendarIcon />} label="Plan my day" />
-                  <AurenActionPill width={124} icon={<ListIcon />} label="Organize tasks" />
-                  <AurenActionPill width={110} icon={<SparkIcon />} label="Ask anything" />
-                </Animated.View>
+                    <Animated.View
+                      pointerEvents="box-none"
+                      style={[
+                        styles.pillsRow,
+                        {
+                          opacity: pillsOpacity,
+                          transform: [{ translateY: pillsTranslateY }],
+                        },
+                      ]}
+                    >
+                      <AurenActionPill width={106} icon={<CalendarIcon />} label="Plan my day" />
+                      <AurenActionPill width={124} icon={<ListIcon />} label="Organize tasks" />
+                      <AurenActionPill width={110} icon={<SparkIcon />} label="Ask anything" />
+                    </Animated.View>
+                  </>
+                )}
               </Animated.View>
             </Pressable>
 
@@ -339,6 +421,7 @@ export function AurenHomeScreen() {
                 onOpenPlus={openPlusSheet}
                 onOpenControls={openControlsSheet}
                 onOpenChatMode={openChatModeSheet}
+                onSendMessage={handleSendMessage}
                 plusActive={plusSheetOpen}
                 controlsActive={controlsSheetOpen}
                 chatModeActive={chatModeSheetOpen}
@@ -416,10 +499,19 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    width: '100%',
+    paddingHorizontal: 18,
+  },
+  startContent: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 18,
     paddingBottom: 220,
+  },
+  chatContent: {
+    alignItems: 'stretch',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 0,
+    paddingBottom: 0,
   },
   hero: {
     alignItems: 'center',
