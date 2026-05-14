@@ -13,6 +13,16 @@ import { AurenMessageList, type AurenMessage } from '../components/AurenMessageL
 import { AurenPlusSheet, type PlusSheetStage } from '../components/AurenPlusSheet';
 import { AurenSidebar } from '../components/AurenSidebar';
 import { sendAurenChatMessageStream, type AurenChatMode } from '../lib/aurenChatApi';
+import {
+  createChatTitle,
+  createUserChat,
+  formatChatTime,
+  listUserChats,
+  loadChatMessages,
+  saveChatMessage,
+  touchChat,
+  type StoredChat,
+} from '../lib/aurenChatStorage';
 import { supabase } from '../lib/supabase';
 import { colors, spacing } from '../theme';
 
@@ -134,6 +144,17 @@ function getUserMetadataName(session: Session) {
   return null;
 }
 
+function toAurenMessage(row: { id: string; role: string; content: string; created_at: string }): AurenMessage | null {
+  if (row.role !== 'user' && row.role !== 'assistant') return null;
+
+  return {
+    id: row.id,
+    role: row.role,
+    content: row.content,
+    createdAt: new Date(row.created_at).getTime(),
+  };
+}
+
 export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   const insets = useSafeAreaInsets();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -141,6 +162,8 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   const [controlsSheetStage, setControlsSheetStage] = useState<ControlsSheetStage>('closed');
   const [chatMode, setChatMode] = useState<AurenChatMode>('personal');
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
+  const [chats, setChats] = useState<StoredChat[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<AurenMessage[]>([]);
   const [assistantThinking, setAssistantThinking] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -160,6 +183,17 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   const anySheetExpanded = plusSheetStage === 'expanded' || controlsSheetStage === 'expanded';
   const hasMessages = messages.length > 0;
   const selectedModeOption = getModeOption(chatMode);
+  const recentChats = chats.map((chat) => ({
+    id: chat.id,
+    title: chat.title,
+    time: formatChatTime(chat.updated_at),
+    icon: getModeOption(chat.mode).icon,
+  }));
+
+  async function refreshChats() {
+    const nextChats = await listUserChats(session.user.id);
+    setChats(nextChats);
+  }
 
   function setPlusStage(nextStage: PlusSheetStage) {
     setPlusSheetStage((current) => {
@@ -265,13 +299,54 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
     runHaptic('close');
   }
 
-  function startNewChat() {
+  async function startNewChat() {
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
-    setMessages([]);
+    setAssistantThinking(false);
+    setIsGenerating(false);
+
+    try {
+      const chat = await createUserChat(session.user.id, 'New chat', chatMode);
+      setActiveChatId(chat.id);
+      setMessages([]);
+      setChats((currentChats) => [chat, ...currentChats.filter((item) => item.id !== chat.id)]);
+    } catch (error) {
+      setActiveChatId(null);
+      setMessages([]);
+    } finally {
+      closeSidebar();
+    }
+  }
+
+  async function openStoredChat(chatId: string) {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
     setAssistantThinking(false);
     setIsGenerating(false);
     closeSidebar();
+
+    const selectedChat = chats.find((chat) => chat.id === chatId);
+    if (selectedChat) {
+      setChatMode(selectedChat.mode);
+    }
+
+    setActiveChatId(chatId);
+
+    try {
+      const storedMessages = await loadChatMessages(session.user.id, chatId);
+      setMessages(storedMessages.map(toAurenMessage).filter((message): message is AurenMessage => Boolean(message)));
+    } catch (error) {
+      setMessages([]);
+    }
+  }
+
+  async function ensureActiveChat(firstMessage: string) {
+    if (activeChatId) return activeChatId;
+
+    const chat = await createUserChat(session.user.id, createChatTitle(firstMessage), chatMode);
+    setActiveChatId(chat.id);
+    setChats((currentChats) => [chat, ...currentChats.filter((item) => item.id !== chat.id)]);
+    return chat.id;
   }
 
   async function handleSendMessage(message: string) {
@@ -294,6 +369,8 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
     const nextMessages = [...messages, userMessage];
     const abortController = new AbortController();
     let receivedAnyToken = false;
+    let assistantContent = '';
+    let chatIdForSend: string | null = null;
 
     abortControllerRef.current = abortController;
     setMessages([...nextMessages, assistantMessage]);
@@ -301,6 +378,24 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
     setIsGenerating(true);
 
     try {
+      chatIdForSend = await ensureActiveChat(message);
+      await saveChatMessage({
+        chatId: chatIdForSend,
+        userId: session.user.id,
+        role: 'user',
+        content: message,
+      });
+
+      const activeChat = chats.find((chat) => chat.id === chatIdForSend);
+      const shouldUpdateTitle = !activeChat || activeChat.title === 'New chat';
+      const nextTitle = shouldUpdateTitle ? createChatTitle(message) : undefined;
+
+      if (nextTitle) {
+        setChats((currentChats) =>
+          currentChats.map((chat) => (chat.id === chatIdForSend ? { ...chat, title: nextTitle } : chat)),
+        );
+      }
+
       await sendAurenChatMessageStream(
         nextMessages.map((item) => ({
           role: item.role,
@@ -311,6 +406,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
           signal: abortController.signal,
           onToken: (token) => {
             receivedAnyToken = true;
+            assistantContent += token;
             setAssistantThinking(false);
             setMessages((currentMessages) =>
               currentMessages.map((currentMessage) =>
@@ -322,12 +418,25 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
           },
         },
       );
+
+      if (assistantContent.trim()) {
+        await saveChatMessage({
+          chatId: chatIdForSend,
+          userId: session.user.id,
+          role: 'assistant',
+          content: assistantContent,
+        });
+      }
+
+      await touchChat({ chatId: chatIdForSend, userId: session.user.id, title: nextTitle });
+      await refreshChats();
     } catch (error) {
       if (abortController.signal.aborted) return;
 
       const fallbackText = receivedAnyToken
         ? '\n\nConnection stopped before Auren finished.'
         : getErrorMessage(error);
+      assistantContent += fallbackText;
 
       setMessages((currentMessages) =>
         currentMessages.map((currentMessage) =>
@@ -336,6 +445,21 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
             : currentMessage,
         ),
       );
+
+      if (chatIdForSend && assistantContent.trim()) {
+        try {
+          await saveChatMessage({
+            chatId: chatIdForSend,
+            userId: session.user.id,
+            role: 'assistant',
+            content: assistantContent,
+          });
+          await touchChat({ chatId: chatIdForSend, userId: session.user.id });
+          await refreshChats();
+        } catch {
+          // Keep local chat usable even if persistence fails.
+        }
+      }
     } finally {
       if (abortControllerRef.current === abortController) {
         abortControllerRef.current = null;
@@ -409,6 +533,29 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
       active = false;
     };
   }, [session]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadChats() {
+      try {
+        const nextChats = await listUserChats(session.user.id);
+        if (active) {
+          setChats(nextChats);
+        }
+      } catch {
+        if (active) {
+          setChats([]);
+        }
+      }
+    }
+
+    void loadChats();
+
+    return () => {
+      active = false;
+    };
+  }, [session.user.id]);
 
   useEffect(() => {
     Animated.timing(appCardProgress, {
@@ -523,7 +670,8 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
       onNewChat={startNewChat}
       onViewAll={closeSidebar}
       onOpenProfile={closeSidebar}
-      onOpenRecentChat={closeSidebar}
+      onOpenRecentChat={openStoredChat}
+      recentChats={recentChats}
       profile={sidebarProfile}
     >
       <View style={styles.sceneRoot}>
