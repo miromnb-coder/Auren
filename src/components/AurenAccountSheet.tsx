@@ -353,14 +353,14 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
 
             <View style={styles.currentPlanCard}>
               <View style={styles.planIconCircle}>
-                <Ionicons name="diamond-outline" size={36} color="#858891" />
+                <Ionicons name="diamond-outline" size={31} color="#858891" />
               </View>
               <View style={styles.currentPlanTextWrap}>
                 <Text style={styles.currentPlanKicker}>Current plan</Text>
                 <Text style={styles.currentPlanName}>Free</Text>
                 <Text style={styles.currentPlanCredits}>300 daily credits</Text>
                 <View style={styles.refreshRow}>
-                  <Ionicons name="refresh-outline" size={16} color="#858891" />
+                  <Ionicons name="refresh-outline" size={14} color="#858891" />
                   <Text style={styles.refreshText}>Resets every day</Text>
                 </View>
               </View>
@@ -372,26 +372,26 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
             <View style={styles.creditsCard}>
               <Text style={styles.creditsTitle}>Credits overview</Text>
               <View style={[styles.creditRow, styles.creditBorder]}>
-                <View style={styles.creditIconWrap}><Ionicons name="server-outline" size={22} color="#858891" /></View>
+                <View style={styles.creditIconWrap}><Ionicons name="server-outline" size={21} color="#858891" /></View>
                 <Text style={styles.creditLabel}>Credits balance</Text>
                 <Text style={styles.creditValueStrong}>184</Text>
               </View>
               <View style={[styles.creditRow, styles.creditBorder]}>
-                <View style={styles.creditIconWrap}><Ionicons name="refresh-outline" size={23} color="#858891" /></View>
+                <View style={styles.creditIconWrap}><Ionicons name="refresh-outline" size={22} color="#858891" /></View>
                 <Text style={styles.creditLabel}>Daily refresh</Text>
                 <Text style={styles.creditValue}>300 / day</Text>
               </View>
               <View style={[styles.creditRow, styles.creditBorder]}>
-                <View style={styles.creditIconWrap}><Ionicons name="chatbubble-ellipses-outline" size={22} color="#858891" /></View>
+                <View style={styles.creditIconWrap}><Ionicons name="chatbubble-ellipses-outline" size={21} color="#858891" /></View>
                 <Text style={styles.creditLabel}>AI chat</Text>
                 <Text style={styles.creditValue}>from 5 credits</Text>
-                <Ionicons name="chevron-forward" size={22} color="#a7a9b0" />
+                <Ionicons name="chevron-forward" size={21} color="#a7a9b0" />
               </View>
               <View style={styles.creditRow}>
-                <View style={styles.creditIconWrap}><Ionicons name="sparkles-outline" size={22} color="#858891" /></View>
+                <View style={styles.creditIconWrap}><Ionicons name="sparkles-outline" size={21} color="#858891" /></View>
                 <Text style={styles.creditLabel}>Advanced tasks</Text>
                 <Text style={styles.creditValue}>from 20 credits</Text>
-                <Ionicons name="chevron-forward" size={22} color="#a7a9b0" />
+                <Ionicons name="chevron-forward" size={21} color="#a7a9b0" />
               </View>
             </View>
 
@@ -411,10 +411,10 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
                       </View>
                     ) : null}
                     <View style={styles.planOptionIconCircle}>
-                      <Ionicons name="diamond-outline" size={28} color="#858891" />
+                      <Ionicons name="diamond-outline" size={23} color="#858891" />
                     </View>
                     <Text style={styles.planOptionName}>{plan.name}</Text>
-                    <Text style={styles.planOptionCaption}>{plan.caption}</Text>
+                    <Text style={styles.planOptionCaption} numberOfLines={1}>{plan.caption}</Text>
                   </Pressable>
                 );
               })}
@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 23, paddingTop: 31, paddingBottom: 44 },
   profileContent: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 26 },
   dataMemoryContent: { paddingHorizontal: 24, paddingTop: 6, paddingBottom: 8 },
-  subscriptionContent: { paddingHorizontal: 24, paddingTop: 7, paddingBottom: 18 },
+  subscriptionContent: { paddingHorizontal: 24, paddingTop: 5, paddingBottom: 8 },
   title: { color: '#1d1d20', fontSize: 19, lineHeight: 25, fontWeight: '620', letterSpacing: -0.22, textAlign: 'center', marginBottom: 31 },
   profileCard: { minHeight: 98, borderRadius: 20, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', ...cardBase },
   largeAvatar: { width: 80, height: 80, borderRadius: 999, marginRight: 19, backgroundColor: '#eeedf2', alignItems: 'center', justifyContent: 'center' },
@@ -511,36 +511,36 @@ const styles = StyleSheet.create({
   storageMeta: { color: '#777b84', fontSize: 12, lineHeight: 15, fontWeight: '440', letterSpacing: -0.05 },
   dataSaveButton: { height: 46, marginTop: 10 },
   dataBackButton: { height: 44, marginTop: 8 },
-  subscriptionTitle: { color: '#1d1d20', fontSize: 20, lineHeight: 26, fontWeight: '620', letterSpacing: -0.26, textAlign: 'center', marginBottom: 29 },
-  currentPlanCard: { minHeight: 140, borderRadius: 18, paddingHorizontal: 22, paddingVertical: 18, flexDirection: 'row', alignItems: 'center', ...cardBase },
-  planIconCircle: { width: 78, height: 78, borderRadius: 999, marginRight: 22, backgroundColor: '#eeedf2', alignItems: 'center', justifyContent: 'center' },
+  subscriptionTitle: { color: '#1d1d20', fontSize: 20, lineHeight: 25, fontWeight: '620', letterSpacing: -0.26, textAlign: 'center', marginBottom: 18 },
+  currentPlanCard: { minHeight: 108, borderRadius: 18, paddingHorizontal: 20, paddingVertical: 13, flexDirection: 'row', alignItems: 'center', ...cardBase },
+  planIconCircle: { width: 64, height: 64, borderRadius: 999, marginRight: 16, backgroundColor: '#eeedf2', alignItems: 'center', justifyContent: 'center' },
   currentPlanTextWrap: { flex: 1, minWidth: 0 },
-  currentPlanKicker: { color: '#777b84', fontSize: 15, lineHeight: 19, fontWeight: '440', letterSpacing: -0.1 },
-  currentPlanName: { marginTop: 5, color: '#111113', fontSize: 27, lineHeight: 33, fontWeight: '500', letterSpacing: -0.7 },
-  currentPlanCredits: { marginTop: 6, color: '#777b84', fontSize: 16, lineHeight: 20, fontWeight: '440', letterSpacing: -0.14 },
-  refreshRow: { marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  refreshText: { color: '#858891', fontSize: 12.5, lineHeight: 16, fontWeight: '440', letterSpacing: -0.06 },
-  upgradeButton: { width: 96, height: 48, borderRadius: 11, marginLeft: 12, backgroundColor: '#111113', alignItems: 'center', justifyContent: 'center', shadowColor: '#000000', shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 7 }, elevation: 6 },
-  upgradeButtonText: { color: '#ffffff', fontSize: 16, lineHeight: 20, fontWeight: '600', letterSpacing: -0.18 },
-  creditsCard: { marginTop: 23, borderRadius: 18, paddingHorizontal: 22, paddingTop: 22, paddingBottom: 4, ...cardBase },
-  creditsTitle: { color: '#33363d', fontSize: 15.5, lineHeight: 20, fontWeight: '500', letterSpacing: -0.12, marginBottom: 14 },
-  creditRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center' },
+  currentPlanKicker: { color: '#777b84', fontSize: 13.5, lineHeight: 17, fontWeight: '440', letterSpacing: -0.1 },
+  currentPlanName: { marginTop: 3, color: '#111113', fontSize: 26, lineHeight: 31, fontWeight: '500', letterSpacing: -0.7 },
+  currentPlanCredits: { marginTop: 3, color: '#777b84', fontSize: 14.5, lineHeight: 18, fontWeight: '440', letterSpacing: -0.14 },
+  refreshRow: { marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  refreshText: { color: '#858891', fontSize: 11.5, lineHeight: 14, fontWeight: '440', letterSpacing: -0.06 },
+  upgradeButton: { width: 88, height: 42, borderRadius: 11, marginLeft: 10, backgroundColor: '#111113', alignItems: 'center', justifyContent: 'center', shadowColor: '#000000', shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 7 }, elevation: 6 },
+  upgradeButtonText: { color: '#ffffff', fontSize: 15, lineHeight: 19, fontWeight: '600', letterSpacing: -0.18 },
+  creditsCard: { marginTop: 16, borderRadius: 18, paddingHorizontal: 20, paddingTop: 14, paddingBottom: 1, ...cardBase },
+  creditsTitle: { color: '#33363d', fontSize: 15.5, lineHeight: 20, fontWeight: '500', letterSpacing: -0.12, marginBottom: 8 },
+  creditRow: { minHeight: 42, flexDirection: 'row', alignItems: 'center' },
   creditBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(17,24,39,0.08)' },
-  creditIconWrap: { width: 41, alignItems: 'flex-start', justifyContent: 'center' },
-  creditLabel: { flex: 1, color: '#1f2228', fontSize: 15, lineHeight: 19, fontWeight: '450', letterSpacing: -0.14 },
-  creditValue: { color: '#777b84', fontSize: 14.5, lineHeight: 19, fontWeight: '440', letterSpacing: -0.12, marginRight: 8 },
-  creditValueStrong: { color: '#111113', fontSize: 15.5, lineHeight: 20, fontWeight: '600', letterSpacing: -0.12 },
-  choosePlanLabel: { marginTop: 21, marginLeft: 11, color: '#33363d', fontSize: 15.5, lineHeight: 20, fontWeight: '500', letterSpacing: -0.13 },
-  planOptionsRow: { marginTop: 15, flexDirection: 'row', gap: 11 },
-  planOptionCard: { flex: 1, minHeight: 133, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(17,24,39,0.12)', backgroundColor: 'rgba(255,255,255,0.68)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, paddingTop: 18, paddingBottom: 15 },
+  creditIconWrap: { width: 40, alignItems: 'flex-start', justifyContent: 'center' },
+  creditLabel: { flex: 1, color: '#1f2228', fontSize: 14.5, lineHeight: 18, fontWeight: '450', letterSpacing: -0.14 },
+  creditValue: { color: '#777b84', fontSize: 14, lineHeight: 18, fontWeight: '440', letterSpacing: -0.12, marginRight: 8 },
+  creditValueStrong: { color: '#111113', fontSize: 15, lineHeight: 19, fontWeight: '600', letterSpacing: -0.12 },
+  choosePlanLabel: { marginTop: 14, marginLeft: 11, color: '#33363d', fontSize: 15.5, lineHeight: 20, fontWeight: '500', letterSpacing: -0.13 },
+  planOptionsRow: { marginTop: 10, flexDirection: 'row', gap: 10 },
+  planOptionCard: { flex: 1, minHeight: 122, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(17,24,39,0.12)', backgroundColor: 'rgba(255,255,255,0.68)', alignItems: 'center', justifyContent: 'flex-start', paddingHorizontal: 6, paddingTop: 33, paddingBottom: 8 },
   planOptionCardActive: { borderColor: '#111113', borderWidth: 1.25, backgroundColor: 'rgba(246,246,250,0.78)' },
-  recommendedBadge: { position: 'absolute', top: 11, height: 23, borderRadius: 999, paddingHorizontal: 12, backgroundColor: '#20232a', alignItems: 'center', justifyContent: 'center' },
-  recommendedBadgeText: { color: '#ffffff', fontSize: 10.5, lineHeight: 13, fontWeight: '600', letterSpacing: -0.08 },
-  planOptionIconCircle: { width: 58, height: 58, borderRadius: 999, marginBottom: 13, backgroundColor: '#f0eff3', alignItems: 'center', justifyContent: 'center' },
-  planOptionName: { color: '#111113', fontSize: 16.5, lineHeight: 21, fontWeight: '500', letterSpacing: -0.18 },
-  planOptionCaption: { marginTop: 5, color: '#858891', fontSize: 12.5, lineHeight: 16, fontWeight: '440', textAlign: 'center', letterSpacing: -0.06 },
-  choosePlanButton: { height: 53, marginTop: 24 },
-  subscriptionBackButton: { height: 52, marginTop: 13 },
+  recommendedBadge: { position: 'absolute', top: 8, height: 22, borderRadius: 999, paddingHorizontal: 10, backgroundColor: '#20232a', alignItems: 'center', justifyContent: 'center' },
+  recommendedBadgeText: { color: '#ffffff', fontSize: 10, lineHeight: 12, fontWeight: '600', letterSpacing: -0.08 },
+  planOptionIconCircle: { width: 44, height: 44, borderRadius: 999, marginBottom: 7, backgroundColor: '#f0eff3', alignItems: 'center', justifyContent: 'center' },
+  planOptionName: { color: '#111113', fontSize: 16, lineHeight: 19, fontWeight: '500', letterSpacing: -0.18 },
+  planOptionCaption: { marginTop: 3, color: '#858891', fontSize: 11.5, lineHeight: 14, fontWeight: '440', textAlign: 'center', letterSpacing: -0.06 },
+  choosePlanButton: { height: 50, marginTop: 17 },
+  subscriptionBackButton: { height: 44, marginTop: 10 },
   pressed: { opacity: 0.68, transform: [{ scale: 0.993 }] },
   disabled: { opacity: 0.55 },
 });
