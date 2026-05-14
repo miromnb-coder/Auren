@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Keyboard, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { Session } from '@supabase/supabase-js';
 import { AurenActionPill } from '../components/AurenActionPill';
 import { AurenComposer } from '../components/AurenComposer';
 import { AurenControlsSheet, type ControlsSheetStage } from '../components/AurenControlsSheet';
@@ -12,6 +13,7 @@ import { AurenMessageList, type AurenMessage } from '../components/AurenMessageL
 import { AurenPlusSheet, type PlusSheetStage } from '../components/AurenPlusSheet';
 import { AurenSidebar } from '../components/AurenSidebar';
 import { sendAurenChatMessageStream, type AurenChatMode } from '../lib/aurenChatApi';
+import { supabase } from '../lib/supabase';
 import { colors, spacing } from '../theme';
 
 const COMPOSER_CLOSED_BOTTOM = 34;
@@ -19,6 +21,16 @@ const COMPOSER_KEYBOARD_GAP = 12;
 const COMPOSER_KEYBOARD_EXTRA_LIFT = 34;
 const CONTENT_KEYBOARD_LIFT = 34;
 const PILLS_KEYBOARD_LIFT = 20;
+
+type AurenHomeScreenProps = {
+  session: Session;
+};
+
+type SidebarProfile = {
+  name: string;
+  email: string;
+  initials: string;
+};
 
 const CHAT_MODE_OPTIONS: Array<{
   mode: AurenChatMode;
@@ -73,7 +85,56 @@ function getModeOption(mode: AurenChatMode) {
   return CHAT_MODE_OPTIONS.find((option) => option.mode === mode) ?? CHAT_MODE_OPTIONS[0];
 }
 
-export function AurenHomeScreen() {
+function getEmailLocalName(email: string) {
+  const localPart = email.split('@')[0] ?? '';
+  const cleaned = localPart.replace(/[._-]+/g, ' ').trim();
+
+  if (!cleaned) return 'Auren user';
+
+  return cleaned
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function getInitials(name: string, email: string) {
+  const source = name.trim() || getEmailLocalName(email);
+  const initials = source
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('');
+
+  return initials || 'AU';
+}
+
+function createSidebarProfile(name: string | null | undefined, email: string | null | undefined): SidebarProfile {
+  const safeEmail = email?.trim() ?? '';
+  const safeName = name?.trim() || (safeEmail ? getEmailLocalName(safeEmail) : 'Auren user');
+
+  return {
+    name: safeName,
+    email: safeEmail,
+    initials: getInitials(safeName, safeEmail),
+  };
+}
+
+function getUserMetadataName(session: Session) {
+  const metadata = session.user.user_metadata;
+  const displayName = metadata?.display_name;
+  const fullName = metadata?.full_name;
+  const name = metadata?.name;
+
+  if (typeof displayName === 'string' && displayName.trim()) return displayName;
+  if (typeof fullName === 'string' && fullName.trim()) return fullName;
+  if (typeof name === 'string' && name.trim()) return name;
+
+  return null;
+}
+
+export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   const insets = useSafeAreaInsets();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [plusSheetStage, setPlusSheetStage] = useState<PlusSheetStage>('closed');
@@ -83,6 +144,9 @@ export function AurenHomeScreen() {
   const [messages, setMessages] = useState<AurenMessage[]>([]);
   const [assistantThinking, setAssistantThinking] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [sidebarProfile, setSidebarProfile] = useState<SidebarProfile>(() =>
+    createSidebarProfile(getUserMetadataName(session), session.user.email),
+  );
   const composerBottom = useRef(new Animated.Value(COMPOSER_CLOSED_BOTTOM)).current;
   const contentTranslateY = useRef(new Animated.Value(0)).current;
   const pillsOpacity = useRef(new Animated.Value(1)).current;
@@ -306,6 +370,47 @@ export function AurenHomeScreen() {
   }
 
   useEffect(() => {
+    let active = true;
+    const fallbackEmail = session.user.email ?? '';
+    const fallbackName = getUserMetadataName(session);
+
+    setSidebarProfile(createSidebarProfile(fallbackName, fallbackEmail));
+
+    async function loadProfile() {
+      const { data } = await supabase
+        .from('profiles')
+        .select('email, display_name, avatar_url')
+        .eq('id', session.user.id)
+        .maybeSingle();
+
+      if (!active) return;
+
+      if (data) {
+        const nextEmail = data.email ?? fallbackEmail;
+        const nextName = data.display_name ?? fallbackName;
+        setSidebarProfile(createSidebarProfile(nextName, nextEmail));
+        return;
+      }
+
+      await supabase.from('profiles').upsert({
+        id: session.user.id,
+        email: fallbackEmail,
+        display_name: fallbackName,
+      });
+
+      if (active) {
+        setSidebarProfile(createSidebarProfile(fallbackName, fallbackEmail));
+      }
+    }
+
+    void loadProfile();
+
+    return () => {
+      active = false;
+    };
+  }, [session]);
+
+  useEffect(() => {
     Animated.timing(appCardProgress, {
       toValue: anySheetExpanded ? 1 : 0,
       duration: anySheetExpanded ? 320 : 260,
@@ -419,6 +524,7 @@ export function AurenHomeScreen() {
       onViewAll={closeSidebar}
       onOpenProfile={closeSidebar}
       onOpenRecentChat={closeSidebar}
+      profile={sidebarProfile}
     >
       <View style={styles.sceneRoot}>
         <StatusBar style={anySheetExpanded ? 'light' : 'dark'} />
