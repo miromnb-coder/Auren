@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -45,8 +46,9 @@ function AuthButton({ label, icon, iconName, variant = 'light', iconColor, onPre
 
 export function AurenAuthScreen({ onContinue }: AurenAuthScreenProps) {
   return (
-    <View style={styles.root}>
-      <View style={styles.backgroundSheen} />
+    <LinearGradient colors={['#fbfbfa', '#f7f7f5', '#eef1f2']} locations={[0, 0.58, 1]} style={styles.root}>
+      <View style={styles.topSheen} />
+      <View style={styles.cardGlow} />
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         <View style={styles.hero}>
           <Text style={styles.wordmark}>A U R E N</Text>
@@ -68,23 +70,31 @@ export function AurenAuthScreen({ onContinue }: AurenAuthScreenProps) {
           </View>
         </View>
       </SafeAreaView>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#f8f8f6',
   },
-  backgroundSheen: {
+  topSheen: {
     position: 'absolute',
-    top: -120,
-    left: -70,
-    right: -70,
-    height: 420,
+    top: -180,
+    left: -120,
+    right: -120,
+    height: 430,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.72)',
+    backgroundColor: 'rgba(255,255,255,0.64)',
+  },
+  cardGlow: {
+    position: 'absolute',
+    left: -60,
+    right: -60,
+    bottom: 12,
+    height: 250,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.38)',
   },
   safeArea: {
     flex: 1,
