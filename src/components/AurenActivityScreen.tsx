@@ -29,6 +29,7 @@ type ActivityItem = {
 
 type AurenActivityScreenProps = {
   onClose: () => void;
+  onUnreadCountChange?: (count: number) => void;
 };
 
 const TABS: { id: ActivityTab; label: string }[] = [
@@ -79,7 +80,7 @@ function itemMatchesTab(item: ActivityItem, tab: ActivityTab) {
   return item.category !== 'messages';
 }
 
-export function AurenActivityScreen({ onClose }: AurenActivityScreenProps) {
+export function AurenActivityScreen({ onClose, onUnreadCountChange }: AurenActivityScreenProps) {
   const [activeTab, setActiveTab] = useState<ActivityTab>('all');
   const [filterActive, setFilterActive] = useState(false);
   const [items, setItems] = useState<ActivityItem[]>([]);
@@ -127,9 +128,17 @@ export function AurenActivityScreen({ onClose }: AurenActivityScreenProps) {
     void loadActivityItems();
   }, [loadActivityItems]);
 
+  const unreadCount = useMemo(() => items.filter((item) => item.read_at === null).length, [items]);
+
+  useEffect(() => {
+    onUnreadCountChange?.(unreadCount);
+  }, [onUnreadCountChange, unreadCount]);
+
   const visibleItems = useMemo(() => {
     return items.filter((item) => itemMatchesTab(item, activeTab)).filter((item) => (filterActive ? item.read_at === null : true));
   }, [activeTab, filterActive, items]);
+
+  const visibleUnreadItems = useMemo(() => visibleItems.filter((item) => item.read_at === null), [visibleItems]);
 
   async function markItemAsRead(item: ActivityItem) {
     if (item.read_at || !userId) return;
@@ -145,6 +154,26 @@ export function AurenActivityScreen({ onClose }: AurenActivityScreenProps) {
 
     if (error) {
       setItems((current) => current.map((currentItem) => (currentItem.id === item.id ? { ...currentItem, read_at: item.read_at } : currentItem)));
+    }
+  }
+
+  async function markVisibleAsRead() {
+    if (!userId || visibleUnreadItems.length === 0) return;
+
+    const readAt = new Date().toISOString();
+    const unreadIds = visibleUnreadItems.map((item) => item.id);
+    const previousItems = items;
+
+    setItems((current) => current.map((item) => (unreadIds.includes(item.id) ? { ...item, read_at: readAt } : item)));
+
+    const { error } = await supabase
+      .from('activity_items')
+      .update({ read_at: readAt })
+      .eq('user_id', userId)
+      .in('id', unreadIds);
+
+    if (error) {
+      setItems(previousItems);
     }
   }
 
@@ -191,8 +220,23 @@ export function AurenActivityScreen({ onClose }: AurenActivityScreenProps) {
         })}
       </View>
 
+      {(unreadCount > 0 || filterActive) && !loading ? (
+        <View style={styles.utilityRow}>
+          <Text style={styles.utilityText}>{filterActive ? 'Unread only' : `${unreadCount} unread`}</Text>
+          <Pressable
+            onPress={() => void markVisibleAsRead()}
+            disabled={visibleUnreadItems.length === 0}
+            style={({ pressed }) => [styles.markReadButton, pressed && styles.tabPressed, visibleUnreadItems.length === 0 && styles.markReadButtonDisabled]}
+            accessibilityRole="button"
+            accessibilityLabel="Mark visible activity as read"
+          >
+            <Text style={styles.markReadButtonText}>Mark as read</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
       <ScrollView
-        style={styles.scroll}
+        style={[styles.scroll, (unreadCount > 0 || filterActive) && !loading && styles.scrollWithUtility]}
         contentContainerStyle={visibleItems.length > 0 ? styles.content : styles.emptyContent}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadActivityItems(true)} tintColor="#8b8e99" />}
@@ -215,7 +259,11 @@ export function AurenActivityScreen({ onClose }: AurenActivityScreenProps) {
                   <Text style={styles.activityTime}>{formatActivityTime(item.created_at)}</Text>
                 </View>
 
-                {item.action_label ? (
+                {unread ? (
+                  <Pressable onPress={() => void markItemAsRead(item)} style={({ pressed }) => [styles.itemMarkReadButton, pressed && styles.tabPressed]}>
+                    <Text style={styles.itemMarkReadButtonText}>Read</Text>
+                  </Pressable>
+                ) : item.action_label ? (
                   <View style={styles.actionPill}>
                     <Text style={styles.actionPillText} numberOfLines={1}>{item.action_label}</Text>
                   </View>
@@ -230,8 +278,8 @@ export function AurenActivityScreen({ onClose }: AurenActivityScreenProps) {
             <View style={styles.emptyIconCircle}>
               <Ionicons name={loading ? 'sync-outline' : loadError ? 'alert-circle-outline' : 'notifications-outline'} size={24} color="#858891" />
             </View>
-            <Text style={styles.emptyTitle}>{loading ? 'Loading activity' : loadError ? 'Could not load activity' : 'No activity yet'}</Text>
-            <Text style={styles.emptyText}>{loadError ?? 'New updates, messages and AI alerts will appear here.'}</Text>
+            <Text style={styles.emptyTitle}>{loading ? 'Loading activity' : loadError ? 'Could not load activity' : filterActive ? 'No unread activity' : 'No activity yet'}</Text>
+            <Text style={styles.emptyText}>{loadError ?? (filterActive ? 'Everything visible has already been read.' : 'New updates, messages and AI alerts will appear here.')}</Text>
           </View>
         )}
       </ScrollView>
@@ -319,9 +367,51 @@ const styles = StyleSheet.create({
     color: '#111113',
     fontWeight: '560',
   },
+  utilityRow: {
+    height: 42,
+    marginTop: 18,
+    marginHorizontal: 27,
+    paddingLeft: 15,
+    paddingRight: 6,
+    borderRadius: 999,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.58)',
+    borderWidth: 1,
+    borderColor: 'rgba(17,24,39,0.045)',
+  },
+  utilityText: {
+    color: '#737780',
+    fontSize: 13.5,
+    lineHeight: 17,
+    fontWeight: '500',
+    letterSpacing: -0.08,
+  },
+  markReadButton: {
+    height: 30,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    backgroundColor: '#111113',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markReadButtonDisabled: {
+    opacity: 0.32,
+  },
+  markReadButtonText: {
+    color: '#ffffff',
+    fontSize: 12.5,
+    lineHeight: 16,
+    fontWeight: '560',
+    letterSpacing: -0.08,
+  },
   scroll: {
     flex: 1,
     marginTop: 31,
+  },
+  scrollWithUtility: {
+    marginTop: 16,
   },
   content: {
     paddingHorizontal: 26,
@@ -421,6 +511,22 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     lineHeight: 16,
     fontWeight: '520',
+    letterSpacing: -0.08,
+  },
+  itemMarkReadButton: {
+    height: 34,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    marginLeft: 10,
+    backgroundColor: '#111113',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  itemMarkReadButtonText: {
+    color: '#ffffff',
+    fontSize: 12.5,
+    lineHeight: 16,
+    fontWeight: '560',
     letterSpacing: -0.08,
   },
   emptyState: {
