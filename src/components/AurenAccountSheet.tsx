@@ -251,6 +251,8 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
     [onStageChange, sheet.closedY, sheet.expandedY, stage, translateY],
   );
 
+  const editIconSize = 22;
+
   return (
     <Animated.View
       pointerEvents={stage === 'closed' ? 'none' : 'auto'}
@@ -292,21 +294,21 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
                     style={styles.profileFieldInput}
                   />
                 </View>
-                <Ionicons name="pencil-outline" size={25} color="#858891" />
+                <Ionicons name="pencil-outline" size={editIconSize} color="#858891" />
               </View>
               <View style={[styles.profileFieldRow, styles.profileFieldBorder]}>
                 <View style={styles.profileFieldTextWrap}>
                   <Text style={styles.profileFieldLabel}>Email</Text>
                   <Text style={styles.profileFieldLockedValue} numberOfLines={1}>{localProfile.email}</Text>
                 </View>
-                <Ionicons name="lock-closed-outline" size={24} color="#858891" />
+                <Ionicons name="lock-closed-outline" size={21} color="#858891" />
               </View>
               <View style={styles.profileFieldRow}>
                 <View style={styles.profileFieldTextWrap}>
                   <Text style={styles.profileFieldLabel}>Username</Text>
                   <Text style={styles.profileFieldValue} numberOfLines={1}>{usernameFromEmail(localProfile.email)}</Text>
                 </View>
-                <Ionicons name="pencil-outline" size={25} color="#858891" />
+                <Ionicons name="pencil-outline" size={editIconSize} color="#858891" />
               </View>
             </View>
 
@@ -315,7 +317,7 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
                 <Text style={styles.profileFieldLabel}>About</Text>
                 <Text style={styles.aboutPlaceholder}>Tell others a little bit about yourself.</Text>
               </View>
-              <Ionicons name="pencil-outline" size={25} color="#858891" />
+              <Ionicons name="pencil-outline" size={editIconSize} color="#858891" />
             </View>
 
             <Pressable
@@ -401,7 +403,7 @@ const styles = StyleSheet.create({
   },
   scrollView: { flex: 1 },
   content: { paddingHorizontal: 23, paddingTop: 31, paddingBottom: 44 },
-  profileContent: { paddingHorizontal: 24, paddingTop: 14, paddingBottom: 32 },
+  profileContent: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 26 },
   title: {
     color: '#1d1d20',
     fontSize: 19,
@@ -409,7 +411,7 @@ const styles = StyleSheet.create({
     fontWeight: '620',
     letterSpacing: -0.22,
     textAlign: 'center',
-    marginBottom: 34,
+    marginBottom: 31,
   },
   profileCard: {
     minHeight: 98,
@@ -440,39 +442,39 @@ const styles = StyleSheet.create({
   rowLabel: { flex: 1, color: '#1f2228', fontSize: 16, lineHeight: 21, fontWeight: '450', letterSpacing: -0.17 },
   dangerText: { color: '#d4474b' },
   profileHeroCard: {
-    minHeight: 176,
+    minHeight: 164,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
-    paddingVertical: 22,
+    paddingVertical: 18,
     ...cardBase,
   },
   profileHeroAvatar: {
-    width: 84,
-    height: 84,
+    width: 76,
+    height: 76,
     borderRadius: 999,
     backgroundColor: '#eeedf2',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 17,
+    marginBottom: 14,
   },
-  profileHeroAvatarText: { color: '#111113', fontSize: 46, lineHeight: 52, fontWeight: '400', letterSpacing: -1.4 },
-  profileHeroName: { color: '#111113', fontSize: 28, lineHeight: 33, fontWeight: '500', letterSpacing: -0.78 },
-  profileHeroEmail: { marginTop: 3, color: '#777b84', fontSize: 15.5, lineHeight: 20, fontWeight: '440', letterSpacing: -0.16 },
-  profileFieldsCard: { marginTop: 28, borderRadius: 18, overflow: 'hidden', ...cardBase },
-  profileFieldRow: { minHeight: 68, paddingHorizontal: 25, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.82)' },
+  profileHeroAvatarText: { color: '#111113', fontSize: 42, lineHeight: 48, fontWeight: '400', letterSpacing: -1.4 },
+  profileHeroName: { color: '#111113', fontSize: 26, lineHeight: 31, fontWeight: '500', letterSpacing: -0.72 },
+  profileHeroEmail: { marginTop: 2, color: '#777b84', fontSize: 14.5, lineHeight: 19, fontWeight: '440', letterSpacing: -0.14 },
+  profileFieldsCard: { marginTop: 23, borderRadius: 18, overflow: 'hidden', ...cardBase },
+  profileFieldRow: { minHeight: 62, paddingHorizontal: 25, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.82)' },
   profileFieldBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(17,24,39,0.07)' },
   profileFieldTextWrap: { flex: 1, minWidth: 0 },
-  profileFieldLabel: { color: '#737780', fontSize: 12.5, lineHeight: 16, fontWeight: '500', letterSpacing: -0.05, marginBottom: 5 },
-  profileFieldInput: { minHeight: 27, padding: 0, color: '#1d1d20', fontSize: 17, lineHeight: 22, fontWeight: '440', letterSpacing: -0.22 },
+  profileFieldLabel: { color: '#737780', fontSize: 12.5, lineHeight: 16, fontWeight: '500', letterSpacing: -0.05, marginBottom: 4 },
+  profileFieldInput: { minHeight: 25, padding: 0, color: '#1d1d20', fontSize: 17, lineHeight: 22, fontWeight: '440', letterSpacing: -0.22 },
   profileFieldValue: { color: '#1d1d20', fontSize: 17, lineHeight: 22, fontWeight: '440', letterSpacing: -0.22 },
   profileFieldLockedValue: { color: '#777b84', fontSize: 17, lineHeight: 22, fontWeight: '440', letterSpacing: -0.22 },
-  aboutCard: { minHeight: 70, marginTop: 24, borderRadius: 18, paddingHorizontal: 25, flexDirection: 'row', alignItems: 'center', ...cardBase },
+  aboutCard: { minHeight: 64, marginTop: 21, borderRadius: 18, paddingHorizontal: 25, flexDirection: 'row', alignItems: 'center', ...cardBase },
   aboutPlaceholder: { color: '#777b84', fontSize: 14.5, lineHeight: 19, fontWeight: '430', letterSpacing: -0.11 },
   saveButton: {
-    height: 58,
-    marginTop: 33,
+    height: 56,
+    marginTop: 28,
     borderRadius: 14,
     backgroundColor: '#111113',
     alignItems: 'center',
@@ -485,8 +487,8 @@ const styles = StyleSheet.create({
   },
   saveButtonText: { color: '#ffffff', fontSize: 17, lineHeight: 22, fontWeight: '520', letterSpacing: -0.2 },
   backButton: {
-    height: 58,
-    marginTop: 18,
+    height: 56,
+    marginTop: 14,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: 'rgba(17,24,39,0.08)',
