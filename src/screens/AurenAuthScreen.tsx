@@ -46,9 +46,7 @@ function AuthButton({ label, icon, iconName, variant = 'light', iconColor, onPre
 
 export function AurenAuthScreen({ onContinue }: AurenAuthScreenProps) {
   return (
-    <LinearGradient colors={['#fbfbfa', '#f7f7f5', '#eef1f2']} locations={[0, 0.58, 1]} style={styles.root}>
-      <View style={styles.topSheen} />
-      <View style={styles.cardGlow} />
+    <LinearGradient colors={['#fafaf8', '#f7f7f5', '#eff1f2']} locations={[0, 0.7, 1]} style={styles.root}>
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         <View style={styles.hero}>
           <Text style={styles.wordmark}>A U R E N</Text>
@@ -78,24 +76,6 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
-  topSheen: {
-    position: 'absolute',
-    top: -180,
-    left: -120,
-    right: -120,
-    height: 430,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.64)',
-  },
-  cardGlow: {
-    position: 'absolute',
-    left: -60,
-    right: -60,
-    bottom: 12,
-    height: 250,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.38)',
-  },
   safeArea: {
     flex: 1,
     paddingHorizontal: 24,
@@ -105,8 +85,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 92,
-    paddingBottom: 18,
+    paddingTop: 110,
+    paddingBottom: 10,
   },
   wordmark: {
     color: '#202126',
@@ -136,13 +116,17 @@ const styles = StyleSheet.create({
     maxWidth: 342,
   },
   authCardOuter: {
-    marginBottom: 42,
+    marginBottom: 38,
     borderRadius: 34,
     padding: 1,
-    backgroundColor: 'rgba(255,255,255,0.72)',
+    backgroundColor: 'rgba(255,255,255,0.7)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.9)',
-    ...shadows.soft,
+    borderColor: 'rgba(255,255,255,0.92)',
+    shadowColor: '#111827',
+    shadowOpacity: 0.065,
+    shadowRadius: 34,
+    shadowOffset: { width: 0, height: 24 },
+    elevation: 8,
   },
   authCardHighlight: {
     position: 'absolute',
@@ -159,9 +143,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 17,
     paddingTop: 22,
     paddingBottom: 25,
-    backgroundColor: 'rgba(255,255,255,0.46)',
+    backgroundColor: 'rgba(255,255,255,0.44)',
     borderWidth: 1,
-    borderColor: 'rgba(17,24,39,0.035)',
+    borderColor: 'rgba(17,24,39,0.028)',
     overflow: 'hidden',
   },
   authButton: {
@@ -182,11 +166,11 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   authButtonLight: {
-    backgroundColor: 'rgba(255,255,255,0.76)',
+    backgroundColor: 'rgba(255,255,255,0.78)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.88)',
+    borderColor: 'rgba(255,255,255,0.9)',
     shadowColor: '#111827',
-    shadowOpacity: 0.048,
+    shadowOpacity: 0.044,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 8 },
     elevation: 3,
