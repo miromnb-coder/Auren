@@ -1,3 +1,5 @@
+export type AurenChatMode = 'personal' | 'study' | 'money';
+
 type AurenChatApiMessage = {
   role: 'user' | 'assistant';
   content: string;
@@ -6,8 +8,10 @@ type AurenChatApiMessage = {
 type AurenChatStreamOptions = {
   onToken: (token: string) => void;
   signal?: AbortSignal;
+  mode?: AurenChatMode;
 };
 
+const DEFAULT_AUREN_CHAT_MODE: AurenChatMode = 'personal';
 const AUREN_CHAT_FUNCTION_URL = 'https://eeyserphexequckonzsh.supabase.co/functions/v1/auren-chat';
 const SUPABASE_ANON_KEY = [
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
@@ -15,9 +19,10 @@ const SUPABASE_ANON_KEY = [
   'bcbw8jf2p5gBj1JPN4TxIu5WfweP8em4dTx_5so9hgw',
 ].join('.');
 
-function createRequestBody(messages: AurenChatApiMessage[], stream: boolean) {
+function createRequestBody(messages: AurenChatApiMessage[], stream: boolean, mode: AurenChatMode) {
   return JSON.stringify({
     stream,
+    mode,
     messages: messages.map((message) => ({
       role: message.role,
       content: message.content,
@@ -75,11 +80,14 @@ function tryReadMessageFromJsonText(text: string) {
   }
 }
 
-export async function sendAurenChatMessage(messages: AurenChatApiMessage[]) {
+export async function sendAurenChatMessage(
+  messages: AurenChatApiMessage[],
+  mode: AurenChatMode = DEFAULT_AUREN_CHAT_MODE,
+) {
   const response = await fetch(AUREN_CHAT_FUNCTION_URL, {
     method: 'POST',
     headers: createHeaders(),
-    body: createRequestBody(messages, false),
+    body: createRequestBody(messages, false, mode),
   });
 
   const data = await readJsonResponse(response);
@@ -104,7 +112,7 @@ export async function sendAurenChatMessageStream(
   const response = await fetch(AUREN_CHAT_FUNCTION_URL, {
     method: 'POST',
     headers: createHeaders(),
-    body: createRequestBody(messages, true),
+    body: createRequestBody(messages, true, options.mode ?? DEFAULT_AUREN_CHAT_MODE),
     signal: options.signal,
   });
 
