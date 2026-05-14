@@ -486,7 +486,7 @@ export function AurenHomeScreen() {
                             {selected ? <Text style={styles.modeCheck}>✓</Text> : null}
                           </View>
                           <View style={[styles.modeIconBubble, selected && styles.modeIconBubbleSelected]}>
-                            <Ionicons name={option.icon} size={18} color="#1d1d1f" />
+                            <Ionicons name={option.icon} size={16} color="#1d1d1f" />
                           </View>
                           <View style={styles.modeTextWrap}>
                             <Text style={styles.modeTitle}>{option.title}</Text>
@@ -649,23 +649,23 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 80,
     alignSelf: 'center',
-    width: 342,
+    width: 304,
     zIndex: 70,
-    borderRadius: 22,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: 'rgba(17,24,39,0.06)',
     backgroundColor: 'rgba(252,252,251,0.96)',
     overflow: 'hidden',
     shadowColor: '#000000',
-    shadowOpacity: 0.14,
-    shadowRadius: 28,
-    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.12,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 14 },
     elevation: 20,
   },
   modeMenuItem: {
-    minHeight: 92,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
+    minHeight: 74,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.74)',
@@ -678,21 +678,21 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(241,242,244,0.92)',
   },
   modeCheckWrap: {
-    width: 24,
+    width: 19,
     alignItems: 'flex-start',
     justifyContent: 'center',
   },
   modeCheck: {
     color: colors.text,
-    fontSize: 22,
-    lineHeight: 24,
+    fontSize: 20,
+    lineHeight: 22,
     fontWeight: '650',
   },
   modeIconBubble: {
-    width: 39,
-    height: 39,
+    width: 34,
+    height: 34,
     borderRadius: 999,
-    marginRight: 14,
+    marginRight: 11,
     borderWidth: 1,
     borderColor: 'rgba(17,24,39,0.055)',
     backgroundColor: 'rgba(255,255,255,0.62)',
@@ -707,17 +707,17 @@ const styles = StyleSheet.create({
   },
   modeTitle: {
     color: colors.text,
-    fontSize: 20,
-    lineHeight: 25,
-    letterSpacing: -0.38,
+    fontSize: 18.5,
+    lineHeight: 23,
+    letterSpacing: -0.34,
     fontWeight: '620',
   },
   modeSubtitle: {
-    marginTop: 2,
+    marginTop: 1,
     color: colors.muted,
-    fontSize: 16,
-    lineHeight: 22,
-    letterSpacing: -0.22,
+    fontSize: 14.5,
+    lineHeight: 20,
+    letterSpacing: -0.18,
     fontWeight: '480',
   },
   content: {
