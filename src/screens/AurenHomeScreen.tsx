@@ -11,6 +11,7 @@ import { CalendarIcon, ChevronIcon, ListIcon, MenuIcon, SparkIcon } from '../com
 import { AurenMessageList, type AurenMessage } from '../components/AurenMessageList';
 import { AurenPlusSheet, type PlusSheetStage } from '../components/AurenPlusSheet';
 import { AurenSidebar } from '../components/AurenSidebar';
+import { sendAurenChatMessage } from '../lib/aurenChatApi';
 import { colors, spacing } from '../theme';
 
 const COMPOSER_CLOSED_BOTTOM = 34;
@@ -18,7 +19,6 @@ const COMPOSER_KEYBOARD_GAP = 12;
 const COMPOSER_KEYBOARD_EXTRA_LIFT = 34;
 const CONTENT_KEYBOARD_LIFT = 34;
 const PILLS_KEYBOARD_LIFT = 20;
-const FAKE_RESPONSE_DELAY_MS = 850;
 
 function runHaptic(type: 'open' | 'close') {
   if (Platform.OS === 'web') return;
@@ -35,14 +35,12 @@ function createMessageId(role: AurenMessage['role']) {
   return `${role}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function getFakeAurenResponse(message: string) {
-  const cleanMessage = message.replace(/\s+/g, ' ').trim();
-
-  if (cleanMessage.length === 0) {
-    return 'Got it. I can help you turn that into a clear next step.';
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
   }
 
-  return `Got it. I can help with “${cleanMessage}”. First, I’d turn it into one clear next step, then keep the rest organized so it feels manageable.`;
+  return 'Auren had trouble connecting. Try again in a moment.';
 }
 
 export function AurenHomeScreen() {
@@ -58,7 +56,6 @@ export function AurenHomeScreen() {
   const pillsOpacity = useRef(new Animated.Value(1)).current;
   const pillsTranslateY = useRef(new Animated.Value(0)).current;
   const appCardProgress = useRef(new Animated.Value(0)).current;
-  const responseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const plusSheetOpen = plusSheetStage !== 'closed';
   const controlsSheetOpen = controlsSheetStage !== 'closed';
@@ -149,17 +146,12 @@ export function AurenHomeScreen() {
   }
 
   function startNewChat() {
-    if (responseTimerRef.current) {
-      clearTimeout(responseTimerRef.current);
-      responseTimerRef.current = null;
-    }
-
     setMessages([]);
     setAssistantThinking(false);
     closeSidebar();
   }
 
-  function handleSendMessage(message: string) {
+  async function handleSendMessage(message: string) {
     closeAllSheets();
 
     const userMessage: AurenMessage = {
@@ -169,25 +161,39 @@ export function AurenHomeScreen() {
       createdAt: Date.now(),
     };
 
-    setMessages((currentMessages) => [...currentMessages, userMessage]);
+    const nextMessages = [...messages, userMessage];
+
+    setMessages(nextMessages);
     setAssistantThinking(true);
 
-    if (responseTimerRef.current) {
-      clearTimeout(responseTimerRef.current);
-    }
+    try {
+      const assistantReply = await sendAurenChatMessage(
+        nextMessages.map((item) => ({
+          role: item.role,
+          content: item.content,
+        })),
+      );
 
-    responseTimerRef.current = setTimeout(() => {
       const assistantMessage: AurenMessage = {
         id: createMessageId('assistant'),
         role: 'assistant',
-        content: getFakeAurenResponse(message),
+        content: assistantReply,
         createdAt: Date.now(),
       };
 
       setMessages((currentMessages) => [...currentMessages, assistantMessage]);
+    } catch (error) {
+      const assistantMessage: AurenMessage = {
+        id: createMessageId('assistant'),
+        role: 'assistant',
+        content: getErrorMessage(error),
+        createdAt: Date.now(),
+      };
+
+      setMessages((currentMessages) => [...currentMessages, assistantMessage]);
+    } finally {
       setAssistantThinking(false);
-      responseTimerRef.current = null;
-    }, FAKE_RESPONSE_DELAY_MS);
+    }
   }
 
   function openPlusSheet() {
@@ -238,14 +244,6 @@ export function AurenHomeScreen() {
       useNativeDriver: true,
     }).start();
   }, [anySheetExpanded, appCardProgress]);
-
-  useEffect(() => {
-    return () => {
-      if (responseTimerRef.current) {
-        clearTimeout(responseTimerRef.current);
-      }
-    };
-  }, []);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
