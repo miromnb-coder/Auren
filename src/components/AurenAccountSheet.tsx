@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -11,6 +11,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { supabase } from '../lib/supabase';
 import { shadows } from '../theme';
 
 export type AccountSheetStage = 'closed' | 'peek' | 'expanded';
@@ -70,9 +71,28 @@ function getAvatarInitial(initials: string) {
   return cleanInitials.charAt(0).toUpperCase() || 'A';
 }
 
-function AccountListRow({ row, last = false }: { row: AccountRow; last?: boolean }) {
+function AccountListRow({
+  row,
+  last = false,
+  disabled = false,
+  onPress,
+}: {
+  row: AccountRow;
+  last?: boolean;
+  disabled?: boolean;
+  onPress?: () => void;
+}) {
   return (
-    <Pressable style={({ pressed }) => [styles.row, !last && styles.rowBorder, pressed && styles.pressed]}>
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [
+        styles.row,
+        !last && styles.rowBorder,
+        pressed && !disabled && styles.pressed,
+        disabled && styles.disabled,
+      ]}
+    >
       <View style={styles.rowIconWrap}>
         <Ionicons name={row.icon} size={24} color={row.danger ? '#d4474b' : '#858891'} />
       </View>
@@ -84,6 +104,7 @@ function AccountListRow({ row, last = false }: { row: AccountRow; last?: boolean
 
 export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROFILE }: AurenAccountSheetProps) {
   const { height } = useWindowDimensions();
+  const [signingOut, setSigningOut] = useState(false);
 
   const { closedY, expandedHeight, expandedY, peekY } = useMemo(() => {
     const nextExpandedHeight = Math.min(
@@ -123,6 +144,30 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
+  }
+
+  async function handleSignOut() {
+    if (signingOut) return;
+
+    setSigningOut(true);
+    onStageChange('closed');
+
+    try {
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        throw error;
+      }
+    } catch {
+      setSigningOut(false);
+      onStageChange('expanded');
+    }
+  }
+
+  function handleRowPress(row: AccountRow) {
+    if (row.id === 'sign-out') {
+      void handleSignOut();
+    }
   }
 
   useEffect(() => {
@@ -227,13 +272,23 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
 
         <View style={styles.groupCard}>
           {MAIN_ROWS.map((row, index) => (
-            <AccountListRow key={row.id} row={row} last={index === MAIN_ROWS.length - 1} />
+            <AccountListRow
+              key={row.id}
+              row={row}
+              last={index === MAIN_ROWS.length - 1}
+              onPress={() => handleRowPress(row)}
+            />
           ))}
         </View>
 
         {SECONDARY_ROWS.map((row) => (
           <View key={row.id} style={styles.singleCard}>
-            <AccountListRow row={row} last />
+            <AccountListRow
+              row={row}
+              last
+              disabled={row.id === 'sign-out' && signingOut}
+              onPress={() => handleRowPress(row)}
+            />
           </View>
         ))}
       </ScrollView>
@@ -393,5 +448,8 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.68,
     transform: [{ scale: 0.993 }],
+  },
+  disabled: {
+    opacity: 0.55,
   },
 });
