@@ -33,6 +33,8 @@ type AccountRow = {
   danger?: boolean;
 };
 
+type SheetView = 'account' | 'profile' | 'dataMemory';
+
 const DEFAULT_PROFILE: AccountSheetProfile = { name: 'Auren user', email: '', initials: 'AU' };
 const PEEK_HEIGHT_RATIO = 0.54;
 const EXPANDED_HEIGHT_RATIO = 0.92;
@@ -53,6 +55,19 @@ const SECONDARY_ROWS: AccountRow[] = [
   { id: 'subscription', label: 'Subscription', icon: 'diamond-outline' },
   { id: 'help', label: 'Help', icon: 'help-circle-outline' },
   { id: 'sign-out', label: 'Sign out', icon: 'log-out-outline', danger: true },
+];
+
+const DATA_MEMORY_MAIN_ROWS: AccountRow[] = [
+  { id: 'saved-memories', label: 'Saved memories', icon: 'bookmark-outline' },
+  { id: 'connected-data', label: 'Connected data', icon: 'server-outline' },
+  { id: 'chat-history', label: 'Chat history', icon: 'chatbubble-outline' },
+  { id: 'import-export', label: 'Import & export', icon: 'download-outline' },
+];
+
+const DATA_MEMORY_PRIVACY_ROWS: AccountRow[] = [
+  { id: 'manage-permissions', label: 'Manage permissions', icon: 'shield-outline' },
+  { id: 'delete-chat-history', label: 'Delete chat history', icon: 'trash-outline' },
+  { id: 'clear-memory', label: 'Clear memory', icon: 'warning-outline', danger: true },
 ];
 
 function clamp(value: number, min: number, max: number) {
@@ -95,9 +110,21 @@ function AccountListRow({ row, last, disabled, onPress }: { row: AccountRow; las
   );
 }
 
+function DataMemoryRow({ row, last }: { row: AccountRow; last?: boolean }) {
+  return (
+    <Pressable style={({ pressed }) => [styles.dataRow, !last && styles.rowBorder, pressed && styles.pressed]}>
+      <View style={styles.dataRowIconWrap}>
+        <Ionicons name={row.icon} size={24} color={row.danger ? '#d4474b' : '#858891'} />
+      </View>
+      <Text style={[styles.dataRowLabel, row.danger && styles.dangerText]}>{row.label}</Text>
+      <Ionicons name="chevron-forward" size={23} color="#a7a9b0" />
+    </Pressable>
+  );
+}
+
 export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROFILE, onProfileUpdated }: AurenAccountSheetProps) {
   const { height } = useWindowDimensions();
-  const [view, setView] = useState<'account' | 'profile'>('account');
+  const [view, setView] = useState<SheetView>('account');
   const [signingOut, setSigningOut] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [localProfile, setLocalProfile] = useState<AccountSheetProfile>(profile);
@@ -145,6 +172,11 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
     onStageChange('expanded');
   }
 
+  function openDataMemory() {
+    setView('dataMemory');
+    onStageChange('expanded');
+  }
+
   async function saveProfile() {
     const nextName = draftName.replace(/\s+/g, ' ').trim();
     if (!nextName || savingProfile) return;
@@ -188,6 +220,7 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
 
   function handleRowPress(row: AccountRow) {
     if (row.id === 'profile') return openProfile();
+    if (row.id === 'data-memory') return openDataMemory();
     if (row.id === 'sign-out') void handleSignOut();
   }
 
@@ -263,7 +296,7 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
       <View style={styles.handle} />
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={view === 'profile' ? styles.profileContent : styles.content}
+        contentContainerStyle={view === 'profile' ? styles.profileContent : view === 'dataMemory' ? styles.dataMemoryContent : styles.content}
         showsVerticalScrollIndicator={false}
         bounces={false}
         keyboardShouldPersistTaps="handled"
@@ -328,6 +361,55 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
               <Text style={styles.saveButtonText}>{savingProfile ? 'Saving…' : 'Save changes'}</Text>
             </Pressable>
             <Pressable onPress={() => setView('account')} style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
+              <Text style={styles.backButtonText}>Back</Text>
+            </Pressable>
+          </>
+        ) : view === 'dataMemory' ? (
+          <>
+            <Text style={styles.dataTitle}>Data & Memory</Text>
+
+            <View style={styles.memorySummaryCard}>
+              <View style={styles.memorySummaryIcon}>
+                <Ionicons name="server-outline" size={43} color="#858891" />
+              </View>
+              <View style={styles.memorySummaryTextWrap}>
+                <Text style={styles.memorySummaryTitle}>Memory is on</Text>
+                <Text style={styles.memorySummaryLine}>12 saved memories</Text>
+                <Text style={styles.memorySummaryLine}>Last updated today</Text>
+                <Text style={styles.memorySummarySmall}>Auren uses memory to personalize responses.</Text>
+              </View>
+            </View>
+
+            <View style={styles.dataGroupCard}>
+              {DATA_MEMORY_MAIN_ROWS.map((row, index) => (
+                <DataMemoryRow key={row.id} row={row} last={index === DATA_MEMORY_MAIN_ROWS.length - 1} />
+              ))}
+            </View>
+
+            <View style={styles.storageCard}>
+              <View style={styles.storageTopRow}>
+                <Text style={styles.storageTitle}>Storage used</Text>
+                <Text style={styles.storageValue}>128 MB</Text>
+              </View>
+              <View style={styles.storageTrack}>
+                <View style={styles.storageFill} />
+              </View>
+              <View style={styles.storageBottomRow}>
+                <Text style={styles.storageMeta}>128 MB of 5 GB used</Text>
+                <Text style={styles.storageMeta}>2%</Text>
+              </View>
+            </View>
+
+            <View style={styles.dataPrivacyCard}>
+              {DATA_MEMORY_PRIVACY_ROWS.map((row, index) => (
+                <DataMemoryRow key={row.id} row={row} last={index === DATA_MEMORY_PRIVACY_ROWS.length - 1} />
+              ))}
+            </View>
+
+            <Pressable style={({ pressed }) => [styles.saveButton, styles.dataSaveButton, pressed && styles.pressed]}>
+              <Text style={styles.saveButtonText}>Save changes</Text>
+            </Pressable>
+            <Pressable onPress={() => setView('account')} style={({ pressed }) => [styles.backButton, styles.dataBackButton, pressed && styles.pressed]}>
               <Text style={styles.backButtonText}>Back</Text>
             </Pressable>
           </>
@@ -404,6 +486,7 @@ const styles = StyleSheet.create({
   scrollView: { flex: 1 },
   content: { paddingHorizontal: 23, paddingTop: 31, paddingBottom: 44 },
   profileContent: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 26 },
+  dataMemoryContent: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 26 },
   title: {
     color: '#1d1d20',
     fontSize: 19,
@@ -497,6 +580,52 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   backButtonText: { color: '#777b84', fontSize: 17, lineHeight: 22, fontWeight: '500', letterSpacing: -0.2 },
+  dataTitle: {
+    color: '#1d1d20',
+    fontSize: 19,
+    lineHeight: 25,
+    fontWeight: '620',
+    letterSpacing: -0.22,
+    textAlign: 'center',
+    marginBottom: 31,
+  },
+  memorySummaryCard: {
+    minHeight: 122,
+    borderRadius: 18,
+    paddingHorizontal: 22,
+    paddingVertical: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    ...cardBase,
+  },
+  memorySummaryIcon: {
+    width: 76,
+    height: 76,
+    borderRadius: 999,
+    marginRight: 20,
+    backgroundColor: '#eeedf2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  memorySummaryTextWrap: { flex: 1, minWidth: 0 },
+  memorySummaryTitle: { color: '#1d1d20', fontSize: 21, lineHeight: 26, fontWeight: '520', letterSpacing: -0.36 },
+  memorySummaryLine: { color: '#777b84', fontSize: 14.5, lineHeight: 20, fontWeight: '440', letterSpacing: -0.12 },
+  memorySummarySmall: { marginTop: 7, color: '#777b84', fontSize: 12.5, lineHeight: 17, fontWeight: '430', letterSpacing: -0.06 },
+  dataGroupCard: { marginTop: 25, borderRadius: 18, overflow: 'hidden', ...cardBase },
+  dataPrivacyCard: { marginTop: 25, borderRadius: 18, overflow: 'hidden', ...cardBase },
+  dataRow: { minHeight: 61, paddingHorizontal: 25, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.82)' },
+  dataRowIconWrap: { width: 42, marginRight: 18, alignItems: 'flex-start', justifyContent: 'center' },
+  dataRowLabel: { flex: 1, color: '#1f2228', fontSize: 16, lineHeight: 21, fontWeight: '450', letterSpacing: -0.17 },
+  storageCard: { minHeight: 105, marginTop: 24, borderRadius: 18, paddingHorizontal: 20, paddingVertical: 17, ...cardBase },
+  storageTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  storageTitle: { color: '#1f2228', fontSize: 15.5, lineHeight: 20, fontWeight: '500', letterSpacing: -0.16 },
+  storageValue: { color: '#777b84', fontSize: 15.5, lineHeight: 20, fontWeight: '500', letterSpacing: -0.16 },
+  storageTrack: { height: 8, borderRadius: 999, marginTop: 20, backgroundColor: '#e4e1ea', overflow: 'hidden' },
+  storageFill: { width: '4%', height: '100%', borderRadius: 999, backgroundColor: '#858891' },
+  storageBottomRow: { marginTop: 17, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  storageMeta: { color: '#777b84', fontSize: 13.5, lineHeight: 18, fontWeight: '440', letterSpacing: -0.08 },
+  dataSaveButton: { marginTop: 25 },
+  dataBackButton: { marginTop: 14 },
   pressed: { opacity: 0.68, transform: [{ scale: 0.993 }] },
   disabled: { opacity: 0.55 },
 });
