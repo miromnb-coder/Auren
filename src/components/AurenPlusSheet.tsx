@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import * as MediaLibrary from 'expo-media-library';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -55,17 +56,16 @@ function canRenderImageUri(uri?: string | null) {
 
 function GlobeIcon() {
   return (
-    <View style={styles.globeIcon}>
-      <View style={styles.globeHorizontal} />
-      <View style={styles.globeVerticalOval} />
+    <View style={styles.actionIconBadge}>
+      <Ionicons name="globe-outline" size={27} color="#111217" />
     </View>
   );
 }
 
 function PaperclipIcon() {
   return (
-    <View style={styles.paperclipIcon}>
-      <View style={styles.paperclipInner} />
+    <View style={styles.actionIconBadge}>
+      <Ionicons name="attach-outline" size={30} color="#111217" />
     </View>
   );
 }
@@ -505,6 +505,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  actionIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: 'rgba(246,247,249,0.92)',
+    borderWidth: 1,
+    borderColor: 'rgba(17,24,39,0.055)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   actionTextWrap: {
     flex: 1,
     marginLeft: 14,
@@ -529,47 +539,6 @@ const styles = StyleSheet.create({
     fontSize: 28,
     lineHeight: 30,
     fontWeight: '300',
-  },
-  globeIcon: {
-    width: 29,
-    height: 29,
-    borderRadius: 999,
-    borderWidth: 2.4,
-    borderColor: '#111217',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  globeHorizontal: {
-    position: 'absolute',
-    width: 23,
-    height: 2.4,
-    borderRadius: 999,
-    backgroundColor: '#111217',
-  },
-  globeVerticalOval: {
-    width: 13,
-    height: 27,
-    borderRadius: 999,
-    borderWidth: 2.2,
-    borderColor: '#111217',
-  },
-  paperclipIcon: {
-    width: 17,
-    height: 32,
-    borderRadius: 999,
-    borderWidth: 2.6,
-    borderColor: '#111217',
-    transform: [{ rotate: '8deg' }],
-  },
-  paperclipInner: {
-    position: 'absolute',
-    left: 4,
-    top: 6,
-    width: 7,
-    height: 19,
-    borderRadius: 999,
-    borderWidth: 2,
-    borderColor: '#111217',
   },
   confirmButton: {
     position: 'absolute',
