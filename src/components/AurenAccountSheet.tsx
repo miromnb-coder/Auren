@@ -17,7 +17,11 @@ import { shadows } from '../theme';
 
 export type AccountSheetStage = 'closed' | 'peek' | 'expanded';
 
-type AccountSheetProfile = { name: string; email: string; initials: string };
+type AccountSheetProfile = {
+  name: string;
+  email: string;
+  initials: string;
+};
 
 type AurenAccountSheetProps = {
   stage: AccountSheetStage;
@@ -94,12 +98,27 @@ function initialsFromName(name: string, email: string) {
   return initials || email.charAt(0).toUpperCase() || 'A';
 }
 
-function AccountListRow({ row, last, disabled, onPress }: { row: AccountRow; last?: boolean; disabled?: boolean; onPress?: () => void }) {
+function AccountListRow({
+  row,
+  last = false,
+  disabled = false,
+  onPress,
+}: {
+  row: AccountRow;
+  last?: boolean;
+  disabled?: boolean;
+  onPress?: () => void;
+}) {
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      style={({ pressed }) => [styles.row, !last && styles.rowBorder, pressed && !disabled && styles.pressed, disabled && styles.disabled]}
+      style={({ pressed }) => [
+        styles.row,
+        !last && styles.rowBorder,
+        pressed && !disabled && styles.pressed,
+        disabled && styles.disabled,
+      ]}
     >
       <View style={styles.rowIconWrap}>
         <Ionicons name={row.icon} size={24} color={row.danger ? '#d4474b' : '#858891'} />
@@ -110,19 +129,24 @@ function AccountListRow({ row, last, disabled, onPress }: { row: AccountRow; las
   );
 }
 
-function DataMemoryRow({ row, last }: { row: AccountRow; last?: boolean }) {
+function DataMemoryRow({ row, last = false }: { row: AccountRow; last?: boolean }) {
   return (
     <Pressable style={({ pressed }) => [styles.dataRow, !last && styles.rowBorder, pressed && styles.pressed]}>
       <View style={styles.dataRowIconWrap}>
-        <Ionicons name={row.icon} size={24} color={row.danger ? '#d4474b' : '#858891'} />
+        <Ionicons name={row.icon} size={21} color={row.danger ? '#d4474b' : '#858891'} />
       </View>
       <Text style={[styles.dataRowLabel, row.danger && styles.dangerText]}>{row.label}</Text>
-      <Ionicons name="chevron-forward" size={23} color="#a7a9b0" />
+      <Ionicons name="chevron-forward" size={21} color="#a7a9b0" />
     </Pressable>
   );
 }
 
-export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROFILE, onProfileUpdated }: AurenAccountSheetProps) {
+export function AurenAccountSheet({
+  stage,
+  onStageChange,
+  profile = DEFAULT_PROFILE,
+  onProfileUpdated,
+}: AurenAccountSheetProps) {
   const { height } = useWindowDimensions();
   const [view, setView] = useState<SheetView>('account');
   const [signingOut, setSigningOut] = useState(false);
@@ -145,7 +169,9 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
     };
   }, [height]);
 
-  const translateY = useRef(new Animated.Value(stage === 'closed' ? sheet.closedY : stage === 'expanded' ? sheet.expandedY : sheet.peekY)).current;
+  const translateY = useRef(
+    new Animated.Value(stage === 'closed' ? sheet.closedY : stage === 'expanded' ? sheet.expandedY : sheet.peekY),
+  ).current;
   const currentY = useRef(stage === 'closed' ? sheet.closedY : stage === 'expanded' ? sheet.expandedY : sheet.peekY);
   const dragStartY = useRef(currentY.current);
 
@@ -158,6 +184,7 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
   function animateToStage(nextStage: AccountSheetStage) {
     const nextY = targetY(nextStage);
     currentY.current = nextY;
+
     Animated.timing(translateY, {
       toValue: nextY,
       duration: nextStage === 'closed' ? 250 : 320,
@@ -180,18 +207,30 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
   async function saveProfile() {
     const nextName = draftName.replace(/\s+/g, ' ').trim();
     if (!nextName || savingProfile) return;
+
     setSavingProfile(true);
 
     try {
       const { data, error } = await supabase.auth.getUser();
       if (error) throw error;
+
       const userId = data.user?.id;
       const email = data.user?.email ?? localProfile.email;
       if (!userId) throw new Error('Missing user');
 
-      const nextProfile = { name: nextName, email, initials: initialsFromName(nextName, email) };
-      const { error: profileError } = await supabase.from('profiles').upsert({ id: userId, email, display_name: nextName });
+      const nextProfile = {
+        name: nextName,
+        email,
+        initials: initialsFromName(nextName, email),
+      };
+
+      const { error: profileError } = await supabase.from('profiles').upsert({
+        id: userId,
+        email,
+        display_name: nextName,
+      });
       if (profileError) throw profileError;
+
       await supabase.auth.updateUser({ data: { display_name: nextName, full_name: nextName } });
 
       setLocalProfile(nextProfile);
@@ -206,6 +245,7 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
 
   async function handleSignOut() {
     if (signingOut) return;
+
     setSigningOut(true);
     onStageChange('closed');
 
@@ -219,9 +259,19 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
   }
 
   function handleRowPress(row: AccountRow) {
-    if (row.id === 'profile') return openProfile();
-    if (row.id === 'data-memory') return openDataMemory();
-    if (row.id === 'sign-out') void handleSignOut();
+    if (row.id === 'profile') {
+      openProfile();
+      return;
+    }
+
+    if (row.id === 'data-memory') {
+      openDataMemory();
+      return;
+    }
+
+    if (row.id === 'sign-out') {
+      void handleSignOut();
+    }
   }
 
   useEffect(() => {
@@ -296,7 +346,9 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
       <View style={styles.handle} />
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={view === 'profile' ? styles.profileContent : view === 'dataMemory' ? styles.dataMemoryContent : styles.content}
+        contentContainerStyle={
+          view === 'profile' ? styles.profileContent : view === 'dataMemory' ? styles.dataMemoryContent : styles.content
+        }
         showsVerticalScrollIndicator={false}
         bounces={false}
         keyboardShouldPersistTaps="handled"
@@ -356,7 +408,11 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
             <Pressable
               onPress={saveProfile}
               disabled={savingProfile || draftName.trim().length === 0}
-              style={({ pressed }) => [styles.saveButton, pressed && styles.pressed, (savingProfile || draftName.trim().length === 0) && styles.disabled]}
+              style={({ pressed }) => [
+                styles.saveButton,
+                pressed && styles.pressed,
+                (savingProfile || draftName.trim().length === 0) && styles.disabled,
+              ]}
             >
               <Text style={styles.saveButtonText}>{savingProfile ? 'Saving…' : 'Save changes'}</Text>
             </Pressable>
@@ -370,7 +426,7 @@ export function AurenAccountSheet({ stage, onStageChange, profile = DEFAULT_PROF
 
             <View style={styles.memorySummaryCard}>
               <View style={styles.memorySummaryIcon}>
-                <Ionicons name="server-outline" size={43} color="#858891" />
+                <Ionicons name="server-outline" size={36} color="#858891" />
               </View>
               <View style={styles.memorySummaryTextWrap}>
                 <Text style={styles.memorySummaryTitle}>Memory is on</Text>
@@ -486,7 +542,7 @@ const styles = StyleSheet.create({
   scrollView: { flex: 1 },
   content: { paddingHorizontal: 23, paddingTop: 31, paddingBottom: 44 },
   profileContent: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 26 },
-  dataMemoryContent: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 26 },
+  dataMemoryContent: { paddingHorizontal: 24, paddingTop: 10, paddingBottom: 18 },
   title: {
     color: '#1d1d20',
     fontSize: 19,
@@ -587,45 +643,45 @@ const styles = StyleSheet.create({
     fontWeight: '620',
     letterSpacing: -0.22,
     textAlign: 'center',
-    marginBottom: 31,
+    marginBottom: 18,
   },
   memorySummaryCard: {
-    minHeight: 122,
+    minHeight: 96,
     borderRadius: 18,
     paddingHorizontal: 22,
-    paddingVertical: 18,
+    paddingVertical: 13,
     flexDirection: 'row',
     alignItems: 'center',
     ...cardBase,
   },
   memorySummaryIcon: {
-    width: 76,
-    height: 76,
+    width: 58,
+    height: 58,
     borderRadius: 999,
-    marginRight: 20,
+    marginRight: 18,
     backgroundColor: '#eeedf2',
     alignItems: 'center',
     justifyContent: 'center',
   },
   memorySummaryTextWrap: { flex: 1, minWidth: 0 },
-  memorySummaryTitle: { color: '#1d1d20', fontSize: 21, lineHeight: 26, fontWeight: '520', letterSpacing: -0.36 },
-  memorySummaryLine: { color: '#777b84', fontSize: 14.5, lineHeight: 20, fontWeight: '440', letterSpacing: -0.12 },
-  memorySummarySmall: { marginTop: 7, color: '#777b84', fontSize: 12.5, lineHeight: 17, fontWeight: '430', letterSpacing: -0.06 },
-  dataGroupCard: { marginTop: 25, borderRadius: 18, overflow: 'hidden', ...cardBase },
-  dataPrivacyCard: { marginTop: 25, borderRadius: 18, overflow: 'hidden', ...cardBase },
-  dataRow: { minHeight: 61, paddingHorizontal: 25, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.82)' },
-  dataRowIconWrap: { width: 42, marginRight: 18, alignItems: 'flex-start', justifyContent: 'center' },
-  dataRowLabel: { flex: 1, color: '#1f2228', fontSize: 16, lineHeight: 21, fontWeight: '450', letterSpacing: -0.17 },
-  storageCard: { minHeight: 105, marginTop: 24, borderRadius: 18, paddingHorizontal: 20, paddingVertical: 17, ...cardBase },
+  memorySummaryTitle: { color: '#1d1d20', fontSize: 19, lineHeight: 23, fontWeight: '520', letterSpacing: -0.32 },
+  memorySummaryLine: { color: '#777b84', fontSize: 13, lineHeight: 17, fontWeight: '440', letterSpacing: -0.1 },
+  memorySummarySmall: { marginTop: 5, color: '#777b84', fontSize: 11.5, lineHeight: 15, fontWeight: '430', letterSpacing: -0.04 },
+  dataGroupCard: { marginTop: 14, borderRadius: 18, overflow: 'hidden', ...cardBase },
+  dataPrivacyCard: { marginTop: 14, borderRadius: 18, overflow: 'hidden', ...cardBase },
+  dataRow: { minHeight: 48, paddingHorizontal: 25, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.82)' },
+  dataRowIconWrap: { width: 36, marginRight: 16, alignItems: 'flex-start', justifyContent: 'center' },
+  dataRowLabel: { flex: 1, color: '#1f2228', fontSize: 15.5, lineHeight: 20, fontWeight: '450', letterSpacing: -0.16 },
+  storageCard: { minHeight: 75, marginTop: 14, borderRadius: 18, paddingHorizontal: 20, paddingVertical: 13, ...cardBase },
   storageTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  storageTitle: { color: '#1f2228', fontSize: 15.5, lineHeight: 20, fontWeight: '500', letterSpacing: -0.16 },
-  storageValue: { color: '#777b84', fontSize: 15.5, lineHeight: 20, fontWeight: '500', letterSpacing: -0.16 },
-  storageTrack: { height: 8, borderRadius: 999, marginTop: 20, backgroundColor: '#e4e1ea', overflow: 'hidden' },
+  storageTitle: { color: '#1f2228', fontSize: 15, lineHeight: 19, fontWeight: '500', letterSpacing: -0.14 },
+  storageValue: { color: '#777b84', fontSize: 15, lineHeight: 19, fontWeight: '500', letterSpacing: -0.14 },
+  storageTrack: { height: 7, borderRadius: 999, marginTop: 11, backgroundColor: '#e4e1ea', overflow: 'hidden' },
   storageFill: { width: '4%', height: '100%', borderRadius: 999, backgroundColor: '#858891' },
-  storageBottomRow: { marginTop: 17, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  storageMeta: { color: '#777b84', fontSize: 13.5, lineHeight: 18, fontWeight: '440', letterSpacing: -0.08 },
-  dataSaveButton: { marginTop: 25 },
-  dataBackButton: { marginTop: 14 },
+  storageBottomRow: { marginTop: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  storageMeta: { color: '#777b84', fontSize: 12.5, lineHeight: 16, fontWeight: '440', letterSpacing: -0.06 },
+  dataSaveButton: { height: 50, marginTop: 14 },
+  dataBackButton: { height: 48, marginTop: 10 },
   pressed: { opacity: 0.68, transform: [{ scale: 0.993 }] },
   disabled: { opacity: 0.55 },
 });
