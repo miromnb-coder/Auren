@@ -27,14 +27,6 @@ export type AurenConversationMessage = {
   metadata?: Record<string, unknown>;
 };
 
-export type AurenAgentInput = {
-  message: string;
-  userId?: string;
-  mode?: AurenMode;
-  conversation?: AurenConversationMessage[];
-  metadata?: Record<string, unknown>;
-};
-
 export type AurenToolName =
   | 'calendar'
   | 'gmail'
@@ -44,6 +36,26 @@ export type AurenToolName =
   | 'finance';
 
 export type AurenToolStatus = 'available' | 'placeholder' | 'not_connected';
+
+export type AurenThinkingStage =
+  | 'understanding'
+  | 'routing'
+  | 'context'
+  | 'memory'
+  | 'planning'
+  | 'tools'
+  | 'writing'
+  | 'finalizing';
+
+export type AurenThinkingEvent = {
+  type: 'thinking_state';
+  stage: AurenThinkingStage;
+  title: string;
+  detail: string;
+  sequence: number;
+  timestamp: string;
+  metadata?: Record<string, unknown>;
+};
 
 export type AurenToolDefinition = {
   name: AurenToolName;
@@ -115,6 +127,14 @@ export type AurenMemoryResult = {
   items: AurenMemoryItem[];
   candidates: AurenMemoryItem[];
   note?: string;
+};
+
+export type AurenAgentInput = {
+  message: string;
+  userId?: string;
+  mode?: AurenMode;
+  conversation?: AurenConversationMessage[];
+  metadata?: Record<string, unknown>;
 };
 
 export type AurenContext = {
@@ -191,10 +211,31 @@ export type AurenAgentResult = {
   createdAt: string;
 };
 
-export type AurenStreamEvent = {
-  type: 'step' | 'token' | 'result' | 'error';
-  message?: string;
-  step?: AurenAgentStep;
-  result?: AurenAgentResult;
-  error?: string;
+export type AurenStreamEvent =
+  | {
+      type: 'step';
+      message?: string;
+      step?: AurenAgentStep;
+    }
+  | {
+      type: 'thinking_state';
+      thinking: AurenThinkingEvent;
+    }
+  | {
+      type: 'token';
+      message?: string;
+    }
+  | {
+      type: 'result';
+      result: AurenAgentResult;
+    }
+  | {
+      type: 'error';
+      error: string;
+    };
+
+export type AurenAgentEventHandler = (event: AurenStreamEvent) => void;
+
+export type AurenAgentRunOptions = {
+  onEvent?: AurenAgentEventHandler;
 };
