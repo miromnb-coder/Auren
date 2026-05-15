@@ -12,6 +12,9 @@ type AurenChatStreamOptions = {
   onToken: (token: string) => void;
   signal?: AbortSignal;
   mode?: AurenChatMode;
+  userId?: string;
+  chatId?: string;
+  messageId?: string;
 };
 
 const DEFAULT_AUREN_CHAT_MODE: AurenChatMode = 'personal';
@@ -57,8 +60,13 @@ export async function sendAurenChatMessageStream(
 
   const result = await runAurenAgent({
     message: getLatestUserMessage(messages),
+    userId: options.userId,
     mode: mapChatModeToAgentMode(options.mode ?? DEFAULT_AUREN_CHAT_MODE),
     conversation: messages,
+    metadata: {
+      chatId: options.chatId,
+      messageId: options.messageId,
+    },
   });
 
   throwIfAborted(options.signal);
