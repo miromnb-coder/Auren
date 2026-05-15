@@ -3,23 +3,25 @@ import { buildAurenContext } from '../context/buildContext';
 import { evaluateResponse } from '../critic/evaluateResponse';
 import { generateFinalResponse } from '../generator/finalResponse';
 import { createPlan } from '../planner/planner';
-import { routeIntent } from '../router/intentRouter';
+import { routeIntent, routeIntentHybrid } from '../router/intentRouter';
+import { createThinkingStatus } from '../streaming/thinkingStatusWriter';
 import { selectMode } from '../router/modeSelector';
 import { executeTools } from '../tools/executeTool';
 import type {
   AurenAgentInput,
   AurenAgentResult,
+  AurenAgentRunOptions,
   AurenAgentStep,
   AurenPlan,
+  AurenPlanStep,
   AurenResponseDraft,
   AurenResponseEvaluation,
   AurenSuggestion,
+  AurenThinkingStage,
   AurenToolResult,
 } from './types';
 
-const MAX_DB_TEXT_LENGTH = 12000;
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+type AurenBuiltContext = Awaited<ReturnType<typeof buildAurenContext>>;
 
 type ResponseGenerationState = {
   draft: AurenResponseDraft;
@@ -32,12 +34,57 @@ type ToolExecutionState = {
   errorMessage?: string;
 };
 
+type PlanGenerationState = {
+  plan: AurenPlan;
+  usedFallback: boolean;
+  errorMessage?: string;
+};
+
+type RouteState = {
+  intent: ReturnType<typeof routeIntent>;
+  usedFallback: boolean;
+  errorMessage?: string;
+};
+
+type RunTimings = Record<string, number>;
+
+type ThinkingEmitter = (input: {
+  stage: AurenThinkingStage;
+  mode?: AurenBuiltContext['mode'];
+  intent?: ReturnType<typeof routeIntent>['intent'];
+  message: string;
+  planGoal?: string;
+  toolNames?: string[];
+  metadata?: Record<string, unknown>;
+}) => Promise<void>;
+
+const MAX_DB_TEXT_LENGTH = 12000;
+const MAX_VISIBLE_ANSWER_LENGTH = 10000;
+const MAX_SUGGESTIONS = 4;
+const DEFAULT_PLAN_MAX_STEPS = 4;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 const createAgentId = () => {
   return `auren_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 };
 
+const nowMs = () => Date.now();
+
 const cleanText = (value: string | null | undefined) => {
   return value?.replace(/\s+/g, ' ').trim() ?? '';
+};
+
+const cleanAnswerText = (value: string | null | undefined) => {
+  return (
+    value
+      ?.replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/[ \t]+/g, ' ')
+      .replace(/ *\n */g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim() ?? ''
+  );
 };
 
 const limitText = (value: string, maxLength = MAX_DB_TEXT_LENGTH) => {
@@ -48,6 +95,52 @@ const limitText = (value: string, maxLength = MAX_DB_TEXT_LENGTH) => {
   }
 
   return `${cleaned.slice(0, maxLength - 1).trim()}…`;
+};
+
+const limitAnswer = (value: string, maxLength = MAX_VISIBLE_ANSWER_LENGTH) => {
+  const cleaned = cleanAnswerText(value);
+
+  if (cleaned.length <= maxLength) {
+    return cleaned;
+  }
+
+  return `${cleaned.slice(0, maxLength - 1).trim()}…`;
+};
+
+const clampConfidence = (value: number) => {
+  if (!Number.isFinite(value)) {
+    return 0.42;
+  }
+
+  return Math.max(0.05, Math.min(value, 0.98));
+};
+
+const measureAsync = async <T>(
+  timings: RunTimings,
+  key: string,
+  task: () => Promise<T>,
+): Promise<T> => {
+  const startedAt = nowMs();
+
+  try {
+    return await task();
+  } finally {
+    timings[key] = nowMs() - startedAt;
+  }
+};
+
+const measureSync = <T>(
+  timings: RunTimings,
+  key: string,
+  task: () => T,
+): T => {
+  const startedAt = nowMs();
+
+  try {
+    return task();
+  } finally {
+    timings[key] = nowMs() - startedAt;
+  }
 };
 
 const createAgentStep = (
@@ -64,22 +157,49 @@ const createAgentStep = (
   };
 };
 
+const createPlanStep = (
+  id: string,
+  title: string,
+  description: string,
+  status: AurenPlanStep['status'] = 'ready',
+): AurenPlanStep => {
+  return {
+    id,
+    title,
+    description,
+    status,
+  };
+};
+
 const createCompletedSteps = (input?: {
+  routeError?: string;
+  planUsedFallback?: boolean;
+  planError?: string;
   toolError?: string;
   responseUsedFallback?: boolean;
   responseError?: string;
 }): AurenAgentStep[] => {
   return [
-    createAgentStep('understand-request', 'Understanding request', 'complete'),
+    createAgentStep(
+      'route-intent',
+      'Routing intent',
+      input?.routeError ? 'error' : 'complete',
+      input?.routeError,
+    ),
     createAgentStep('select-mode', 'Selecting mode', 'complete'),
     createAgentStep('build-context', 'Building context', 'complete'),
+    createAgentStep(
+      'create-plan',
+      'Creating plan',
+      input?.planUsedFallback ? 'error' : 'complete',
+      input?.planError,
+    ),
     createAgentStep(
       'execute-tools',
       'Checking tools',
       input?.toolError ? 'error' : 'complete',
       input?.toolError,
     ),
-    createAgentStep('create-plan', 'Creating plan', 'complete'),
     createAgentStep(
       'generate-response',
       'Generating response',
@@ -95,6 +215,18 @@ const getStringMetadataValue = (input: AurenAgentInput, key: string) => {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 };
 
+const getNumberMetadataValue = (input: AurenAgentInput, key: string) => {
+  const value = input.metadata?.[key];
+
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+};
+
+const getBooleanMetadataValue = (input: AurenAgentInput, key: string) => {
+  const value = input.metadata?.[key];
+
+  return typeof value === 'boolean' ? value : null;
+};
+
 const getUuidMetadataValue = (input: AurenAgentInput, key: string) => {
   const value = getStringMetadataValue(input, key);
 
@@ -103,6 +235,16 @@ const getUuidMetadataValue = (input: AurenAgentInput, key: string) => {
   }
 
   return value;
+};
+
+const getPlanMaxSteps = (input: AurenAgentInput) => {
+  const value = getNumberMetadataValue(input, 'maxSteps');
+
+  if (!value) {
+    return DEFAULT_PLAN_MAX_STEPS;
+  }
+
+  return Math.max(1, Math.min(Math.floor(value), 6));
 };
 
 const createFallbackSuggestion = (
@@ -119,6 +261,33 @@ const createFallbackSuggestion = (
   };
 };
 
+const dedupeSuggestions = (suggestions: AurenSuggestion[]) => {
+  const uniqueSuggestions = new Map<string, AurenSuggestion>();
+
+  for (const suggestion of suggestions) {
+    const id = cleanText(suggestion.id);
+    const label = cleanText(suggestion.label);
+    const action = cleanText(suggestion.action);
+
+    if (!id || !label || !action) {
+      continue;
+    }
+
+    const key = action || id;
+
+    if (!uniqueSuggestions.has(key)) {
+      uniqueSuggestions.set(key, {
+        ...suggestion,
+        id,
+        label: limitText(label, 42),
+        action,
+      });
+    }
+  }
+
+  return Array.from(uniqueSuggestions.values()).slice(0, MAX_SUGGESTIONS);
+};
+
 const createFallbackSuggestions = (
   input: AurenAgentInput,
   plan: AurenPlan,
@@ -130,7 +299,7 @@ const createFallbackSuggestions = (
 
   const planSuggestions = plan.steps
     .filter((step) => cleanText(step.title))
-    .slice(0, 4)
+    .slice(0, MAX_SUGGESTIONS)
     .map((step, index) =>
       createFallbackSuggestion(
         `plan_step_${index + 1}`,
@@ -148,6 +317,59 @@ const createFallbackSuggestions = (
     createFallbackSuggestion('continue', 'Continue', 'continue', basePayload),
     createFallbackSuggestion('make_plan', 'Make a plan', 'make_plan', basePayload),
   ];
+};
+
+const normalizeDraft = (
+  input: AurenAgentInput,
+  plan: AurenPlan,
+  draft: AurenResponseDraft,
+): AurenResponseDraft => {
+  const answer = limitAnswer(draft.answer);
+  const suggestions = dedupeSuggestions(draft.suggestions ?? []);
+
+  return {
+    answer,
+    suggestions:
+      suggestions.length > 0
+        ? suggestions
+        : createFallbackSuggestions(input, plan),
+  };
+};
+
+const createSafeFallbackPlan = (
+  input: AurenAgentInput,
+  context: AurenBuiltContext,
+): AurenPlan => {
+  const message = cleanText(input.message);
+
+  return {
+    goal: message
+      ? `Help the user move forward safely: ${message}`
+      : 'Help the user clarify what they want to do next.',
+    summary: 'Auren created a safe fallback plan because the normal planner failed.',
+    steps: [
+      createPlanStep(
+        'understand-request',
+        'Understand request',
+        'Identify what the user is asking for and avoid making assumptions.',
+      ),
+      ...(context.memory.items.length > 0
+        ? [
+            createPlanStep(
+              'use-relevant-memory',
+              'Use relevant memory',
+              'Apply saved context only if it improves the answer.',
+            ),
+          ]
+        : []),
+      createPlanStep(
+        'respond-safely',
+        'Respond safely',
+        'Give a helpful answer without relying on failed planning logic.',
+      ),
+    ],
+    suggestedToolCalls: [],
+  };
 };
 
 const createFallbackDraft = (
@@ -197,7 +419,107 @@ const createFallbackEvaluation = (errorMessage?: string): AurenResponseEvaluatio
   };
 };
 
+const createThinkingEmitter = (
+  input: AurenAgentInput,
+  options?: AurenAgentRunOptions,
+): ThinkingEmitter => {
+  let sequence = 0;
+
+  return async (thinkingInput) => {
+    if (!options?.onEvent) return;
+
+    const copy = await createThinkingStatus({
+      stage: thinkingInput.stage,
+      mode: thinkingInput.mode,
+      intent: thinkingInput.intent,
+      message: thinkingInput.message,
+      planGoal: thinkingInput.planGoal,
+      toolNames: thinkingInput.toolNames,
+    });
+
+    sequence += 1;
+
+    options.onEvent({
+      type: 'thinking_state',
+      thinking: {
+        type: 'thinking_state',
+        stage: thinkingInput.stage,
+        title: copy.title,
+        detail: copy.detail,
+        sequence,
+        timestamp: new Date().toISOString(),
+        metadata: {
+          source: 'orchestrateAurenAgent',
+          userId: input.userId,
+          ...(thinkingInput.metadata ?? {}),
+        },
+      },
+    });
+  };
+};
+
+const safeRouteIntent = async (
+  input: AurenAgentInput,
+): Promise<RouteState> => {
+  const enableLLMRouter = getBooleanMetadataValue(input, 'enableLLMRouter');
+
+  try {
+    const intent = await routeIntentHybrid(input.message, {
+      userId: input.userId,
+      mode: input.mode,
+      conversation: input.conversation,
+      enableLLM: enableLLMRouter ?? true,
+    });
+
+    return {
+      intent,
+      usedFallback: false,
+    };
+  } catch (error) {
+    const fallbackIntent = routeIntent(input.message);
+    const errorMessage =
+      error instanceof Error ? error.message : 'Hybrid intent routing failed.';
+
+    return {
+      intent: {
+        ...fallbackIntent,
+        reason: `${fallbackIntent.reason} Hybrid router failed, so Auren used the fast route.`,
+      },
+      usedFallback: true,
+      errorMessage,
+    };
+  }
+};
+
+const safeCreatePlan = (
+  input: AurenAgentInput,
+  context: AurenBuiltContext,
+): PlanGenerationState => {
+  try {
+    const plan = createPlan(context, {
+      maxSteps: getPlanMaxSteps(input),
+    });
+
+    return {
+      plan,
+      usedFallback: false,
+    };
+  } catch (error) {
+    return {
+      plan: createSafeFallbackPlan(input, context),
+      usedFallback: true,
+      errorMessage: error instanceof Error ? error.message : 'Plan creation failed.',
+    };
+  }
+};
+
 const safeExecuteTools = async (plan: AurenPlan): Promise<ToolExecutionState> => {
+  if (plan.suggestedToolCalls.length === 0) {
+    return {
+      results: [],
+    };
+  }
+
   try {
     return {
       results: await executeTools(plan.suggestedToolCalls),
@@ -213,13 +535,14 @@ const safeExecuteTools = async (plan: AurenPlan): Promise<ToolExecutionState> =>
 const safeGenerateFinalResponse = async (
   input: AurenAgentInput,
   plan: AurenPlan,
-  context: Parameters<typeof generateFinalResponse>[0],
+  context: AurenBuiltContext,
   toolResults: AurenToolResult[],
 ): Promise<ResponseGenerationState> => {
   try {
-    const draft = await generateFinalResponse(context, plan, toolResults);
+    const rawDraft = await generateFinalResponse(context, plan, toolResults);
+    const draft = normalizeDraft(input, plan, rawDraft);
 
-    if (!cleanText(draft.answer)) {
+    if (!cleanAnswerText(draft.answer)) {
       return {
         draft: createFallbackDraft(input, plan, toolResults),
         usedFallback: true,
@@ -241,7 +564,7 @@ const safeGenerateFinalResponse = async (
 };
 
 const safeEvaluateResponse = (
-  context: Parameters<typeof evaluateResponse>[0],
+  context: AurenBuiltContext,
   plan: AurenPlan,
   draft: AurenResponseDraft,
 ): AurenResponseEvaluation => {
@@ -279,9 +602,14 @@ const persistAgentRun = async (input: {
   intent: AurenAgentResult['intent'];
   confidence: number;
   memoryUsed: boolean;
+  routeUsedFallback: boolean;
+  routeError?: string;
+  planUsedFallback: boolean;
+  planError?: string;
   responseUsedFallback: boolean;
   responseError?: string;
   toolError?: string;
+  timings: RunTimings;
 }) => {
   const userId = input.agentInput.userId?.trim();
 
@@ -309,14 +637,35 @@ const persistAgentRun = async (input: {
         plan: input.plan,
         memory_used: input.memoryUsed,
         tools_used: input.toolResults.length > 0,
-        error_message: input.responseError ?? input.toolError ?? null,
+        error_message:
+          input.routeError ??
+          input.planError ??
+          input.responseError ??
+          input.toolError ??
+          null,
         metadata: {
-          source: 'runAurenAgent',
+          source: 'orchestrateAurenAgent',
+          router: {
+            hybrid: true,
+            usedFallback: input.routeUsedFallback,
+            error: input.routeError,
+          },
+          planner: {
+            usedFallback: input.planUsedFallback,
+            error: input.planError,
+          },
+          response: {
+            usedFallback: input.responseUsedFallback,
+            error: input.responseError,
+          },
+          tools: {
+            error: input.toolError,
+            resultCount: input.toolResults.length,
+            suggestedCount: input.plan.suggestedToolCalls.length,
+          },
           evaluation: input.evaluation,
+          timings: input.timings,
           originalResultId: input.resultId,
-          responseUsedFallback: input.responseUsedFallback,
-          responseError: input.responseError,
-          toolError: input.toolError,
         },
         started_at: input.createdAt,
         completed_at: completedAt,
@@ -344,7 +693,7 @@ const persistAgentRun = async (input: {
                 status: step.status,
                 position: index,
                 metadata: {
-                  source: 'runAurenAgent',
+                  source: 'orchestrateAurenAgent',
                 },
                 started_at: input.createdAt,
                 completed_at: completedAt,
@@ -398,48 +747,147 @@ const persistAgentRun = async (input: {
 
 export const orchestrateAurenAgent = async (
   input: AurenAgentInput,
+  options: AurenAgentRunOptions = {},
 ): Promise<AurenAgentResult> => {
   const createdAt = new Date().toISOString();
   const fallbackId = createAgentId();
+  const timings: RunTimings = {};
+  const totalStartedAt = nowMs();
+  const emitThinking = createThinkingEmitter(input, options);
 
-  const intent = routeIntent(input.message);
-  const selectedMode = selectMode(input.mode, intent);
-  const context = await buildAurenContext(input, intent, selectedMode.mode);
-  const plan = createPlan(context);
-
-  const toolState = await safeExecuteTools(plan);
-  const responseState = await safeGenerateFinalResponse(input, plan, context, toolState.results);
-  const evaluation = safeEvaluateResponse(context, plan, responseState.draft);
-  const steps = createCompletedSteps({
-    toolError: toolState.errorMessage,
-    responseUsedFallback: responseState.usedFallback,
-    responseError: responseState.errorMessage,
+  await emitThinking({
+    stage: 'understanding',
+    message: input.message,
   });
 
-  const confidence = Math.min(
-    intent.confidence,
-    evaluation.score,
-    responseState.usedFallback ? 0.55 : 0.98,
-  );
+  const routeState = await measureAsync(timings, 'routeIntentMs', async () => {
+    await emitThinking({
+      stage: 'routing',
+      message: input.message,
+    });
 
-  const persistedId = await persistAgentRun({
-    agentInput: input,
-    resultId: fallbackId,
-    answer: responseState.draft.answer,
-    plan,
-    steps,
-    suggestions: responseState.draft.suggestions,
-    toolResults: toolState.results,
-    evaluation,
-    createdAt,
+    return safeRouteIntent(input);
+  });
+  const intent = routeState.intent;
+
+  const selectedMode = measureSync(timings, 'selectModeMs', () => selectMode(input.mode, intent));
+
+  const context = await measureAsync(timings, 'buildContextMs', async () => {
+    await emitThinking({
+      stage: 'context',
+      mode: selectedMode.mode,
+      intent: intent.intent,
+      message: input.message,
+    });
+
+    await emitThinking({
+      stage: 'memory',
+      mode: selectedMode.mode,
+      intent: intent.intent,
+      message: input.message,
+    });
+
+    return buildAurenContext(input, intent, selectedMode.mode);
+  });
+
+  const planState = measureSync(timings, 'createPlanMs', () => safeCreatePlan(input, context));
+  const plan = planState.plan;
+
+  await emitThinking({
+    stage: 'planning',
     mode: context.mode,
     intent: intent.intent,
-    confidence,
-    memoryUsed: context.memory.used,
+    message: input.message,
+    planGoal: plan.goal,
+  });
+
+  const toolState = await measureAsync(timings, 'executeToolsMs', async () => {
+    if (plan.suggestedToolCalls.length > 0) {
+      await emitThinking({
+        stage: 'tools',
+        mode: context.mode,
+        intent: intent.intent,
+        message: input.message,
+        planGoal: plan.goal,
+        toolNames: plan.suggestedToolCalls.map((call) => call.name),
+      });
+    }
+
+    return safeExecuteTools(plan);
+  });
+
+  await emitThinking({
+    stage: 'writing',
+    mode: context.mode,
+    intent: intent.intent,
+    message: input.message,
+    planGoal: plan.goal,
+  });
+
+  const responseState = await measureAsync(timings, 'generateResponseMs', () =>
+    safeGenerateFinalResponse(input, plan, context, toolState.results),
+  );
+
+  await emitThinking({
+    stage: 'finalizing',
+    mode: context.mode,
+    intent: intent.intent,
+    message: input.message,
+    planGoal: plan.goal,
+  });
+
+  const evaluation = measureSync(timings, 'evaluateResponseMs', () =>
+    safeEvaluateResponse(context, plan, responseState.draft),
+  );
+
+  timings.totalBeforePersistenceMs = nowMs() - totalStartedAt;
+
+  const steps = createCompletedSteps({
+    routeError: routeState.errorMessage,
+    planUsedFallback: planState.usedFallback,
+    planError: planState.errorMessage,
+    toolError: toolState.errorMessage,
     responseUsedFallback: responseState.usedFallback,
     responseError: responseState.errorMessage,
-    toolError: toolState.errorMessage,
   });
+
+  const confidence = clampConfidence(
+    Math.min(
+      intent.confidence,
+      evaluation.score,
+      routeState.usedFallback ? 0.72 : 0.98,
+      planState.usedFallback ? 0.68 : 0.98,
+      responseState.usedFallback ? 0.55 : 0.98,
+    ),
+  );
+
+  const persistedId = await measureAsync(timings, 'persistRunMs', () =>
+    persistAgentRun({
+      agentInput: input,
+      resultId: fallbackId,
+      answer: responseState.draft.answer,
+      plan,
+      steps,
+      suggestions: responseState.draft.suggestions,
+      toolResults: toolState.results,
+      evaluation,
+      createdAt,
+      mode: context.mode,
+      intent: intent.intent,
+      confidence,
+      memoryUsed: context.memory.used,
+      routeUsedFallback: routeState.usedFallback,
+      routeError: routeState.errorMessage,
+      planUsedFallback: planState.usedFallback,
+      planError: planState.errorMessage,
+      responseUsedFallback: responseState.usedFallback,
+      responseError: responseState.errorMessage,
+      toolError: toolState.errorMessage,
+      timings,
+    }),
+  );
+
+  timings.totalMs = nowMs() - totalStartedAt;
 
   return {
     id: persistedId,
