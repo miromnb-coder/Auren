@@ -1,3 +1,4 @@
+import { supabase } from '../../supabase';
 import type {
   AurenContext,
   AurenPlan,
@@ -6,12 +7,148 @@ import type {
   AurenToolResult,
 } from '../core/types';
 
-const MAX_VISIBLE_PLAN_STEPS = 4;
-const MAX_VISIBLE_MEMORY_ITEMS = 3;
+const AUREN_RESPONSE_FUNCTION = 'auren-generate-response';
+const MODEL_TIMEOUT_MS = 18000;
+const MAX_PLAN_STEPS = 6;
+const MAX_MEMORY_ITEMS = 8;
+const MAX_TOOL_RESULTS = 8;
+const MAX_CONVERSATION_MESSAGES = 10;
 const MAX_SUGGESTIONS = 4;
+
+type ModelSuggestion = {
+  id?: unknown;
+  label?: unknown;
+  action?: unknown;
+  payload?: unknown;
+};
+
+type ModelResponse = {
+  answer?: unknown;
+  suggestions?: unknown;
+};
+
+type CompactAgentContext = {
+  userMessage: string;
+  mode: AurenContext['mode'];
+  intent: AurenContext['intent'];
+  user: {
+    userId?: string;
+    displayName?: string;
+    preferences: Record<string, unknown>;
+  };
+  environment: AurenContext['environment'];
+  conversation: {
+    role: string;
+    content: string;
+  }[];
+  memory: {
+    used: boolean;
+    saved: boolean;
+    note?: string;
+    items: {
+      type: string;
+      text: string;
+      confidence: number;
+    }[];
+  };
+  plan: {
+    goal: string;
+    summary: string;
+    steps: {
+      title: string;
+      description: string;
+      status: string;
+    }[];
+  };
+  tools: {
+    used: boolean;
+    results: {
+      name: string;
+      success: boolean;
+      status: string;
+      message: string;
+      data?: Record<string, unknown>;
+    }[];
+  };
+};
+
+const SYSTEM_INSTRUCTIONS = [
+  'You are Auren, a personal AI agent.',
+  '',
+  'Write the final user-facing answer.',
+  '',
+  'Rules:',
+  '- Reply in the same language the user naturally used, unless the user explicitly asked for another language.',
+  '- Do not use a fixed language list. Let the model infer the best response language.',
+  '- Do not expose internal metadata such as mode, intent, confidence, pipeline steps, raw plan objects, memory scores, or tool statuses.',
+  '- Use the agent context to make the answer better, but keep the visible answer natural.',
+  '- Use memory only when it is relevant and helpful.',
+  '- Use tool results only when they are available and successful.',
+  '- If a tool is missing or not connected, explain it naturally only when it matters.',
+  '- Keep simple requests short.',
+  '- Use structured steps only when the user asks for planning, studying, focus, money, or complex help.',
+  '- Never claim that an action was completed unless the context or tool result proves it.',
+  '- Do not mention that you are using JSON, prompts, internal context, or a pipeline.',
+  '',
+  'Return strict JSON only:',
+  '{',
+  '  "answer": "natural user-facing answer",',
+  '  "suggestions": [',
+  '    { "id": "short-id", "label": "short button label", "action": "machine_action" }',
+  '  ]',
+  '}',
+].join('\n');
 
 const cleanText = (value: string | null | undefined) => {
   return value?.replace(/\s+/g, ' ').trim() ?? '';
+};
+
+const limitText = (value: string, maxLength: number) => {
+  const cleaned = cleanText(value);
+
+  if (cleaned.length <= maxLength) {
+    return cleaned;
+  }
+
+  return `${cleaned.slice(0, maxLength - 1).trim()}…`;
+};
+
+const slugify = (value: string) => {
+  const slug = value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 48);
+
+  return slug || 'action';
+};
+
+const safeJsonStringify = (value: unknown) => {
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return '{}';
+  }
+};
+
+const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error('Auren response generation timed out.'));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
 };
 
 const createSuggestion = (
@@ -28,6 +165,30 @@ const createSuggestion = (
   };
 };
 
+const normalizeSuggestion = (
+  suggestion: ModelSuggestion,
+  index: number,
+  basePayload: AurenSuggestion['payload'],
+): AurenSuggestion | null => {
+  const rawLabel = typeof suggestion.label === 'string' ? cleanText(suggestion.label) : '';
+  const rawAction = typeof suggestion.action === 'string' ? cleanText(suggestion.action) : '';
+  const rawId = typeof suggestion.id === 'string' ? cleanText(suggestion.id) : '';
+
+  if (!rawLabel) {
+    return null;
+  }
+
+  const action = rawAction || slugify(rawLabel);
+  const id = rawId || `${slugify(action)}_${index + 1}`;
+
+  return createSuggestion(id, limitText(rawLabel, 32), action, {
+    ...basePayload,
+    ...(suggestion.payload && typeof suggestion.payload === 'object' && !Array.isArray(suggestion.payload)
+      ? (suggestion.payload as Record<string, unknown>)
+      : {}),
+  });
+};
+
 const dedupeSuggestions = (suggestions: AurenSuggestion[]) => {
   const uniqueSuggestions = new Map<string, AurenSuggestion>();
 
@@ -42,255 +203,265 @@ const dedupeSuggestions = (suggestions: AurenSuggestion[]) => {
   return Array.from(uniqueSuggestions.values()).slice(0, MAX_SUGGESTIONS);
 };
 
-const getModeSuggestions = (context: AurenContext, plan: AurenPlan): AurenSuggestion[] => {
+const getFallbackSuggestions = (
+  context: AurenContext,
+  plan: AurenPlan,
+): AurenSuggestion[] => {
   const basePayload = {
     mode: context.mode,
     intent: context.intent.intent,
     planGoal: plan.goal,
   };
 
-  if (context.mode === 'study') {
-    return dedupeSuggestions([
-      createSuggestion('explain-topic', 'Explain topic', 'explain_topic', basePayload),
-      createSuggestion('make-study-plan', 'Make study plan', 'make_study_plan', basePayload),
-      createSuggestion('quiz-me', 'Quiz me', 'quiz_me', basePayload),
-      createSuggestion('summarize-notes', 'Summarize notes', 'summarize_notes', basePayload),
-    ]);
-  }
+  const planStepSuggestions = plan.steps
+    .filter((step) => cleanText(step.title))
+    .slice(0, MAX_SUGGESTIONS)
+    .map((step, index) =>
+      createSuggestion(
+        `plan_step_${index + 1}`,
+        limitText(step.title, 32),
+        `plan_step_${index + 1}`,
+        basePayload,
+      ),
+    );
 
-  if (context.mode === 'today') {
-    return dedupeSuggestions([
-      createSuggestion('plan-day', 'Plan my day', 'plan_day', basePayload),
-      createSuggestion('pick-priority', 'Pick top priority', 'pick_top_priority', basePayload),
-      createSuggestion('start-focus', 'Start focus session', 'start_focus_session', basePayload),
-      createSuggestion('add-task', 'Add task', 'add_task', basePayload),
-    ]);
-  }
-
-  if (context.mode === 'memory') {
-    return dedupeSuggestions([
-      createSuggestion('save-memory', 'Save this', 'save_memory', basePayload),
-      createSuggestion('show-memory', 'Show memory', 'show_memory', basePayload),
-      createSuggestion('edit-memory', 'Edit memory', 'edit_memory', basePayload),
-      createSuggestion('forget-memory', 'Forget this', 'forget_memory', basePayload),
-    ]);
-  }
-
-  if (context.mode === 'focus') {
-    return dedupeSuggestions([
-      createSuggestion('start-focus', 'Start focus session', 'start_focus_session', basePayload),
-      createSuggestion('pick-one-task', 'Pick one task', 'pick_one_task', basePayload),
-      createSuggestion('remove-distractions', 'Remove distractions', 'remove_distractions', basePayload),
-      createSuggestion('make-timer-plan', 'Make timer plan', 'make_timer_plan', basePayload),
-    ]);
-  }
-
-  if (context.mode === 'money') {
-    return dedupeSuggestions([
-      createSuggestion('analyze-spending', 'Analyze spending', 'analyze_spending', basePayload),
-      createSuggestion('find-subscriptions', 'Find subscriptions', 'find_subscriptions', basePayload),
-      createSuggestion('make-budget', 'Make budget', 'make_budget', basePayload),
-      createSuggestion('find-savings', 'Find savings', 'find_savings', basePayload),
-    ]);
-  }
-
-  return dedupeSuggestions([
-    createSuggestion('make-plan', 'Make a plan', 'make_plan', basePayload),
-    createSuggestion('next-step', 'Next step', 'next_step', basePayload),
-    createSuggestion('save-context', 'Save context', 'save_context', basePayload),
-    createSuggestion('break-down', 'Break it down', 'break_down', basePayload),
-  ]);
-};
-
-const getModeOpening = (context: AurenContext) => {
-  if (context.mode === 'study') {
-    return 'I can help turn this into a clear study action.';
-  }
-
-  if (context.mode === 'today') {
-    return 'I can help organize this into a practical next step for today.';
-  }
-
-  if (context.mode === 'memory') {
-    return 'I can treat this as personal context and use it carefully.';
-  }
-
-  if (context.mode === 'focus') {
-    return 'I can help reduce this to one focused action.';
-  }
-
-  if (context.mode === 'money') {
-    return 'I can help look at this from a money and decision-making angle.';
-  }
-
-  return 'I can help move this forward.';
-};
-
-const getModeFocus = (context: AurenContext) => {
-  if (context.mode === 'study') {
-    return 'The goal is to make learning easier, more structured, and easier to start.';
-  }
-
-  if (context.mode === 'today') {
-    return 'The goal is to choose what matters now instead of making the whole day feel heavy.';
-  }
-
-  if (context.mode === 'memory') {
-    return 'The goal is to keep only useful context, not store everything.';
-  }
-
-  if (context.mode === 'focus') {
-    return 'The goal is to remove noise and create one small action you can actually do.';
-  }
-
-  if (context.mode === 'money') {
-    return 'The goal is to make the decision clearer before connecting real finance tools.';
-  }
-
-  return 'The goal is to give you a useful answer and a clear next move.';
-};
-
-const getPlanLines = (plan: AurenPlan) => {
-  const visibleSteps = plan.steps.slice(0, MAX_VISIBLE_PLAN_STEPS);
-
-  if (visibleSteps.length === 0) {
-    return ['1. Understand what you want to do.', '2. Pick the next useful action.'];
-  }
-
-  return visibleSteps.map((step, index) => {
-    const title = cleanText(step.title) || 'Next step';
-    const description = cleanText(step.description);
-
-    if (!description) {
-      return `${index + 1}. ${title}`;
-    }
-
-    return `${index + 1}. ${title} — ${description}`;
-  });
-};
-
-const getNextAction = (plan: AurenPlan) => {
-  const readyStep = plan.steps.find((step) => step.status === 'ready') ?? plan.steps[0];
-
-  if (!readyStep) {
-    return 'Choose one small next action and start there.';
-  }
-
-  const title = cleanText(readyStep.title);
-  const description = cleanText(readyStep.description);
-
-  if (title && description) {
-    return `${title}: ${description}`;
-  }
-
-  return title || description || 'Choose one small next action and start there.';
-};
-
-const getMemoryNote = (context: AurenContext) => {
-  const memoryItems = context.memory.items
-    .map((item) => cleanText(item.text))
-    .filter(Boolean)
-    .slice(0, MAX_VISIBLE_MEMORY_ITEMS);
-
-  if (memoryItems.length === 0) {
-    return 'I did not use saved memory yet. The memory system is ready as a scaffold, but persistent memory can be connected later.';
+  if (planStepSuggestions.length > 0) {
+    return dedupeSuggestions(planStepSuggestions);
   }
 
   return [
-    'Relevant memory used:',
-    ...memoryItems.map((item, index) => `${index + 1}. ${item}`),
-  ].join('\n');
+    createSuggestion('continue', 'Continue', 'continue', basePayload),
+    createSuggestion('make_plan', 'Make a plan', 'make_plan', basePayload),
+  ];
 };
 
-const getToolNote = (toolResults: AurenToolResult[]) => {
-  if (toolResults.length === 0) {
-    return null;
+const normalizeSuggestions = (
+  value: unknown,
+  context: AurenContext,
+  plan: AurenPlan,
+) => {
+  const basePayload = {
+    mode: context.mode,
+    intent: context.intent.intent,
+    planGoal: plan.goal,
+  };
+
+  if (!Array.isArray(value)) {
+    return getFallbackSuggestions(context, plan);
   }
 
-  const connectedTools = toolResults.filter((result) => result.success);
-  const unavailableTools = toolResults.filter((result) => !result.success);
+  const suggestions = value
+    .map((item, index) => {
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
 
-  const lines: string[] = [];
+      return normalizeSuggestion(item as ModelSuggestion, index, basePayload);
+    })
+    .filter((item): item is AurenSuggestion => Boolean(item));
 
-  if (connectedTools.length > 0) {
-    lines.push(
-      `Used ${connectedTools.length} tool${connectedTools.length === 1 ? '' : 's'} successfully.`,
-    );
+  if (suggestions.length === 0) {
+    return getFallbackSuggestions(context, plan);
   }
 
-  if (unavailableTools.length > 0) {
-    const toolNames = unavailableTools.map((result) => result.name).join(', ');
-    lines.push(
-      `Some tools are not connected yet: ${toolNames}. I kept the response safe and continued without external tool data.`,
-    );
-  }
-
-  return lines.join('\n');
+  return dedupeSuggestions(suggestions);
 };
 
-const getConfidenceLabel = (confidence: number) => {
-  if (confidence >= 0.8) return 'high';
-  if (confidence >= 0.55) return 'medium';
-  return 'early';
+const createCompactContext = (
+  context: AurenContext,
+  plan: AurenPlan,
+  toolResults: AurenToolResult[],
+): CompactAgentContext => {
+  return {
+    userMessage: context.message,
+    mode: context.mode,
+    intent: context.intent,
+    user: {
+      userId: context.user.userId,
+      displayName: context.user.displayName,
+      preferences: context.user.preferences,
+    },
+    environment: context.environment,
+    conversation: context.conversation
+      .slice(-MAX_CONVERSATION_MESSAGES)
+      .map((message) => ({
+        role: message.role,
+        content: limitText(message.content, 1200),
+      })),
+    memory: {
+      used: context.memory.used,
+      saved: context.memory.saved,
+      note: context.memory.note,
+      items: context.memory.items.slice(0, MAX_MEMORY_ITEMS).map((item) => ({
+        type: item.type,
+        text: limitText(item.text, 800),
+        confidence: item.confidence,
+      })),
+    },
+    plan: {
+      goal: limitText(plan.goal, 1000),
+      summary: limitText(plan.summary, 1000),
+      steps: plan.steps.slice(0, MAX_PLAN_STEPS).map((step) => ({
+        title: limitText(step.title, 240),
+        description: limitText(step.description, 600),
+        status: step.status,
+      })),
+    },
+    tools: {
+      used: toolResults.length > 0,
+      results: toolResults.slice(0, MAX_TOOL_RESULTS).map((result) => ({
+        name: result.name,
+        success: result.success,
+        status: result.status,
+        message: limitText(result.message, 600),
+        data: result.data,
+      })),
+    },
+  };
 };
 
-const getUserRequestLine = (context: AurenContext) => {
-  const message = cleanText(context.message);
-
-  if (!message) {
-    return 'No clear message was provided yet.';
-  }
-
-  if (message.length <= 140) {
-    return `Request: “${message}”`;
-  }
-
-  return `Request: “${message.slice(0, 137)}...”`;
-};
-
-const buildAnswerSections = (
+const createModelPayload = (
   context: AurenContext,
   plan: AurenPlan,
   toolResults: AurenToolResult[],
 ) => {
-  const confidenceLabel = getConfidenceLabel(context.intent.confidence);
-  const toolNote = getToolNote(toolResults);
-  const planLines = getPlanLines(plan);
-  const nextAction = getNextAction(plan);
+  const compactContext = createCompactContext(context, plan, toolResults);
 
-  const sections = [
-    getModeOpening(context),
-    [
-      getUserRequestLine(context),
-      `Mode: ${context.mode}`,
-      `Intent: ${context.intent.intent}`,
-      `Confidence: ${confidenceLabel}`,
+  return {
+    system: SYSTEM_INSTRUCTIONS,
+    input: [
+      'Use this internal Auren agent context to write the final answer.',
+      'Do not reveal the raw context.',
+      '',
+      safeJsonStringify(compactContext),
     ].join('\n'),
-    getModeFocus(context),
-    ['Plan:', ...planLines].join('\n'),
-    `Best next action: ${nextAction}`,
-    getMemoryNote(context),
-  ];
-
-  if (toolNote) {
-    sections.push(toolNote);
-  }
-
-  sections.push('I can continue from here with one of the suggested actions.');
-
-  return sections;
+    responseFormat: {
+      type: 'json',
+      schema: {
+        answer: 'string',
+        suggestions: [
+          {
+            id: 'string',
+            label: 'string',
+            action: 'string',
+          },
+        ],
+      },
+    },
+  };
 };
 
-export const generateFinalResponse = (
+const parseModelResponse = (value: unknown): ModelResponse | null => {
+  if (!value) {
+    return null;
+  }
+
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    const objectValue = value as Record<string, unknown>;
+
+    if (typeof objectValue.answer === 'string' || Array.isArray(objectValue.suggestions)) {
+      return objectValue as ModelResponse;
+    }
+
+    if (typeof objectValue.output === 'string') {
+      try {
+        return JSON.parse(objectValue.output) as ModelResponse;
+      } catch {
+        return {
+          answer: objectValue.output,
+          suggestions: [],
+        };
+      }
+    }
+
+    if (typeof objectValue.text === 'string') {
+      try {
+        return JSON.parse(objectValue.text) as ModelResponse;
+      } catch {
+        return {
+          answer: objectValue.text,
+          suggestions: [],
+        };
+      }
+    }
+  }
+
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value) as ModelResponse;
+    } catch {
+      return {
+        answer: value,
+        suggestions: [],
+      };
+    }
+  }
+
+  return null;
+};
+
+const callResponseModel = async (
   context: AurenContext,
   plan: AurenPlan,
   toolResults: AurenToolResult[],
-): AurenResponseDraft => {
-  const sections = buildAnswerSections(context, plan, toolResults);
-  const answer = sections.filter(Boolean).join('\n\n');
+): Promise<ModelResponse | null> => {
+  const payload = createModelPayload(context, plan, toolResults);
+
+  const response = await withTimeout(
+    supabase.functions.invoke(AUREN_RESPONSE_FUNCTION, {
+      body: payload,
+    }),
+    MODEL_TIMEOUT_MS,
+  );
+
+  if (response.error) {
+    return null;
+  }
+
+  return parseModelResponse(response.data);
+};
+
+const createFallbackAnswer = (
+  context: AurenContext,
+  plan: AurenPlan,
+  toolResults: AurenToolResult[],
+) => {
+  const userMessage = cleanText(context.message);
+  const firstUsefulStep = plan.steps.find((step) => step.status === 'ready') ?? plan.steps[0];
+  const unavailableTools = toolResults.filter((result) => !result.success);
+
+  if (unavailableTools.length > 0) {
+    const names = unavailableTools.map((result) => result.name).join(', ');
+    return `I cannot use ${names} yet, but I can still help with the next step.`;
+  }
+
+  if (firstUsefulStep) {
+    const title = cleanText(firstUsefulStep.title);
+    const description = cleanText(firstUsefulStep.description);
+
+    return [title, description].filter(Boolean).join(': ');
+  }
+
+  if (userMessage) {
+    return 'I had trouble generating the full response, but I can still help continue from your last message.';
+  }
+
+  return 'Send me a message and I’ll help with the next step.';
+};
+
+export const generateFinalResponse = async (
+  context: AurenContext,
+  plan: AurenPlan,
+  toolResults: AurenToolResult[],
+): Promise<AurenResponseDraft> => {
+  const modelResponse = await callResponseModel(context, plan, toolResults);
+  const answer =
+    typeof modelResponse?.answer === 'string' && cleanText(modelResponse.answer)
+      ? cleanText(modelResponse.answer)
+      : createFallbackAnswer(context, plan, toolResults);
 
   return {
     answer,
-    suggestions: getModeSuggestions(context, plan),
+    suggestions: normalizeSuggestions(modelResponse?.suggestions, context, plan),
   };
 };
