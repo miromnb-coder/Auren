@@ -358,13 +358,10 @@ const styles = StyleSheet.create({
     marginBottom: 13,
   },
   assistantMarkerIconWrap: {
-    width: 27,
-    height: 27,
-    borderRadius: 999,
+    width: 22,
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(17, 24, 39, 0.055)',
-    marginRight: 10,
+    marginRight: 8,
+    paddingTop: 4,
   },
   assistantMarkerContent: {
     flex: 1,
