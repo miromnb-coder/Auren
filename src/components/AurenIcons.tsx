@@ -7,9 +7,20 @@ type IconProps = {
   active?: boolean;
 };
 
+export type AurenStatusIconType = 'memory' | 'saved' | 'done' | 'alert' | 'search' | 'idea';
+
 const ink = '#1d1d1f';
 const lightInk = '#f8f8f6';
 const softInk = '#70717a';
+
+const STATUS_ICON_MAP: Record<AurenStatusIconType, keyof typeof Ionicons.glyphMap> = {
+  memory: 'sparkles',
+  saved: 'bookmark-outline',
+  done: 'checkmark-circle-outline',
+  alert: 'warning-outline',
+  search: 'search-outline',
+  idea: 'bulb-outline',
+};
 
 export function MenuIcon() {
   return (
@@ -58,6 +69,10 @@ export function ListIcon() {
 
 export function SparkIcon() {
   return <Ionicons name="sparkles" size={16} color={softInk} />;
+}
+
+export function AurenStatusIcon({ type, size = 17 }: { type: AurenStatusIconType; size?: number }) {
+  return <Ionicons name={STATUS_ICON_MAP[type]} size={size} color={ink} />;
 }
 
 const styles = StyleSheet.create({

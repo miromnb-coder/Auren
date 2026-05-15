@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AurenStatusIcon, type AurenStatusIconType } from './AurenIcons';
 import { colors } from '../theme';
 
 export type AurenMessage = {
@@ -17,6 +18,7 @@ type AurenMessageListProps = {
 const BOX_DRAWINGS_LIGHT_HORIZONTAL = '\u2500';
 const BOX_DRAWINGS_LIGHT_VERTICAL = '\u2502';
 const ASSISTANT_DIVIDER = BOX_DRAWINGS_LIGHT_HORIZONTAL.repeat(8);
+const AUREN_MARKER_PATTERN = /^\s*\[auren:(memory|saved|done|alert|search|idea)\]\s*(.*)$/i;
 
 function isHorizontalRule(line: string) {
   return /^\s*(-{3,}|_{3,}|\*{3,}|\u2500{3,})\s*$/.test(line);
@@ -36,6 +38,10 @@ function cleanTableLine(line: string) {
 
 function cleanQuoteLine(line: string) {
   return line.replace(new RegExp(`^\\s*(>|${BOX_DRAWINGS_LIGHT_VERTICAL})\\s?`), '').trim();
+}
+
+function normalizeMarkerType(value: string): AurenStatusIconType {
+  return value.toLowerCase() as AurenStatusIconType;
 }
 
 function renderInlineText(text: string, keyPrefix: string, baseStyle = styles.assistantText) {
@@ -83,7 +89,37 @@ function renderAssistantQuote(rawLine: string, index: number) {
   );
 }
 
+function renderAurenMarker(rawLine: string, index: number) {
+  const match = rawLine.match(AUREN_MARKER_PATTERN);
+
+  if (!match) return null;
+
+  const markerType = normalizeMarkerType(match[1]);
+  const markerText = match[2].trim();
+
+  if (markerText.length === 0) {
+    return null;
+  }
+
+  return (
+    <View key={`auren-marker-${index}`} style={styles.assistantMarkerRow}>
+      <View style={styles.assistantMarkerIconWrap}>
+        <AurenStatusIcon type={markerType} />
+      </View>
+      <View style={styles.assistantMarkerContent}>
+        {renderInlineText(markerText, `auren-marker-${index}`, styles.assistantMarkerText)}
+      </View>
+    </View>
+  );
+}
+
 function renderAssistantLine(rawLine: string, index: number) {
+  const aurenMarker = renderAurenMarker(rawLine, index);
+
+  if (aurenMarker) {
+    return aurenMarker;
+  }
+
   if (isHorizontalRule(rawLine)) {
     return renderAssistantDivider(index);
   }
@@ -312,6 +348,33 @@ const styles = StyleSheet.create({
     fontSize: 17.2,
     lineHeight: 25.5,
     letterSpacing: -0.28,
+    fontWeight: '560',
+  },
+  assistantMarkerRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 2,
+    marginBottom: 13,
+  },
+  assistantMarkerIconWrap: {
+    width: 27,
+    height: 27,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(17, 24, 39, 0.055)',
+    marginRight: 10,
+  },
+  assistantMarkerContent: {
+    flex: 1,
+    paddingTop: 1,
+  },
+  assistantMarkerText: {
+    color: colors.text,
+    fontSize: 17.3,
+    lineHeight: 25.5,
+    letterSpacing: -0.3,
     fontWeight: '560',
   },
   assistantListRow: {
