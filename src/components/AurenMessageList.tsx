@@ -1,6 +1,9 @@
-import { Fragment, useEffect, useMemo, useRef } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import type { AurenThinkingEvent } from '../lib/auren-agent/core/types';
+import { subscribeToAurenThinkingState } from '../lib/aurenThinkingStateStore';
 import { AurenStatusIcon, type AurenStatusIconType } from './AurenIcons';
+import { AurenThinkingState } from './AurenThinkingState';
 import { colors } from '../theme';
 
 export type AurenMessage = {
@@ -13,12 +16,27 @@ export type AurenMessage = {
 type AurenMessageListProps = {
   messages: AurenMessage[];
   assistantThinking: boolean;
+  thinkingState?: AurenThinkingEvent | null;
 };
 
 const BOX_DRAWINGS_LIGHT_HORIZONTAL = '\u2500';
 const BOX_DRAWINGS_LIGHT_VERTICAL = '\u2502';
 const ASSISTANT_DIVIDER = BOX_DRAWINGS_LIGHT_HORIZONTAL.repeat(8);
 const AUREN_MARKER_PATTERN = /^\s*\[auren:(memory|saved|done|alert|search|idea)\]\s*(.*)$/i;
+
+function createFallbackThinkingState(): AurenThinkingEvent {
+  return {
+    type: 'thinking_state',
+    stage: 'understanding',
+    title: 'Understanding your request',
+    detail: 'Finding the most useful way to help...',
+    sequence: 0,
+    timestamp: new Date().toISOString(),
+    metadata: {
+      source: 'ui-fallback',
+    },
+  };
+}
 
 function isHorizontalRule(line: string) {
   return /^\s*(-{3,}|_{3,}|\*{3,}|\u2500{3,})\s*$/.test(line);
@@ -189,12 +207,18 @@ function AurenAssistantText({ content }: { content: string }) {
   return <View style={styles.assistantTextWrap}>{content.split('\n').map(renderAssistantLine)}</View>;
 }
 
-export function AurenMessageList({ messages, assistantThinking }: AurenMessageListProps) {
+export function AurenMessageList({ messages, assistantThinking, thinkingState }: AurenMessageListProps) {
   const scrollViewRef = useRef<ScrollView | null>(null);
+  const [storedThinkingState, setStoredThinkingState] = useState<AurenThinkingEvent | null>(null);
   const messageContentSignature = useMemo(
     () => messages.map((message) => `${message.id}:${message.content.length}`).join('|'),
     [messages],
   );
+  const visibleThinkingState = thinkingState ?? storedThinkingState ?? createFallbackThinkingState();
+
+  useEffect(() => {
+    return subscribeToAurenThinkingState(setStoredThinkingState);
+  }, []);
 
   useEffect(() => {
     const scrollTimer = setTimeout(() => {
@@ -202,7 +226,7 @@ export function AurenMessageList({ messages, assistantThinking }: AurenMessageLi
     }, 40);
 
     return () => clearTimeout(scrollTimer);
-  }, [assistantThinking, messageContentSignature]);
+  }, [assistantThinking, visibleThinkingState.sequence, messageContentSignature]);
 
   return (
     <View style={styles.root}>
@@ -236,7 +260,7 @@ export function AurenMessageList({ messages, assistantThinking }: AurenMessageLi
 
         {assistantThinking ? (
           <View style={styles.assistantRow}>
-            <Text style={styles.thinkingText}>Auren is thinking…</Text>
+            <AurenThinkingState thinkingState={visibleThinkingState} />
           </View>
         ) : null}
       </ScrollView>
@@ -396,12 +420,5 @@ const styles = StyleSheet.create({
   },
   assistantListContent: {
     flex: 1,
-  },
-  thinkingText: {
-    color: colors.muted,
-    fontSize: 15.5,
-    lineHeight: 22,
-    letterSpacing: -0.16,
-    fontWeight: '500',
   },
 });
