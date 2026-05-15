@@ -1,5 +1,6 @@
 import { runAurenAgent } from './auren-agent/core/runAurenAgent';
 import type { AurenMode } from './auren-agent/core/types';
+import { supabase } from './supabase';
 
 export type AurenChatMode = 'personal' | 'study' | 'money';
 
@@ -33,6 +34,16 @@ function getLatestUserMessage(messages: AurenChatApiMessage[]) {
   return latestMessage?.content.trim() ?? '';
 }
 
+async function getCurrentUserId(explicitUserId?: string) {
+  if (explicitUserId?.trim()) {
+    return explicitUserId.trim();
+  }
+
+  const { data } = await supabase.auth.getUser();
+
+  return data.user?.id;
+}
+
 function throwIfAborted(signal?: AbortSignal) {
   if (!signal?.aborted) return;
 
@@ -45,6 +56,7 @@ export async function sendAurenChatMessage(
 ) {
   const result = await runAurenAgent({
     message: getLatestUserMessage(messages),
+    userId: await getCurrentUserId(),
     mode: mapChatModeToAgentMode(mode),
     conversation: messages,
   });
@@ -60,7 +72,7 @@ export async function sendAurenChatMessageStream(
 
   const result = await runAurenAgent({
     message: getLatestUserMessage(messages),
-    userId: options.userId,
+    userId: await getCurrentUserId(options.userId),
     mode: mapChatModeToAgentMode(options.mode ?? DEFAULT_AUREN_CHAT_MODE),
     conversation: messages,
     metadata: {
