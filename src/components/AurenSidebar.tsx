@@ -6,6 +6,7 @@ import {
   Easing,
   PanResponder,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -290,25 +291,32 @@ export function AurenSidebar({
             </Pressable>
           </View>
 
-          <View style={styles.emptyTopSpace} />
+          <ScrollView
+            style={styles.scrollArea}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            bounces
+          >
+            <View style={styles.emptyTopSpace} />
 
-          <View style={styles.recentHeaderRow}>
-            <Text style={styles.sectionTitle}>Recent chats</Text>
-          </View>
+            <View style={styles.recentHeaderRow}>
+              <Text style={styles.sectionTitle}>Recent chats</Text>
+            </View>
 
-          <View style={styles.recentList}>
-            {recentChats.map((chat) => (
-              <Pressable
-                key={chat.id}
-                onPress={() => onOpenRecentChat?.(chat.id)}
-                style={({ pressed }) => [styles.recentRow, pressed && styles.pressed]}
-              >
-                <Text style={styles.recentTitle} numberOfLines={1}>
-                  {chat.title}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+            <View style={styles.recentList}>
+              {recentChats.map((chat) => (
+                <Pressable
+                  key={chat.id}
+                  onPress={() => onOpenRecentChat?.(chat.id)}
+                  style={({ pressed }) => [styles.recentRow, pressed && styles.pressed]}
+                >
+                  <Text style={styles.recentTitle} numberOfLines={1}>
+                    {chat.title}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </ScrollView>
 
           <View style={styles.bottomArea}>
             <Pressable onPress={openAccountSheet} style={({ pressed }) => [styles.profileRow, pressed && styles.pressed]}>
@@ -434,6 +442,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.05,
   },
+  scrollArea: {
+    flex: 1,
+    marginTop: 0,
+  },
+  scrollContent: {
+    paddingBottom: 24,
+  },
   emptyTopSpace: {
     height: 300,
   },
@@ -464,7 +479,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.28,
   },
   bottomArea: {
-    marginTop: 'auto',
     minHeight: 76,
     flexDirection: 'row',
     alignItems: 'center',
