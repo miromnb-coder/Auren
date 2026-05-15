@@ -13,6 +13,7 @@ import { AurenMessageList, type AurenMessage } from '../components/AurenMessageL
 import { AurenPlusSheet, type PlusSheetStage } from '../components/AurenPlusSheet';
 import { AurenSidebar } from '../components/AurenSidebar';
 import { sendAurenChatMessageStream, type AurenChatMode } from '../lib/aurenChatApi';
+import type { AurenThinkingEvent } from '../lib/auren-agent/core/types';
 import {
   createChatTitle,
   createUserChat,
@@ -166,6 +167,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<AurenMessage[]>([]);
   const [assistantThinking, setAssistantThinking] = useState(false);
+  const [thinkingState, setThinkingState] = useState<AurenThinkingEvent | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [sidebarProfile, setSidebarProfile] = useState<SidebarProfile>(() =>
     createSidebarProfile(getUserMetadataName(session), session.user.email),
@@ -193,6 +195,10 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   async function refreshChats() {
     const nextChats = await listUserChats(session.user.id);
     setChats(nextChats);
+  }
+
+  function clearThinkingState() {
+    setThinkingState(null);
   }
 
   function setPlusStage(nextStage: PlusSheetStage) {
@@ -295,6 +301,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
     abortControllerRef.current.abort();
     abortControllerRef.current = null;
     setAssistantThinking(false);
+    clearThinkingState();
     setIsGenerating(false);
     runHaptic('close');
   }
@@ -303,6 +310,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
     setAssistantThinking(false);
+    clearThinkingState();
     setIsGenerating(false);
 
     try {
@@ -322,6 +330,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
     setAssistantThinking(false);
+    clearThinkingState();
     setIsGenerating(false);
     closeSidebar();
 
@@ -374,6 +383,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
 
     abortControllerRef.current = abortController;
     setMessages([...nextMessages, assistantMessage]);
+    clearThinkingState();
     setAssistantThinking(true);
     setIsGenerating(true);
 
@@ -404,10 +414,12 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
         {
           mode: chatMode,
           signal: abortController.signal,
+          onThinkingState: setThinkingState,
           onToken: (token) => {
             receivedAnyToken = true;
             assistantContent += token;
             setAssistantThinking(false);
+            clearThinkingState();
             setMessages((currentMessages) =>
               currentMessages.map((currentMessage) =>
                 currentMessage.id === assistantMessageId
@@ -465,6 +477,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
         abortControllerRef.current = null;
       }
       setAssistantThinking(false);
+      clearThinkingState();
       setIsGenerating(false);
     }
   }
@@ -760,7 +773,11 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
                 ]}
               >
                 {hasMessages ? (
-                  <AurenMessageList messages={messages} assistantThinking={assistantThinking} />
+                  <AurenMessageList
+                    messages={messages}
+                    assistantThinking={assistantThinking}
+                    thinkingState={thinkingState}
+                  />
                 ) : (
                   <Pressable style={styles.startDismissArea} onPress={Keyboard.dismiss}>
                     <View style={styles.hero}>
