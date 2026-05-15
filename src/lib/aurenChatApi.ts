@@ -1,5 +1,6 @@
 import { runAurenAgent } from './auren-agent/core/runAurenAgent';
-import type { AurenMode } from './auren-agent/core/types';
+import type { AurenMode, AurenThinkingEvent } from './auren-agent/core/types';
+import { clearAurenThinkingState, setAurenThinkingState } from './aurenThinkingStateStore';
 import { supabase } from './supabase';
 
 export type AurenChatMode = 'personal' | 'study' | 'money';
@@ -11,6 +12,7 @@ type AurenChatApiMessage = {
 
 type AurenChatStreamOptions = {
   onToken: (token: string) => void;
+  onThinkingState?: (thinkingState: AurenThinkingEvent | null) => void;
   signal?: AbortSignal;
   mode?: AurenChatMode;
   userId?: string;
@@ -50,6 +52,14 @@ function throwIfAborted(signal?: AbortSignal) {
   throw new Error('Auren request was stopped.');
 }
 
+function publishThinkingState(
+  thinkingState: AurenThinkingEvent | null,
+  onThinkingState?: (thinkingState: AurenThinkingEvent | null) => void,
+) {
+  setAurenThinkingState(thinkingState);
+  onThinkingState?.(thinkingState);
+}
+
 export async function sendAurenChatMessage(
   messages: AurenChatApiMessage[],
   mode: AurenChatMode = DEFAULT_AUREN_CHAT_MODE,
@@ -69,23 +79,38 @@ export async function sendAurenChatMessageStream(
   options: AurenChatStreamOptions,
 ) {
   throwIfAborted(options.signal);
+  clearAurenThinkingState();
+  options.onThinkingState?.(null);
 
-  const result = await runAurenAgent({
-    message: getLatestUserMessage(messages),
-    userId: await getCurrentUserId(options.userId),
-    mode: mapChatModeToAgentMode(options.mode ?? DEFAULT_AUREN_CHAT_MODE),
-    conversation: messages,
-    metadata: {
-      chatId: options.chatId,
-      messageId: options.messageId,
+  const result = await runAurenAgent(
+    {
+      message: getLatestUserMessage(messages),
+      userId: await getCurrentUserId(options.userId),
+      mode: mapChatModeToAgentMode(options.mode ?? DEFAULT_AUREN_CHAT_MODE),
+      conversation: messages,
+      metadata: {
+        chatId: options.chatId,
+        messageId: options.messageId,
+      },
     },
-  });
+    {
+      onEvent: (event) => {
+        if (event.type === 'thinking_state') {
+          publishThinkingState(event.thinking, options.onThinkingState);
+        }
+      },
+    },
+  );
 
   throwIfAborted(options.signal);
 
   if (!result.answer.trim()) {
+    clearAurenThinkingState();
+    options.onThinkingState?.(null);
     throw new Error('Auren returned an empty response. Try again in a moment.');
   }
 
+  clearAurenThinkingState();
+  options.onThinkingState?.(null);
   options.onToken(result.answer);
 }
