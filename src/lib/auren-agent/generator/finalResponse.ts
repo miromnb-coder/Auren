@@ -101,6 +101,11 @@ const SYSTEM_INSTRUCTIONS = [
   '- For longer answers, use clear section titles and a calm, premium, practical tone.',
   '- End with one useful next step only when it feels natural.',
   '',
+  'Formatting:',
+  '- Preserve paragraph breaks in the answer string using newline characters.',
+  '- For a simple explanation, use short paragraphs separated by blank lines.',
+  '- Do not put the entire answer into one long paragraph.',
+  '',
   'Response length:',
   '- If the user asks a simple definition or quick question, answer briefly and clearly.',
   '- If the user asks for planning, studying, focus, money, or complex help, use more structure.',
@@ -119,8 +124,30 @@ const cleanText = (value: string | null | undefined) => {
   return value?.replace(/\s+/g, ' ').trim() ?? '';
 };
 
+const cleanAnswerText = (value: string | null | undefined) => {
+  return (
+    value
+      ?.replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/[ \t]+/g, ' ')
+      .replace(/ *\n */g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim() ?? ''
+  );
+};
+
 const limitText = (value: string, maxLength: number) => {
   const cleaned = cleanText(value);
+
+  if (cleaned.length <= maxLength) {
+    return cleaned;
+  }
+
+  return `${cleaned.slice(0, maxLength - 1).trim()}…`;
+};
+
+const limitAnswerText = (value: string, maxLength: number) => {
+  const cleaned = cleanAnswerText(value);
 
   if (cleaned.length <= maxLength) {
     return cleaned;
@@ -472,8 +499,8 @@ export const generateFinalResponse = async (
 ): Promise<AurenResponseDraft> => {
   const modelResponse = await callResponseModel(context, plan, toolResults);
   const answer =
-    typeof modelResponse?.answer === 'string' && cleanText(modelResponse.answer)
-      ? cleanText(modelResponse.answer)
+    typeof modelResponse?.answer === 'string' && cleanAnswerText(modelResponse.answer)
+      ? limitAnswerText(modelResponse.answer, 8000)
       : createFallbackAnswer(context, plan, toolResults);
 
   return {
