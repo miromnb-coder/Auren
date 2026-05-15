@@ -1,3 +1,4 @@
+import { supabase } from '../../supabase';
 import type { AurenIntent, AurenIntentResult, AurenToolName } from '../core/types';
 
 type IntentCandidate = {
@@ -20,15 +21,50 @@ type ToolSignalGroup = {
   patterns?: RegExp[];
 };
 
-const normalizeForRouting = (value: string) => {
-  return value
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[’`´]/g, "'")
-    .replace(/\s+/g, ' ')
-    .trim();
+type HybridRouterOptions = {
+  userId?: string;
+  mode?: string;
+  conversation?: Array<{
+    role: string;
+    content: string;
+  }>;
+  enableLLM?: boolean;
 };
+
+type LLMIntentRouteResponse = {
+  intent?: unknown;
+  confidence?: unknown;
+  reason?: unknown;
+  needsMemory?: unknown;
+  needsTools?: unknown;
+  toolHints?: unknown;
+};
+
+const INTENT_ROUTE_FUNCTION = 'auren-intent-route';
+const FAST_CONFIDENCE_THRESHOLD = 0.72;
+const AMBIGUOUS_CONFIDENCE_THRESHOLD = 0.58;
+const MAX_CONVERSATION_MESSAGES = 8;
+
+const VALID_INTENTS: AurenIntent[] = [
+  'general_chat',
+  'study_help',
+  'daily_planning',
+  'save_memory',
+  'recall_memory',
+  'create_plan',
+  'focus_help',
+  'tool_request',
+  'unknown',
+];
+
+const VALID_TOOLS: AurenToolName[] = [
+  'calendar',
+  'gmail',
+  'tasks',
+  'notes',
+  'study',
+  'finance',
+];
 
 const INTENT_PRIORITY: AurenIntent[] = [
   'recall_memory',
@@ -94,9 +130,6 @@ const INTENT_SIGNAL_GROUPS: IntentSignalGroup[] = [
       'quiz',
       'homework',
       'assignment',
-      'explain',
-      'summarize',
-      'practice',
       'flashcards',
       'opisk',
       'oppia',
@@ -106,10 +139,6 @@ const INTENT_SIGNAL_GROUPS: IntentSignalGroup[] = [
       'laks',
       'tehtava',
       'tehtävä',
-      'selita',
-      'selitä',
-      'tiivista',
-      'tiivistä',
       'harjoit',
     ],
   },
@@ -237,7 +266,6 @@ const TOOL_SIGNAL_GROUPS: ToolSignalGroup[] = [
       'tehtävä',
       'muistutus',
       'muistuta',
-      'deadline',
     ],
   },
   {
@@ -251,6 +279,19 @@ const TOOL_SIGNAL_GROUPS: ToolSignalGroup[] = [
       'muistiinpanot',
       'kirjoita ylos',
       'kirjoita ylös',
+    ],
+  },
+  {
+    tool: 'study',
+    signals: [
+      'quiz me',
+      'flashcards',
+      'study plan',
+      'practice questions',
+      'test me',
+      'kysy minulta',
+      'opiskelusuunnitelma',
+      'harjoituskysymykset',
     ],
   },
   {
@@ -277,53 +318,53 @@ const TOOL_SIGNAL_GROUPS: ToolSignalGroup[] = [
   },
 ];
 
+const normalizeForRouting = (value: string) => {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[’`´]/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const cleanText = (value: unknown, maxLength = 2000) => {
+  if (typeof value !== 'string') return '';
+
+  const cleaned = value.replace(/\s+/g, ' ').trim();
+
+  if (cleaned.length <= maxLength) {
+    return cleaned;
+  }
+
+  return `${cleaned.slice(0, maxLength - 1).trim()}…`;
+};
+
+const isValidIntent = (value: unknown): value is AurenIntent => {
+  return typeof value === 'string' && VALID_INTENTS.includes(value as AurenIntent);
+};
+
+const isValidTool = (value: unknown): value is AurenToolName => {
+  return typeof value === 'string' && VALID_TOOLS.includes(value as AurenToolName);
+};
+
+const clampConfidence = (value: unknown, fallback: number) => {
+  const numberValue = typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+
+  return Math.max(0.05, Math.min(numberValue, 0.98));
+};
+
 const createCandidates = (): Record<AurenIntent, IntentCandidate> => {
   return {
-    general_chat: {
-      intent: 'general_chat',
-      score: 0,
-      reasons: [],
-    },
-    study_help: {
-      intent: 'study_help',
-      score: 0,
-      reasons: [],
-    },
-    daily_planning: {
-      intent: 'daily_planning',
-      score: 0,
-      reasons: [],
-    },
-    save_memory: {
-      intent: 'save_memory',
-      score: 0,
-      reasons: [],
-    },
-    recall_memory: {
-      intent: 'recall_memory',
-      score: 0,
-      reasons: [],
-    },
-    create_plan: {
-      intent: 'create_plan',
-      score: 0,
-      reasons: [],
-    },
-    focus_help: {
-      intent: 'focus_help',
-      score: 0,
-      reasons: [],
-    },
-    tool_request: {
-      intent: 'tool_request',
-      score: 0,
-      reasons: [],
-    },
-    unknown: {
-      intent: 'unknown',
-      score: 0,
-      reasons: [],
-    },
+    general_chat: { intent: 'general_chat', score: 0, reasons: [] },
+    study_help: { intent: 'study_help', score: 0, reasons: [] },
+    daily_planning: { intent: 'daily_planning', score: 0, reasons: [] },
+    save_memory: { intent: 'save_memory', score: 0, reasons: [] },
+    recall_memory: { intent: 'recall_memory', score: 0, reasons: [] },
+    create_plan: { intent: 'create_plan', score: 0, reasons: [] },
+    focus_help: { intent: 'focus_help', score: 0, reasons: [] },
+    tool_request: { intent: 'tool_request', score: 0, reasons: [] },
+    unknown: { intent: 'unknown', score: 0, reasons: [] },
   };
 };
 
@@ -334,6 +375,7 @@ const getMatchedSignals = (
 ) => {
   const matchedSignals = signals.filter((signal) => {
     const normalizedSignal = normalizeForRouting(signal);
+
     return normalizedSignal.length > 0 && normalizedMessage.includes(normalizedSignal);
   });
 
@@ -404,6 +446,7 @@ const scoreToolSignals = (
 
 const getPriorityIndex = (intent: AurenIntent) => {
   const index = INTENT_PRIORITY.indexOf(intent);
+
   return index === -1 ? INTENT_PRIORITY.length : index;
 };
 
@@ -467,6 +510,143 @@ const createReason = (
   return `${reasons || 'Auren detected the most likely route from lightweight intent signals.'}${toolText}`;
 };
 
+const mergeToolHints = (
+  left: AurenToolName[],
+  right: AurenToolName[],
+): AurenToolName[] => {
+  const tools = new Set<AurenToolName>();
+
+  for (const tool of left) tools.add(tool);
+  for (const tool of right) tools.add(tool);
+
+  return Array.from(tools);
+};
+
+const isLowSignalMessage = (message: string) => {
+  const normalized = normalizeForRouting(message);
+
+  if (normalized.length < 12) {
+    return true;
+  }
+
+  const tokens = normalized.split(' ').filter((token) => token.length >= 3);
+
+  return tokens.length <= 2;
+};
+
+const shouldAskLLMRouter = (
+  message: string,
+  fastResult: AurenIntentResult,
+) => {
+  if (!message.trim()) {
+    return false;
+  }
+
+  if (isLowSignalMessage(message)) {
+    return false;
+  }
+
+  if (fastResult.confidence < AMBIGUOUS_CONFIDENCE_THRESHOLD) {
+    return true;
+  }
+
+  if (fastResult.confidence < FAST_CONFIDENCE_THRESHOLD && fastResult.intent === 'general_chat') {
+    return true;
+  }
+
+  if (fastResult.intent === 'tool_request' && fastResult.toolHints.length === 0) {
+    return true;
+  }
+
+  return false;
+};
+
+const normalizeLLMIntentResult = (
+  value: unknown,
+  fastResult: AurenIntentResult,
+): AurenIntentResult | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  const record = value as LLMIntentRouteResponse;
+  const intent = isValidIntent(record.intent) ? record.intent : fastResult.intent;
+  const llmToolHints = Array.isArray(record.toolHints)
+    ? record.toolHints.filter(isValidTool)
+    : [];
+  const toolHints = mergeToolHints(fastResult.toolHints, llmToolHints);
+  const needsTools =
+    typeof record.needsTools === 'boolean'
+      ? record.needsTools
+      : toolHints.length > 0 || intent === 'tool_request';
+  const needsMemory =
+    typeof record.needsMemory === 'boolean'
+      ? record.needsMemory
+      : shouldUseMemory(intent);
+
+  return {
+    intent,
+    confidence: clampConfidence(record.confidence, Math.max(fastResult.confidence, 0.68)),
+    reason:
+      typeof record.reason === 'string' && record.reason.trim()
+        ? `Hybrid LLM router: ${cleanText(record.reason, 500)}`
+        : `Hybrid LLM router refined the fast route from ${fastResult.intent} to ${intent}.`,
+    needsMemory,
+    needsTools,
+    toolHints,
+  };
+};
+
+const getConversationForLLM = (conversation: HybridRouterOptions['conversation']) => {
+  if (!Array.isArray(conversation)) {
+    return [];
+  }
+
+  return conversation
+    .slice(-MAX_CONVERSATION_MESSAGES)
+    .map((message) => ({
+      role: cleanText(message.role, 40),
+      content: cleanText(message.content, 1200),
+    }))
+    .filter((message) => message.role && message.content);
+};
+
+const tryLLMRoute = async (
+  message: string,
+  fastResult: AurenIntentResult,
+  options: HybridRouterOptions,
+): Promise<AurenIntentResult | null> => {
+  try {
+    const { data, error } = await supabase.functions.invoke<LLMIntentRouteResponse>(
+      INTENT_ROUTE_FUNCTION,
+      {
+        body: {
+          userId: options.userId,
+          message,
+          mode: options.mode,
+          fastResult,
+          conversation: getConversationForLLM(options.conversation),
+        },
+      },
+    );
+
+    if (error) {
+      return null;
+    }
+
+    return normalizeLLMIntentResult(data, fastResult);
+  } catch {
+    return null;
+  }
+};
+
+const markHybridFallback = (fastResult: AurenIntentResult) => {
+  return {
+    ...fastResult,
+    reason: `${fastResult.reason} Hybrid router used the fast route because the LLM router was not needed or was unavailable.`,
+  };
+};
+
 export function routeIntent(message: string): AurenIntentResult {
   const normalizedMessage = normalizeForRouting(message);
 
@@ -501,4 +681,31 @@ export function routeIntent(message: string): AurenIntentResult {
     needsTools: toolHints.length > 0 || intent === 'tool_request',
     toolHints,
   };
+}
+
+export async function routeIntentHybrid(
+  message: string,
+  options: HybridRouterOptions = {},
+): Promise<AurenIntentResult> {
+  const fastResult = routeIntent(message);
+
+  if (options.enableLLM === false) {
+    return fastResult;
+  }
+
+  if (!shouldAskLLMRouter(message, fastResult)) {
+    return markHybridFallback(fastResult);
+  }
+
+  const llmResult = await tryLLMRoute(message, fastResult, options);
+
+  if (!llmResult) {
+    return markHybridFallback(fastResult);
+  }
+
+  if (llmResult.confidence + 0.04 < fastResult.confidence && fastResult.confidence >= 0.72) {
+    return markHybridFallback(fastResult);
+  }
+
+  return llmResult;
 }
