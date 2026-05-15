@@ -1,3 +1,6 @@
+import { runAurenAgent } from './auren-agent/core/runAurenAgent';
+import type { AurenMode } from './auren-agent/core/types';
+
 export type AurenChatMode = 'personal' | 'study' | 'money';
 
 type AurenChatApiMessage = {
@@ -12,179 +15,57 @@ type AurenChatStreamOptions = {
 };
 
 const DEFAULT_AUREN_CHAT_MODE: AurenChatMode = 'personal';
-const AUREN_CHAT_FUNCTION_URL = 'https://eeyserphexequckonzsh.supabase.co/functions/v1/auren-chat';
-const SUPABASE_ANON_KEY = [
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
-  'eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVleXNlcnBoZXhlcXVja29uenNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3NDU0MzgsImV4cCI6MjA5NDMyMTQzOH0',
-  'bcbw8jf2p5gBj1JPN4TxIu5WfweP8em4dTx_5so9hgw',
-].join('.');
 
-function createRequestBody(messages: AurenChatApiMessage[], stream: boolean, mode: AurenChatMode) {
-  return JSON.stringify({
-    stream,
-    mode,
-    messages: messages.map((message) => ({
-      role: message.role,
-      content: message.content,
-    })),
-  });
+function mapChatModeToAgentMode(mode: AurenChatMode): AurenMode {
+  if (mode === 'study') return 'study';
+  if (mode === 'money') return 'money';
+
+  return 'general';
 }
 
-function createHeaders() {
-  return {
-    'Content-Type': 'application/json',
-    apikey: SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-  };
+function getLatestUserMessage(messages: AurenChatApiMessage[]) {
+  const latestUserMessage = [...messages].reverse().find((message) => message.role === 'user');
+  const latestMessage = latestUserMessage ?? messages[messages.length - 1];
+
+  return latestMessage?.content.trim() ?? '';
 }
 
-async function readJsonResponse(response: Response) {
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
-}
+function throwIfAborted(signal?: AbortSignal) {
+  if (!signal?.aborted) return;
 
-async function readTextResponse(response: Response) {
-  try {
-    return await response.text();
-  } catch {
-    return '';
-  }
-}
-
-function getMessageFromJson(data: unknown) {
-  if (
-    data &&
-    typeof data === 'object' &&
-    'message' in data &&
-    typeof data.message === 'string' &&
-    data.message.trim().length > 0
-  ) {
-    return data.message.trim();
-  }
-
-  return null;
-}
-
-function getErrorMessageFromJson(data: unknown) {
-  return getMessageFromJson(data) ?? 'Auren had trouble connecting. Try again in a moment.';
-}
-
-function tryReadMessageFromJsonText(text: string) {
-  try {
-    return getMessageFromJson(JSON.parse(text));
-  } catch {
-    return null;
-  }
+  throw new Error('Auren request was stopped.');
 }
 
 export async function sendAurenChatMessage(
   messages: AurenChatApiMessage[],
   mode: AurenChatMode = DEFAULT_AUREN_CHAT_MODE,
 ) {
-  const response = await fetch(AUREN_CHAT_FUNCTION_URL, {
-    method: 'POST',
-    headers: createHeaders(),
-    body: createRequestBody(messages, false, mode),
+  const result = await runAurenAgent({
+    message: getLatestUserMessage(messages),
+    mode: mapChatModeToAgentMode(mode),
+    conversation: messages,
   });
 
-  const data = await readJsonResponse(response);
-
-  if (!response.ok) {
-    throw new Error(getErrorMessageFromJson(data));
-  }
-
-  const message = getMessageFromJson(data);
-
-  if (!message) {
-    throw new Error('Auren returned an empty response. Try again in a moment.');
-  }
-
-  return message;
+  return result.answer;
 }
 
 export async function sendAurenChatMessageStream(
   messages: AurenChatApiMessage[],
   options: AurenChatStreamOptions,
 ) {
-  const response = await fetch(AUREN_CHAT_FUNCTION_URL, {
-    method: 'POST',
-    headers: createHeaders(),
-    body: createRequestBody(messages, true, options.mode ?? DEFAULT_AUREN_CHAT_MODE),
-    signal: options.signal,
+  throwIfAborted(options.signal);
+
+  const result = await runAurenAgent({
+    message: getLatestUserMessage(messages),
+    mode: mapChatModeToAgentMode(options.mode ?? DEFAULT_AUREN_CHAT_MODE),
+    conversation: messages,
   });
 
-  if (!response.ok) {
-    const data = await readJsonResponse(response);
-    throw new Error(getErrorMessageFromJson(data));
-  }
+  throwIfAborted(options.signal);
 
-  const contentType = response.headers.get('content-type') ?? '';
-
-  if (contentType.includes('application/json')) {
-    const data = await readJsonResponse(response);
-    const message = getMessageFromJson(data);
-
-    if (!message) {
-      throw new Error('Auren returned an empty response. Try again in a moment.');
-    }
-
-    options.onToken(message);
-    return;
-  }
-
-  const responseBody = response.body as unknown as {
-    getReader?: () => {
-      read: () => Promise<{ value?: Uint8Array; done: boolean }>;
-      releaseLock?: () => void;
-    };
-  } | null;
-
-  if (!responseBody?.getReader || typeof TextDecoder === 'undefined') {
-    const text = await readTextResponse(response);
-    const jsonMessage = tryReadMessageFromJsonText(text);
-    const message = jsonMessage ?? text.trim();
-
-    if (!message) {
-      throw new Error('Auren returned an empty response. Try again in a moment.');
-    }
-
-    options.onToken(message);
-    return;
-  }
-
-  const reader = responseBody.getReader();
-  const decoder = new TextDecoder();
-  let receivedAnyToken = false;
-
-  try {
-    while (true) {
-      const { value, done } = await reader.read();
-
-      if (done) break;
-      if (!value) continue;
-
-      const token = decoder.decode(value, { stream: true });
-
-      if (token.length > 0) {
-        receivedAnyToken = true;
-        options.onToken(token);
-      }
-    }
-
-    const finalToken = decoder.decode();
-
-    if (finalToken.length > 0) {
-      receivedAnyToken = true;
-      options.onToken(finalToken);
-    }
-  } finally {
-    reader.releaseLock?.();
-  }
-
-  if (!receivedAnyToken) {
+  if (!result.answer.trim()) {
     throw new Error('Auren returned an empty response. Try again in a moment.');
   }
+
+  options.onToken(result.answer);
 }
