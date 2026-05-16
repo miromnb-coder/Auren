@@ -21,7 +21,7 @@ export function AurenActionPill({ icon, label, width = 112, onPress }: Props) {
 const styles = StyleSheet.create({
   pill: {
     height: 38,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     borderRadius: spacing.radiusFull,
     borderWidth: 1,
     borderColor: colors.border,
@@ -29,7 +29,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
+    gap: 5,
     ...shadows.tiny,
   },
   pressed: {
@@ -37,15 +37,15 @@ const styles = StyleSheet.create({
     opacity: 0.82,
   },
   icon: {
-    width: 17,
+    width: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   label: {
     flexShrink: 1,
     color: colors.muted,
-    fontSize: 13.2,
-    letterSpacing: -0.18,
-    fontWeight: '500',
+    fontSize: 12.35,
+    letterSpacing: -0.22,
+    fontWeight: '550',
   },
 });
