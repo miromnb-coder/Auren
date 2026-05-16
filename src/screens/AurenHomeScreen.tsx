@@ -163,6 +163,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   const [controlsSheetStage, setControlsSheetStage] = useState<ControlsSheetStage>('closed');
   const [chatMode, setChatMode] = useState<AurenChatMode>('personal');
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [chats, setChats] = useState<StoredChat[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<AurenMessage[]>([]);
@@ -295,6 +296,17 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
     });
   }
 
+  function toggleWebSearch() {
+    setWebSearchEnabled((current) => !current);
+    setPlusStage('closed');
+    runHaptic(webSearchEnabled ? 'close' : 'open');
+  }
+
+  function clearWebSearch() {
+    setWebSearchEnabled(false);
+    runHaptic('close');
+  }
+
   function stopGenerating() {
     if (!abortControllerRef.current) return;
 
@@ -312,6 +324,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
     setAssistantThinking(false);
     clearThinkingState();
     setIsGenerating(false);
+    setWebSearchEnabled(false);
 
     try {
       const chat = await createUserChat(session.user.id, 'New chat', chatMode);
@@ -332,6 +345,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
     setAssistantThinking(false);
     clearThinkingState();
     setIsGenerating(false);
+    setWebSearchEnabled(false);
     closeSidebar();
 
     const selectedChat = chats.find((chat) => chat.id === chatId);
@@ -359,7 +373,10 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   }
 
   async function handleSendMessage(message: string) {
+    const useWebSearch = webSearchEnabled;
+
     closeAllSheets();
+    setWebSearchEnabled(false);
     abortControllerRef.current?.abort();
 
     const userMessage: AurenMessage = {
@@ -413,6 +430,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
         })),
         {
           mode: chatMode,
+          browserSearch: useWebSearch,
           signal: abortController.signal,
           onThinkingState: setThinkingState,
           onToken: (token) => {
@@ -811,17 +829,24 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
                 onOpenChatMode={openModeMenu}
                 onSendMessage={handleSendMessage}
                 onStopGenerating={stopGenerating}
+                onClearWebSearch={clearWebSearch}
                 isGenerating={isGenerating}
                 plusActive={plusSheetOpen}
                 controlsActive={controlsSheetOpen}
                 chatModeActive={modeMenuOpen}
+                webSearchActive={webSearchEnabled}
               />
             </Animated.View>
           </SafeAreaView>
         </Animated.View>
 
         {anySheetOpen ? <Pressable style={styles.plusBackdrop} onPress={closeActiveSheet} /> : null}
-        <AurenPlusSheet stage={plusSheetStage} onStageChange={setPlusStage} />
+        <AurenPlusSheet
+          stage={plusSheetStage}
+          onStageChange={setPlusStage}
+          webSearchActive={webSearchEnabled}
+          onWebSearchPress={toggleWebSearch}
+        />
         <AurenControlsSheet stage={controlsSheetStage} onStageChange={setControlsStage} />
       </View>
     </AurenSidebar>
