@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './src/lib/supabase';
@@ -33,22 +34,24 @@ export default function App() {
   }, []);
 
   return (
-    <SafeAreaProvider>
-      <View style={styles.root}>
-        <StatusBar style="dark" />
-        {loading ? (
-          <View style={styles.loadingScreen}>
-            <ActivityIndicator color={colors.text} />
-          </View>
-        ) : session ? (
-          <AurenHomeScreen session={session} />
-        ) : authView === 'email' ? (
-          <AurenEmailAuthScreen onBack={() => setAuthView('main')} />
-        ) : (
-          <AurenAuthScreen onContinue={() => setAuthView('email')} onEmailContinue={() => setAuthView('email')} />
-        )}
-      </View>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={styles.root}>
+      <SafeAreaProvider>
+        <View style={styles.root}>
+          <StatusBar style="dark" />
+          {loading ? (
+            <View style={styles.loadingScreen}>
+              <ActivityIndicator color={colors.text} />
+            </View>
+          ) : session ? (
+            <AurenHomeScreen session={session} />
+          ) : authView === 'email' ? (
+            <AurenEmailAuthScreen onBack={() => setAuthView('main')} />
+          ) : (
+            <AurenAuthScreen onContinue={() => setAuthView('email')} onEmailContinue={() => setAuthView('email')} />
+          )}
+        </View>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
