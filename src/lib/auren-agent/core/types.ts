@@ -180,9 +180,21 @@ export type AurenSuggestion = {
   payload?: Record<string, unknown>;
 };
 
+export type AurenResponseMetadata = {
+  fallback?: boolean;
+  fallbackReason?: string;
+  debug?: Record<string, unknown>;
+  model?: string;
+  groqStatus?: number;
+  groqError?: string;
+  groqErrorType?: string;
+  recoveredFromPlainText?: boolean;
+};
+
 export type AurenResponseDraft = {
   answer: string;
   suggestions: AurenSuggestion[];
+  metadata?: AurenResponseMetadata;
 };
 
 export type AurenResponseEvaluation = {
