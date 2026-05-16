@@ -18,6 +18,7 @@ type AurenChatStreamOptions = {
   userId?: string;
   chatId?: string;
   messageId?: string;
+  browserSearch?: boolean;
 };
 
 const DEFAULT_AUREN_CHAT_MODE: AurenChatMode = 'personal';
@@ -91,6 +92,7 @@ export async function sendAurenChatMessageStream(
       metadata: {
         chatId: options.chatId,
         messageId: options.messageId,
+        browserSearch: options.browserSearch === true,
       },
     },
     {
