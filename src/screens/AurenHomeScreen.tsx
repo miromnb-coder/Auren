@@ -8,7 +8,7 @@ import type { Session } from '@supabase/supabase-js';
 import { AurenActionPill } from '../components/AurenActionPill';
 import { AurenComposer } from '../components/AurenComposer';
 import { AurenControlsSheet, type ControlsSheetStage } from '../components/AurenControlsSheet';
-import { CalendarIcon, ListIcon, MenuIcon, SparkIcon } from '../components/AurenIcons';
+import { MenuIcon } from '../components/AurenIcons';
 import { AurenMessageList, type AurenMessage } from '../components/AurenMessageList';
 import { AurenPlusSheet, type PlusSheetStage } from '../components/AurenPlusSheet';
 import { AurenSidebar } from '../components/AurenSidebar';
@@ -27,11 +27,13 @@ import {
 import { supabase } from '../lib/supabase';
 import { colors, spacing } from '../theme';
 
+const STUDY_MODE: AurenChatMode = 'study';
 const COMPOSER_CLOSED_BOTTOM = 34;
 const COMPOSER_KEYBOARD_GAP = 12;
 const COMPOSER_KEYBOARD_EXTRA_LIFT = 34;
 const CONTENT_KEYBOARD_LIFT = 34;
 const PILLS_KEYBOARD_LIFT = 20;
+const STUDY_ACTION_ICON_COLOR = '#70717a';
 
 type AurenHomeScreenProps = {
   session: Session;
@@ -46,27 +48,11 @@ type SidebarProfile = {
 const CHAT_MODE_OPTIONS: Array<{
   mode: AurenChatMode;
   title: string;
-  subtitle: string;
   icon: keyof typeof Ionicons.glyphMap;
 }> = [
-  {
-    mode: 'personal',
-    title: 'Personal',
-    subtitle: 'Everyday tasks and decisions.',
-    icon: 'chatbubble-outline',
-  },
-  {
-    mode: 'study',
-    title: 'Study',
-    subtitle: 'Explain, quiz, learn and plan.',
-    icon: 'school-outline',
-  },
-  {
-    mode: 'money',
-    title: 'Money',
-    subtitle: 'Budget, spending and subscriptions.',
-    icon: 'wallet-outline',
-  },
+  { mode: 'personal', title: 'Personal', icon: 'chatbubble-outline' },
+  { mode: 'study', title: 'Study', icon: 'school-outline' },
+  { mode: 'money', title: 'Money', icon: 'wallet-outline' },
 ];
 
 function runHaptic(type: 'open' | 'close') {
@@ -93,7 +79,7 @@ function getErrorMessage(error: unknown) {
 }
 
 function getModeOption(mode: AurenChatMode) {
-  return CHAT_MODE_OPTIONS.find((option) => option.mode === mode) ?? CHAT_MODE_OPTIONS[0];
+  return CHAT_MODE_OPTIONS.find((option) => option.mode === mode) ?? CHAT_MODE_OPTIONS[1];
 }
 
 function getEmailLocalName(email: string) {
@@ -161,8 +147,6 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [plusSheetStage, setPlusSheetStage] = useState<PlusSheetStage>('closed');
   const [controlsSheetStage, setControlsSheetStage] = useState<ControlsSheetStage>('closed');
-  const [chatMode, setChatMode] = useState<AurenChatMode>('personal');
-  const [modeMenuOpen, setModeMenuOpen] = useState(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [chats, setChats] = useState<StoredChat[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
@@ -185,7 +169,6 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   const anySheetOpen = plusSheetOpen || controlsSheetOpen;
   const anySheetExpanded = plusSheetStage === 'expanded' || controlsSheetStage === 'expanded';
   const hasMessages = messages.length > 0;
-  const selectedModeOption = getModeOption(chatMode);
   const recentChats = chats.map((chat) => ({
     id: chat.id,
     title: chat.title,
@@ -234,14 +217,6 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
     });
   }
 
-  function closeModeMenu() {
-    setModeMenuOpen((current) => {
-      if (!current) return current;
-      runHaptic('close');
-      return false;
-    });
-  }
-
   function closeAllSheets() {
     if (plusSheetOpen) {
       setPlusStage('closed');
@@ -250,32 +225,6 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
     if (controlsSheetOpen) {
       setControlsStage('closed');
     }
-
-    if (modeMenuOpen) {
-      setModeMenuOpen(false);
-    }
-  }
-
-  function openModeMenu() {
-    Keyboard.dismiss();
-    setSidebarOpen(false);
-    if (plusSheetOpen) {
-      setPlusSheetStage('closed');
-    }
-    if (controlsSheetOpen) {
-      setControlsSheetStage('closed');
-    }
-
-    setModeMenuOpen((current) => {
-      runHaptic(current ? 'close' : 'open');
-      return !current;
-    });
-  }
-
-  function selectChatMode(nextMode: AurenChatMode) {
-    setChatMode(nextMode);
-    setModeMenuOpen(false);
-    runHaptic('close');
   }
 
   function openSidebar() {
@@ -327,11 +276,11 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
     setWebSearchEnabled(false);
 
     try {
-      const chat = await createUserChat(session.user.id, 'New chat', chatMode);
+      const chat = await createUserChat(session.user.id, 'New chat', STUDY_MODE);
       setActiveChatId(chat.id);
       setMessages([]);
       setChats((currentChats) => [chat, ...currentChats.filter((item) => item.id !== chat.id)]);
-    } catch (error) {
+    } catch {
       setActiveChatId(null);
       setMessages([]);
     } finally {
@@ -347,18 +296,12 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
     setIsGenerating(false);
     setWebSearchEnabled(false);
     closeSidebar();
-
-    const selectedChat = chats.find((chat) => chat.id === chatId);
-    if (selectedChat) {
-      setChatMode(selectedChat.mode);
-    }
-
     setActiveChatId(chatId);
 
     try {
       const storedMessages = await loadChatMessages(session.user.id, chatId);
       setMessages(storedMessages.map(toAurenMessage).filter((message): message is AurenMessage => Boolean(message)));
-    } catch (error) {
+    } catch {
       setMessages([]);
     }
   }
@@ -366,7 +309,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   async function ensureActiveChat(firstMessage: string) {
     if (activeChatId) return activeChatId;
 
-    const chat = await createUserChat(session.user.id, createChatTitle(firstMessage), chatMode);
+    const chat = await createUserChat(session.user.id, createChatTitle(firstMessage), STUDY_MODE);
     setActiveChatId(chat.id);
     setChats((currentChats) => [chat, ...currentChats.filter((item) => item.id !== chat.id)]);
     return chat.id;
@@ -429,7 +372,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
           content: item.content,
         })),
         {
-          mode: chatMode,
+          mode: STUDY_MODE,
           browserSearch: useWebSearch,
           signal: abortController.signal,
           onThinkingState: setThinkingState,
@@ -503,7 +446,6 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   function openPlusSheet() {
     Keyboard.dismiss();
     setSidebarOpen(false);
-    setModeMenuOpen(false);
     if (controlsSheetOpen) {
       setControlsSheetStage('closed');
     }
@@ -513,7 +455,6 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   function openControlsSheet() {
     Keyboard.dismiss();
     setSidebarOpen(false);
-    setModeMenuOpen(false);
     if (plusSheetOpen) {
       setPlusSheetStage('closed');
     }
@@ -731,57 +672,12 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
                   <MenuIcon />
                 </Pressable>
 
-                <Pressable
-                  onPress={openModeMenu}
-                  hitSlop={12}
-                  style={({ pressed }) => [styles.brandButton, pressed && styles.brandButtonPressed]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Change Auren mode. Current mode is ${selectedModeOption.title}`}
-                >
+                <View style={styles.brandButton} accessibilityRole="header">
                   <Text style={styles.brand}>Auren</Text>
-                  <View style={styles.modeBadge}>
-                    <Ionicons name={selectedModeOption.icon} size={15} color="#555863" />
-                  </View>
-                </Pressable>
+                </View>
 
                 <View style={styles.headerSpacer} />
               </View>
-
-              {modeMenuOpen ? (
-                <>
-                  <Pressable style={styles.modeMenuBackdrop} onPress={closeModeMenu} />
-                  <View style={styles.modeMenu}>
-                    {CHAT_MODE_OPTIONS.map((option, index) => {
-                      const selected = option.mode === chatMode;
-
-                      return (
-                        <Pressable
-                          key={option.mode}
-                          onPress={() => selectChatMode(option.mode)}
-                          style={({ pressed }) => [
-                            styles.modeMenuItem,
-                            index < CHAT_MODE_OPTIONS.length - 1 && styles.modeMenuItemBorder,
-                            pressed && styles.modeMenuItemPressed,
-                          ]}
-                          accessibilityRole="button"
-                          accessibilityLabel={`Use ${option.title} mode`}
-                        >
-                          <View style={styles.modeCheckWrap}>
-                            {selected ? <Text style={styles.modeCheck}>✓</Text> : null}
-                          </View>
-                          <View style={[styles.modeIconBubble, selected && styles.modeIconBubbleSelected]}>
-                            <Ionicons name={option.icon} size={16} color="#1d1d1f" />
-                          </View>
-                          <View style={styles.modeTextWrap}>
-                            <Text style={styles.modeTitle}>{option.title}</Text>
-                            <Text style={styles.modeSubtitle}>{option.subtitle}</Text>
-                          </View>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </>
-              ) : null}
 
               <Animated.View
                 style={[
@@ -799,8 +695,8 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
                 ) : (
                   <Pressable style={styles.startDismissArea} onPress={Keyboard.dismiss}>
                     <View style={styles.hero}>
-                      <Text style={styles.title}>Good evening, you&apos;ve got this.</Text>
-                      <Text style={styles.subtitle}>I&apos;m here to help you focus and get things done.</Text>
+                      <Text style={styles.title}>{'Good evening,\nlet’s study smarter.'}</Text>
+                      <Text style={styles.subtitle}>{'I’m here to help you focus, learn faster,\nand stay on track.'}</Text>
                     </View>
 
                     <Animated.View
@@ -813,9 +709,21 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
                         },
                       ]}
                     >
-                      <AurenActionPill width={106} icon={<CalendarIcon />} label="Plan my day" />
-                      <AurenActionPill width={124} icon={<ListIcon />} label="Organize tasks" />
-                      <AurenActionPill width={110} icon={<SparkIcon />} label="Ask anything" />
+                      <AurenActionPill
+                        width={126}
+                        icon={<Ionicons name="book-outline" size={17} color={STUDY_ACTION_ICON_COLOR} />}
+                        label="Explain a concept"
+                      />
+                      <AurenActionPill
+                        width={78}
+                        icon={<Ionicons name="tablet-portrait-outline" size={17} color={STUDY_ACTION_ICON_COLOR} />}
+                        label="Quiz me"
+                      />
+                      <AurenActionPill
+                        width={134}
+                        icon={<Ionicons name="calendar-outline" size={17} color={STUDY_ACTION_ICON_COLOR} />}
+                        label="Make a study plan"
+                      />
                     </Animated.View>
                   </Pressable>
                 )}
@@ -826,14 +734,12 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
               <AurenComposer
                 onOpenPlus={openPlusSheet}
                 onOpenControls={openControlsSheet}
-                onOpenChatMode={openModeMenu}
                 onSendMessage={handleSendMessage}
                 onStopGenerating={stopGenerating}
                 onClearWebSearch={clearWebSearch}
                 isGenerating={isGenerating}
                 plusActive={plusSheetOpen}
                 controlsActive={controlsSheetOpen}
-                chatModeActive={modeMenuOpen}
                 webSearchActive={webSearchEnabled}
               />
             </Animated.View>
@@ -904,12 +810,8 @@ const styles = StyleSheet.create({
   },
   brandButton: {
     minWidth: 148,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  brandButtonPressed: {
-    opacity: 0.68,
   },
   brand: {
     color: colors.text,
@@ -918,102 +820,8 @@ const styles = StyleSheet.create({
     letterSpacing: -0.9,
     fontFamily: serifFont,
   },
-  modeBadge: {
-    width: 27,
-    height: 27,
-    borderRadius: 999,
-    marginLeft: 9,
-    borderWidth: 1,
-    borderColor: 'rgba(17,24,39,0.065)',
-    backgroundColor: 'rgba(255,255,255,0.54)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   headerSpacer: {
     width: 68,
-  },
-  modeMenuBackdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 45,
-  },
-  modeMenu: {
-    position: 'absolute',
-    top: 80,
-    alignSelf: 'center',
-    width: 304,
-    zIndex: 70,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(17,24,39,0.06)',
-    backgroundColor: 'rgba(252,252,251,0.96)',
-    overflow: 'hidden',
-    shadowColor: '#000000',
-    shadowOpacity: 0.12,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 14 },
-    elevation: 20,
-  },
-  modeMenuItem: {
-    minHeight: 74,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.74)',
-  },
-  modeMenuItemBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(17,24,39,0.065)',
-  },
-  modeMenuItemPressed: {
-    backgroundColor: 'rgba(241,242,244,0.92)',
-  },
-  modeCheckWrap: {
-    width: 19,
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-  },
-  modeCheck: {
-    color: colors.text,
-    fontSize: 20,
-    lineHeight: 22,
-    fontWeight: '650',
-  },
-  modeIconBubble: {
-    width: 34,
-    height: 34,
-    borderRadius: 999,
-    marginRight: 11,
-    borderWidth: 1,
-    borderColor: 'rgba(17,24,39,0.055)',
-    backgroundColor: 'rgba(255,255,255,0.62)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modeIconBubbleSelected: {
-    backgroundColor: 'rgba(232,233,237,0.92)',
-  },
-  modeTextWrap: {
-    flex: 1,
-  },
-  modeTitle: {
-    color: colors.text,
-    fontSize: 18.5,
-    lineHeight: 23,
-    letterSpacing: -0.34,
-    fontWeight: '620',
-  },
-  modeSubtitle: {
-    marginTop: 1,
-    color: colors.muted,
-    fontSize: 14.5,
-    lineHeight: 20,
-    letterSpacing: -0.18,
-    fontWeight: '480',
   },
   content: {
     flex: 1,
@@ -1038,16 +846,16 @@ const styles = StyleSheet.create({
   },
   title: {
     color: '#686775',
-    fontSize: 25,
-    lineHeight: 31,
-    letterSpacing: -0.75,
+    fontSize: 31,
+    lineHeight: 37,
+    letterSpacing: -0.95,
     textAlign: 'center',
     fontFamily: serifFont,
   },
   subtitle: {
-    marginTop: 13,
+    marginTop: 14,
     color: colors.muted,
-    fontSize: 15.5,
+    fontSize: 15.8,
     lineHeight: 22,
     letterSpacing: -0.12,
     textAlign: 'center',
