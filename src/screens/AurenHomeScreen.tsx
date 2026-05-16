@@ -12,13 +12,13 @@ import { MenuIcon } from '../components/AurenIcons';
 import { AurenMessageList, type AurenMessage } from '../components/AurenMessageList';
 import { AurenPlusSheet, type PlusSheetStage } from '../components/AurenPlusSheet';
 import { AurenSidebar } from '../components/AurenSidebar';
+import { AurenStudyFocusSetupSheet, type AurenStudyFocusSetupInput } from '../components/AurenStudyFocusSetupSheet';
 import { StudyBookIcon, StudyCalendarIcon, StudyQuizIcon } from '../components/AurenStudyIcons';
 import { AurenTodayFocusCard } from '../components/AurenTodayFocusCard';
 import { sendAurenChatMessageStream, type AurenChatMode } from '../lib/aurenChatApi';
 import type { AurenThinkingEvent } from '../lib/auren-agent/core/types';
 import { createChatTitle, createUserChat, formatChatTime, listUserChats, loadChatMessages, saveChatMessage, touchChat, type StoredChat } from '../lib/aurenChatStorage';
-import { loadTodayStudyFocusCard, type StudyFocusCard } from '../lib/aurenStudyFocus';
-import { supabase } from '../lib/supabase';
+import { createFocusCardFromTask, createStudySubject, createStudyTask, createStudyTaskSteps, listStudySubjects, loadTodayStudyFocusCard, type StudyFocusCard, type StudySubject, type StudyTaskType } from '../lib/aurenStudyFocus';
 import { colors, spacing } from '../theme';
 
 const STUDY_MODE: AurenChatMode = 'study';
@@ -38,13 +38,12 @@ const CHAT_MODE_OPTIONS: Array<{ mode: AurenChatMode; title: string; icon: keyof
   { mode: 'money', title: 'Money', icon: 'wallet-outline' },
 ];
 
+const serifFont = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
+
 function runHaptic(type: 'open' | 'close') {
   if (Platform.OS === 'web') return;
-  if (type === 'open') {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    return;
-  }
-  void Haptics.selectionAsync();
+  if (type === 'open') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  else void Haptics.selectionAsync();
 }
 
 function createMessageId(role: AurenMessage['role']) {
@@ -52,8 +51,7 @@ function createMessageId(role: AurenMessage['role']) {
 }
 
 function getErrorMessage(error: unknown) {
-  if (error instanceof Error && error.message.trim().length > 0) return error.message;
-  return 'Auren had trouble connecting. Try again in a moment.';
+  return error instanceof Error && error.message.trim() ? error.message : 'Auren had trouble connecting. Try again in a moment.';
 }
 
 function getModeOption(mode: AurenChatMode) {
@@ -61,33 +59,20 @@ function getModeOption(mode: AurenChatMode) {
 }
 
 function getEmailLocalName(email: string) {
-  const localPart = email.split('@')[0] ?? '';
-  const cleaned = localPart.replace(/[._-]+/g, ' ').trim();
+  const cleaned = (email.split('@')[0] ?? '').replace(/[._-]+/g, ' ').trim();
   if (!cleaned) return 'Auren user';
   return cleaned.split(' ').filter(Boolean).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
 }
 
-function getInitials(name: string, email: string) {
-  const source = name.trim() || getEmailLocalName(email);
-  const initials = source.split(' ').filter(Boolean).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('');
-  return initials || 'AU';
-}
-
-function createSidebarProfile(name: string | null | undefined, email: string | null | undefined): SidebarProfile {
-  const safeEmail = email?.trim() ?? '';
-  const safeName = name?.trim() || (safeEmail ? getEmailLocalName(safeEmail) : 'Auren user');
-  return { name: safeName, email: safeEmail, initials: getInitials(safeName, safeEmail) };
-}
-
-function getUserMetadataName(session: Session) {
+function createSidebarProfile(session: Session): SidebarProfile {
+  const email = session.user.email ?? '';
   const metadata = session.user.user_metadata;
-  const displayName = metadata?.display_name;
-  const fullName = metadata?.full_name;
-  const name = metadata?.name;
-  if (typeof displayName === 'string' && displayName.trim()) return displayName;
-  if (typeof fullName === 'string' && fullName.trim()) return fullName;
-  if (typeof name === 'string' && name.trim()) return name;
-  return null;
+  const name = (typeof metadata?.display_name === 'string' && metadata.display_name.trim()) ||
+    (typeof metadata?.full_name === 'string' && metadata.full_name.trim()) ||
+    (typeof metadata?.name === 'string' && metadata.name.trim()) ||
+    getEmailLocalName(email);
+  const initials = name.split(' ').filter(Boolean).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('') || 'AU';
+  return { name, email, initials };
 }
 
 function toAurenMessage(row: { id: string; role: string; content: string; created_at: string }): AurenMessage | null {
@@ -95,11 +80,45 @@ function toAurenMessage(row: { id: string; role: string; content: string; create
   return { id: row.id, role: row.role, content: row.content, createdAt: new Date(row.created_at).getTime() };
 }
 
+function inferStudyTaskType(value: string): StudyTaskType {
+  const text = value.toLowerCase();
+  if (text.includes('exam') || text.includes('test') || text.includes('koe')) return 'exam';
+  if (text.includes('essay') || text.includes('essee')) return 'essay';
+  if (text.includes('quiz')) return 'quiz';
+  if (text.includes('read') || text.includes('luk')) return 'reading';
+  if (text.includes('practice') || text.includes('harjoit')) return 'practice';
+  return 'general_goal';
+}
+
+function parseDeadlineText(value: string) {
+  const cleanValue = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(cleanValue)) return null;
+  const date = new Date(`${cleanValue}T12:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+async function findOrCreateStudySubject(userId: string, subjectName: string): Promise<StudySubject | null> {
+  const cleanSubject = subjectName.trim();
+  if (!cleanSubject) return null;
+  const subjects = await listStudySubjects(userId);
+  const existing = subjects.find((subject) => subject.name.toLowerCase() === cleanSubject.toLowerCase());
+  if (existing) return existing;
+  try {
+    return await createStudySubject({ userId, name: cleanSubject });
+  } catch {
+    const nextSubjects = await listStudySubjects(userId);
+    return nextSubjects.find((subject) => subject.name.toLowerCase() === cleanSubject.toLowerCase()) ?? null;
+  }
+}
+
 export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   const insets = useSafeAreaInsets();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [plusSheetStage, setPlusSheetStage] = useState<PlusSheetStage>('closed');
   const [controlsSheetStage, setControlsSheetStage] = useState<ControlsSheetStage>('closed');
+  const [focusSetupOpen, setFocusSetupOpen] = useState(false);
+  const [focusSetupSaving, setFocusSetupSaving] = useState(false);
+  const [focusSetupError, setFocusSetupError] = useState<string | null>(null);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [chats, setChats] = useState<StoredChat[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
@@ -109,7 +128,6 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   const [assistantThinking, setAssistantThinking] = useState(false);
   const [thinkingState, setThinkingState] = useState<AurenThinkingEvent | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [sidebarProfile, setSidebarProfile] = useState<SidebarProfile>(() => createSidebarProfile(getUserMetadataName(session), session.user.email));
   const composerBottom = useRef(new Animated.Value(COMPOSER_CLOSED_BOTTOM)).current;
   const contentTranslateY = useRef(new Animated.Value(0)).current;
   const pillsOpacity = useRef(new Animated.Value(1)).current;
@@ -119,14 +137,18 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
 
   const plusSheetOpen = plusSheetStage !== 'closed';
   const controlsSheetOpen = controlsSheetStage !== 'closed';
-  const anySheetOpen = plusSheetOpen || controlsSheetOpen;
-  const anySheetExpanded = plusSheetStage === 'expanded' || controlsSheetStage === 'expanded';
+  const anySheetOpen = plusSheetOpen || controlsSheetOpen || focusSetupOpen;
+  const anySheetExpanded = plusSheetStage === 'expanded' || controlsSheetStage === 'expanded' || focusSetupOpen;
   const hasMessages = messages.length > 0;
+  const profile = createSidebarProfile(session);
   const recentChats = chats.map((chat) => ({ id: chat.id, title: chat.title, time: formatChatTime(chat.updated_at), icon: getModeOption(chat.mode).icon }));
 
   async function refreshChats() {
-    const nextChats = await listUserChats(session.user.id);
-    setChats(nextChats);
+    setChats(await listUserChats(session.user.id));
+  }
+
+  async function refreshTodayFocus() {
+    setTodayFocusCard(await loadTodayStudyFocusCard(session.user.id));
   }
 
   function clearThinkingState() { setThinkingState(null); }
@@ -134,9 +156,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   function setPlusStage(nextStage: PlusSheetStage) {
     setPlusSheetStage((current) => {
       if (current === nextStage) return current;
-      if (current === 'closed' && nextStage !== 'closed') runHaptic('open');
-      else if (current !== 'closed' && nextStage === 'closed') runHaptic('close');
-      else if (current !== nextStage) runHaptic('open');
+      runHaptic(nextStage === 'closed' ? 'close' : 'open');
       return nextStage;
     });
   }
@@ -144,9 +164,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   function setControlsStage(nextStage: ControlsSheetStage) {
     setControlsSheetStage((current) => {
       if (current === nextStage) return current;
-      if (current === 'closed' && nextStage !== 'closed') runHaptic('open');
-      else if (current !== 'closed' && nextStage === 'closed') runHaptic('close');
-      else if (current !== nextStage) runHaptic('open');
+      runHaptic(nextStage === 'closed' ? 'close' : 'open');
       return nextStage;
     });
   }
@@ -154,25 +172,13 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   function closeAllSheets() {
     if (plusSheetOpen) setPlusStage('closed');
     if (controlsSheetOpen) setControlsStage('closed');
+    if (focusSetupOpen) setFocusSetupOpen(false);
+    setFocusSetupError(null);
   }
 
-  function openSidebar() {
-    Keyboard.dismiss();
-    closeAllSheets();
-    setSidebarOpen((current) => {
-      if (current) return current;
-      runHaptic('open');
-      return true;
-    });
-  }
-
-  function closeSidebar() {
-    setSidebarOpen((current) => {
-      if (!current) return current;
-      runHaptic('close');
-      return false;
-    });
-  }
+  function openSidebar() { Keyboard.dismiss(); closeAllSheets(); setSidebarOpen(true); runHaptic('open'); }
+  function closeSidebar() { setSidebarOpen(false); runHaptic('close'); }
+  function clearWebSearch() { setWebSearchEnabled(false); runHaptic('close'); }
 
   function toggleWebSearch() {
     setWebSearchEnabled((current) => !current);
@@ -180,14 +186,68 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
     runHaptic(webSearchEnabled ? 'close' : 'open');
   }
 
-  function clearWebSearch() {
-    setWebSearchEnabled(false);
+  function openFocusSetup() {
+    Keyboard.dismiss();
+    setSidebarOpen(false);
+    setPlusSheetStage('closed');
+    setControlsSheetStage('closed');
+    setFocusSetupError(null);
+    setFocusSetupOpen(true);
+    runHaptic('open');
+  }
+
+  function closeFocusSetup() {
+    if (focusSetupSaving) return;
+    setFocusSetupOpen(false);
+    setFocusSetupError(null);
     runHaptic('close');
   }
 
+  async function saveStudyFocusSetup(input: AurenStudyFocusSetupInput) {
+    if (focusSetupSaving) return;
+    setFocusSetupSaving(true);
+    setFocusSetupError(null);
+    try {
+      const subject = await findOrCreateStudySubject(session.user.id, input.subject);
+      const dueAt = parseDeadlineText(input.deadlineText);
+      const task = await createStudyTask({
+        userId: session.user.id,
+        title: input.taskTitle,
+        subjectId: subject?.id ?? null,
+        description: input.deadlineText ? `Deadline: ${input.deadlineText}` : null,
+        type: inferStudyTaskType(input.taskTitle),
+        dueAt,
+        priority: dueAt ? 'high' : 'normal',
+        estimatedMinutes: input.sessionMinutes,
+        source: 'manual',
+      });
+      const steps = await createStudyTaskSteps({
+        userId: session.user.id,
+        taskId: task.id,
+        subjectId: subject?.id ?? null,
+        steps: [{ title: input.nextStep, estimatedMinutes: input.sessionMinutes }],
+      });
+      const focusCard = await createFocusCardFromTask({
+        userId: session.user.id,
+        task,
+        steps,
+        selectedBy: 'user',
+        reason: 'Created from Today’s Focus setup',
+        priorityScore: dueAt ? 72 : 55,
+      });
+      setTodayFocusCard(focusCard);
+      setTodayFocusLoading(false);
+      setFocusSetupOpen(false);
+      runHaptic('close');
+    } catch (error) {
+      setFocusSetupError(getErrorMessage(error));
+    } finally {
+      setFocusSetupSaving(false);
+    }
+  }
+
   function stopGenerating() {
-    if (!abortControllerRef.current) return;
-    abortControllerRef.current.abort();
+    abortControllerRef.current?.abort();
     abortControllerRef.current = null;
     setAssistantThinking(false);
     clearThinkingState();
@@ -197,7 +257,6 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
 
   async function startNewChat() {
     abortControllerRef.current?.abort();
-    abortControllerRef.current = null;
     setAssistantThinking(false);
     clearThinkingState();
     setIsGenerating(false);
@@ -217,7 +276,6 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
 
   async function openStoredChat(chatId: string) {
     abortControllerRef.current?.abort();
-    abortControllerRef.current = null;
     setAssistantThinking(false);
     clearThinkingState();
     setIsGenerating(false);
@@ -251,7 +309,6 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
     const assistantMessage: AurenMessage = { id: assistantMessageId, role: 'assistant', content: '', createdAt: Date.now() };
     const nextMessages = [...messages, userMessage];
     const abortController = new AbortController();
-    let receivedAnyToken = false;
     let assistantContent = '';
     let chatIdForSend: string | null = null;
 
@@ -265,8 +322,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
       chatIdForSend = await ensureActiveChat(message);
       await saveChatMessage({ chatId: chatIdForSend, userId: session.user.id, role: 'user', content: message });
       const activeChat = chats.find((chat) => chat.id === chatIdForSend);
-      const shouldUpdateTitle = !activeChat || activeChat.title === 'New chat';
-      const nextTitle = shouldUpdateTitle ? createChatTitle(message) : undefined;
+      const nextTitle = !activeChat || activeChat.title === 'New chat' ? createChatTitle(message) : undefined;
       if (nextTitle) setChats((currentChats) => currentChats.map((chat) => (chat.id === chatIdForSend ? { ...chat, title: nextTitle } : chat)));
       await sendAurenChatMessageStream(nextMessages.map((item) => ({ role: item.role, content: item.content })), {
         mode: STUDY_MODE,
@@ -274,7 +330,6 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
         signal: abortController.signal,
         onThinkingState: setThinkingState,
         onToken: (token) => {
-          receivedAnyToken = true;
           assistantContent += token;
           setAssistantThinking(false);
           clearThinkingState();
@@ -284,9 +339,10 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
       if (assistantContent.trim()) await saveChatMessage({ chatId: chatIdForSend, userId: session.user.id, role: 'assistant', content: assistantContent });
       await touchChat({ chatId: chatIdForSend, userId: session.user.id, title: nextTitle });
       await refreshChats();
+      await refreshTodayFocus();
     } catch (error) {
       if (abortController.signal.aborted) return;
-      const fallbackText = receivedAnyToken ? '\n\nConnection stopped before Auren finished.' : getErrorMessage(error);
+      const fallbackText = assistantContent ? '\n\nConnection stopped before Auren finished.' : getErrorMessage(error);
       assistantContent += fallbackText;
       setMessages((currentMessages) => currentMessages.map((currentMessage) => currentMessage.id === assistantMessageId ? { ...currentMessage, content: currentMessage.content + fallbackText } : currentMessage));
       if (chatIdForSend && assistantContent.trim()) {
@@ -307,51 +363,20 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   function openPlusSheet() {
     Keyboard.dismiss();
     setSidebarOpen(false);
-    if (controlsSheetOpen) setControlsSheetStage('closed');
+    setControlsSheetStage('closed');
+    setFocusSetupOpen(false);
     setPlusStage('peek');
   }
 
   function openControlsSheet() {
     Keyboard.dismiss();
     setSidebarOpen(false);
-    if (plusSheetOpen) setPlusSheetStage('closed');
+    setPlusSheetStage('closed');
+    setFocusSetupOpen(false);
     setControlsStage('peek');
   }
 
-  function closeActiveSheet() { closeAllSheets(); }
-
-  useEffect(() => {
-    let active = true;
-    const fallbackEmail = session.user.email ?? '';
-    const fallbackName = getUserMetadataName(session);
-    setSidebarProfile(createSidebarProfile(fallbackName, fallbackEmail));
-    async function loadProfile() {
-      const { data } = await supabase.from('profiles').select('email, display_name, avatar_url').eq('id', session.user.id).maybeSingle();
-      if (!active) return;
-      if (data) {
-        setSidebarProfile(createSidebarProfile(data.display_name ?? fallbackName, data.email ?? fallbackEmail));
-        return;
-      }
-      await supabase.from('profiles').upsert({ id: session.user.id, email: fallbackEmail, display_name: fallbackName });
-      if (active) setSidebarProfile(createSidebarProfile(fallbackName, fallbackEmail));
-    }
-    void loadProfile();
-    return () => { active = false; };
-  }, [session]);
-
-  useEffect(() => {
-    let active = true;
-    async function loadChats() {
-      try {
-        const nextChats = await listUserChats(session.user.id);
-        if (active) setChats(nextChats);
-      } catch {
-        if (active) setChats([]);
-      }
-    }
-    void loadChats();
-    return () => { active = false; };
-  }, [session.user.id]);
+  useEffect(() => { void refreshChats(); }, [session.user.id]);
 
   useEffect(() => {
     let active = true;
@@ -379,10 +404,9 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const showSubscription = Keyboard.addListener(showEvent, (event) => {
-      const keyboardHeight = event.endCoordinates.height;
+    const showSub = Keyboard.addListener(showEvent, (event) => {
       const duration = event.duration ?? 250;
-      const nextBottom = Math.max(COMPOSER_CLOSED_BOTTOM, keyboardHeight - insets.bottom + COMPOSER_KEYBOARD_GAP + COMPOSER_KEYBOARD_EXTRA_LIFT);
+      const nextBottom = Math.max(COMPOSER_CLOSED_BOTTOM, event.endCoordinates.height - insets.bottom + COMPOSER_KEYBOARD_GAP + COMPOSER_KEYBOARD_EXTRA_LIFT);
       Animated.parallel([
         Animated.timing(composerBottom, { toValue: nextBottom, duration, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
         Animated.timing(contentTranslateY, { toValue: -CONTENT_KEYBOARD_LIFT, duration, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
@@ -390,7 +414,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
         Animated.timing(pillsTranslateY, { toValue: -PILLS_KEYBOARD_LIFT, duration, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       ]).start();
     });
-    const hideSubscription = Keyboard.addListener(hideEvent, (event) => {
+    const hideSub = Keyboard.addListener(hideEvent, (event) => {
       const duration = event.duration ?? 220;
       Animated.parallel([
         Animated.timing(composerBottom, { toValue: COMPOSER_CLOSED_BOTTOM, duration, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
@@ -399,7 +423,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
         Animated.timing(pillsTranslateY, { toValue: 0, duration, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       ]).start();
     });
-    return () => { showSubscription.remove(); hideSubscription.remove(); };
+    return () => { showSub.remove(); hideSub.remove(); };
   }, [composerBottom, contentTranslateY, insets.bottom, pillsOpacity, pillsTranslateY]);
 
   const appScale = appCardProgress.interpolate({ inputRange: [0, 1], outputRange: [1, 0.945] });
@@ -407,7 +431,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   const appDimOpacity = appCardProgress.interpolate({ inputRange: [0, 1], outputRange: [0, 0.12] });
 
   return (
-    <AurenSidebar open={sidebarOpen} onOpen={openSidebar} onClose={closeSidebar} onNewChat={startNewChat} onViewAll={closeSidebar} onOpenProfile={closeSidebar} onOpenRecentChat={openStoredChat} recentChats={recentChats} profile={sidebarProfile}>
+    <AurenSidebar open={sidebarOpen} onOpen={openSidebar} onClose={closeSidebar} onNewChat={startNewChat} onViewAll={closeSidebar} onOpenProfile={closeSidebar} onOpenRecentChat={openStoredChat} recentChats={recentChats} profile={profile}>
       <View style={styles.sceneRoot}>
         <StatusBar style={anySheetExpanded ? 'light' : 'dark'} />
         <Animated.View style={[styles.darkFrame, { opacity: appDimOpacity }]} />
@@ -420,9 +444,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
                 <View style={styles.headerSpacer} />
               </View>
               <Animated.View style={[styles.content, hasMessages ? styles.chatContent : styles.startContent, { transform: [{ translateY: contentTranslateY }] }]}>
-                {hasMessages ? (
-                  <AurenMessageList messages={messages} assistantThinking={assistantThinking} thinkingState={thinkingState} />
-                ) : (
+                {hasMessages ? <AurenMessageList messages={messages} assistantThinking={assistantThinking} thinkingState={thinkingState} /> : (
                   <Pressable style={styles.startDismissArea} onPress={Keyboard.dismiss}>
                     <View style={styles.hero}>
                       <Text style={styles.title}>{'Good evening,\nlet’s study smarter.'}</Text>
@@ -433,7 +455,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
                       <AurenActionPill width={78} icon={<StudyQuizIcon size={17} color={STUDY_ACTION_ICON_COLOR} strokeWidth={1.7} />} label="Quiz me" />
                       <AurenActionPill width={134} icon={<StudyCalendarIcon size={17} color={STUDY_ACTION_ICON_COLOR} strokeWidth={1.7} />} label="Make a study plan" />
                     </Animated.View>
-                    <View style={styles.focusCardWrap}><AurenTodayFocusCard focusCard={todayFocusCard} loading={todayFocusLoading} /></View>
+                    <View style={styles.focusCardWrap}><AurenTodayFocusCard focusCard={todayFocusCard} loading={todayFocusLoading} onPress={openFocusSetup} /></View>
                   </Pressable>
                 )}
               </Animated.View>
@@ -443,15 +465,14 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
             </Animated.View>
           </SafeAreaView>
         </Animated.View>
-        {anySheetOpen ? <Pressable style={styles.plusBackdrop} onPress={closeActiveSheet} /> : null}
+        {anySheetOpen ? <Pressable style={styles.plusBackdrop} onPress={closeAllSheets} /> : null}
         <AurenPlusSheet stage={plusSheetStage} onStageChange={setPlusStage} webSearchActive={webSearchEnabled} onWebSearchPress={toggleWebSearch} />
         <AurenControlsSheet stage={controlsSheetStage} onStageChange={setControlsStage} />
+        <AurenStudyFocusSetupSheet open={focusSetupOpen} saving={focusSetupSaving} error={focusSetupError} onClose={closeFocusSetup} onSave={saveStudyFocusSetup} />
       </View>
     </AurenSidebar>
   );
 }
-
-const serifFont = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
 
 const styles = StyleSheet.create({
   sceneRoot: { flex: 1, backgroundColor: '#050507' },
