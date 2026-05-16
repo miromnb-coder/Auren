@@ -50,9 +50,12 @@ const DRAWER_MIN_WIDTH = 315;
 const DRAWER_MAX_WIDTH = 620;
 const SWIPE_DISTANCE = 42;
 const SWIPE_EDGE_WIDTH = 96;
+const SWIPE_PRIMARY_EDGE_WIDTH = 28;
+const SWIPE_START_DISTANCE = 10;
 const EDGE_SWIPE_TOP_OFFSET = 112;
 const EDGE_SWIPE_BOTTOM_OFFSET = 178;
 const HORIZONTAL_LOCK_RATIO = 1.25;
+const EXTENDED_EDGE_HORIZONTAL_LOCK_RATIO = 2.15;
 
 const DEFAULT_RECENT_CHATS: RecentChat[] = [
   {
@@ -81,10 +84,36 @@ const DEFAULT_PROFILE: SidebarProfile = {
   initials: 'AU',
 };
 
-function isHorizontalGesture(dx: number, dy: number) {
+type SwipeGestureState = {
+  dx: number;
+  dy: number;
+  x0: number;
+};
+
+function getOpenSwipeLockRatio(startX: number) {
+  return startX <= SWIPE_PRIMARY_EDGE_WIDTH ? HORIZONTAL_LOCK_RATIO : EXTENDED_EDGE_HORIZONTAL_LOCK_RATIO;
+}
+
+function isHorizontalGesture(dx: number, dy: number, ratio = HORIZONTAL_LOCK_RATIO) {
   const horizontalDistance = Math.abs(dx);
   const verticalDistance = Math.abs(dy);
-  return horizontalDistance > 10 && horizontalDistance > verticalDistance * HORIZONTAL_LOCK_RATIO;
+  return horizontalDistance > 10 && horizontalDistance > verticalDistance * ratio;
+}
+
+function shouldStartOpenSwipe(gestureState: SwipeGestureState) {
+  if (gestureState.dx <= SWIPE_START_DISTANCE) return false;
+  if (gestureState.x0 > SWIPE_EDGE_WIDTH) return false;
+
+  const lockRatio = getOpenSwipeLockRatio(gestureState.x0);
+  return isHorizontalGesture(gestureState.dx, gestureState.dy, lockRatio);
+}
+
+function shouldOpenFromSwipe(gestureState: SwipeGestureState) {
+  if (gestureState.dx <= SWIPE_DISTANCE) return false;
+  if (gestureState.x0 > SWIPE_EDGE_WIDTH) return false;
+
+  const lockRatio = getOpenSwipeLockRatio(gestureState.x0);
+  return isHorizontalGesture(gestureState.dx, gestureState.dy, lockRatio);
 }
 
 export function AurenSidebar({
@@ -177,19 +206,19 @@ export function AurenSidebar({
       PanResponder.create({
         onMoveShouldSetPanResponder: (_event, gestureState) => {
           if (open || activityOpen) return false;
-          return isHorizontalGesture(gestureState.dx, gestureState.dy) && gestureState.dx > 8;
+          return shouldStartOpenSwipe(gestureState);
         },
         onMoveShouldSetPanResponderCapture: (_event, gestureState) => {
           if (open || activityOpen) return false;
-          return isHorizontalGesture(gestureState.dx, gestureState.dy) && gestureState.dx > 8;
+          return shouldStartOpenSwipe(gestureState);
         },
         onPanResponderRelease: (_event, gestureState) => {
-          if (gestureState.dx > SWIPE_DISTANCE) {
+          if (shouldOpenFromSwipe(gestureState)) {
             onOpen?.();
           }
         },
         onPanResponderTerminate: (_event, gestureState) => {
-          if (gestureState.dx > SWIPE_DISTANCE) {
+          if (shouldOpenFromSwipe(gestureState)) {
             onOpen?.();
           }
         },
