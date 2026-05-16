@@ -3,6 +3,7 @@ import type {
   AurenContext,
   AurenPlan,
   AurenResponseDraft,
+  AurenResponseMetadata,
   AurenSuggestion,
   AurenToolResult,
 } from '../core/types';
@@ -25,6 +26,14 @@ type ModelSuggestion = {
 type ModelResponse = {
   answer?: unknown;
   suggestions?: unknown;
+  fallback?: unknown;
+  fallbackReason?: unknown;
+  debug?: unknown;
+  model?: unknown;
+  groqStatus?: unknown;
+  groqError?: unknown;
+  groqErrorType?: unknown;
+  recoveredFromPlainText?: unknown;
 };
 
 type CompactAgentContext = {
@@ -431,7 +440,12 @@ const parseModelResponse = (value: unknown): ModelResponse | null => {
   if (typeof value === 'object' && !Array.isArray(value)) {
     const objectValue = value as Record<string, unknown>;
 
-    if (typeof objectValue.answer === 'string' || Array.isArray(objectValue.suggestions)) {
+    if (
+      typeof objectValue.answer === 'string' ||
+      Array.isArray(objectValue.suggestions) ||
+      typeof objectValue.fallback === 'boolean' ||
+      objectValue.debug
+    ) {
       return objectValue as ModelResponse;
     }
 
@@ -472,6 +486,55 @@ const parseModelResponse = (value: unknown): ModelResponse | null => {
   return null;
 };
 
+const getStringField = (value: unknown) => {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+};
+
+const getNumberField = (value: unknown) => {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+};
+
+const getBooleanField = (value: unknown) => {
+  return typeof value === 'boolean' ? value : undefined;
+};
+
+const getDebugField = (value: unknown) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+
+  return value as Record<string, unknown>;
+};
+
+const createResponseMetadata = (modelResponse: ModelResponse | null): AurenResponseMetadata | undefined => {
+  if (!modelResponse) {
+    return undefined;
+  }
+
+  const debug = getDebugField(modelResponse.debug);
+  const debugFallback = debug?.fallback;
+  const debugFallbackReason = debug?.fallbackReason;
+  const debugModel = debug?.model;
+  const debugGroqStatus = debug?.groqStatus;
+  const debugGroqError = debug?.groqError;
+  const debugGroqErrorType = debug?.groqErrorType;
+
+  const metadata: AurenResponseMetadata = {
+    fallback: getBooleanField(modelResponse.fallback) ?? getBooleanField(debugFallback),
+    fallbackReason: getStringField(modelResponse.fallbackReason) ?? getStringField(debugFallbackReason),
+    debug,
+    model: getStringField(modelResponse.model) ?? getStringField(debugModel),
+    groqStatus: getNumberField(modelResponse.groqStatus) ?? getNumberField(debugGroqStatus),
+    groqError: getStringField(modelResponse.groqError) ?? getStringField(debugGroqError),
+    groqErrorType: getStringField(modelResponse.groqErrorType) ?? getStringField(debugGroqErrorType),
+    recoveredFromPlainText: getBooleanField(modelResponse.recoveredFromPlainText),
+  };
+
+  const hasMetadata = Object.values(metadata).some((value) => value !== undefined);
+
+  return hasMetadata ? metadata : undefined;
+};
+
 const callResponseModel = async (
   context: AurenContext,
   plan: AurenPlan,
@@ -487,7 +550,17 @@ const callResponseModel = async (
   );
 
   if (response.error) {
-    return null;
+    return {
+      answer: undefined,
+      suggestions: [],
+      fallback: true,
+      fallbackReason: response.error.message || 'supabase_function_error',
+      debug: {
+        fallback: true,
+        fallbackReason: response.error.message || 'supabase_function_error',
+        source: 'finalResponse.callResponseModel',
+      },
+    };
   }
 
   return parseModelResponse(response.data);
@@ -527,6 +600,7 @@ export const generateFinalResponse = async (
   toolResults: AurenToolResult[],
 ): Promise<AurenResponseDraft> => {
   const modelResponse = await callResponseModel(context, plan, toolResults);
+  const metadata = createResponseMetadata(modelResponse);
   const answer =
     typeof modelResponse?.answer === 'string' && cleanAnswerText(modelResponse.answer)
       ? limitAnswerText(modelResponse.answer, 8000)
@@ -535,5 +609,6 @@ export const generateFinalResponse = async (
   return {
     answer,
     suggestions: normalizeSuggestions(modelResponse?.suggestions, context, plan),
+    ...(metadata ? { metadata } : {}),
   };
 };
