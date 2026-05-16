@@ -21,7 +21,7 @@ export function AurenActionPill({ icon, label, width = 112, onPress }: Props) {
 const styles = StyleSheet.create({
   pill: {
     height: 38,
-    paddingHorizontal: 8,
+    paddingHorizontal: 7,
     borderRadius: spacing.radiusFull,
     borderWidth: 1,
     borderColor: colors.border,
@@ -44,8 +44,8 @@ const styles = StyleSheet.create({
   label: {
     flexShrink: 1,
     color: colors.muted,
-    fontSize: 12.35,
-    letterSpacing: -0.22,
+    fontSize: 11.75,
+    letterSpacing: -0.25,
     fontWeight: '550',
   },
 });
