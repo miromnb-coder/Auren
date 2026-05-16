@@ -1,4 +1,4 @@
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { StudyFocusCard } from '../lib/aurenStudyFocus';
 import { colors, shadows } from '../theme';
 import { FocusClockIcon, FocusNotebookIcon, FocusTargetIcon, MoreDotsIcon } from './AurenStudyIcons';
@@ -12,6 +12,7 @@ const serifFont = Platform.select({
 type Props = {
   focusCard?: StudyFocusCard | null;
   loading?: boolean;
+  onPress?: () => void;
 };
 
 function getProgressWidth(progress: number) {
@@ -41,7 +42,7 @@ function getProgressLabel(focusCard: StudyFocusCard | null | undefined, loading:
   return `${focusCard.completedSteps} / ${focusCard.totalSteps} tasks`;
 }
 
-export function AurenTodayFocusCard({ focusCard, loading = false }: Props) {
+export function AurenTodayFocusCard({ focusCard, loading = false, onPress }: Props) {
   const title = getFocusTitle(focusCard, loading);
   const nextStep = getNextStep(focusCard, loading);
   const sessionText = getSessionText(focusCard, loading);
@@ -49,7 +50,13 @@ export function AurenTodayFocusCard({ focusCard, loading = false }: Props) {
   const progressWidth = getProgressWidth(loading ? 0 : focusCard?.progress ?? 0);
 
   return (
-    <View style={styles.card}>
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress || loading}
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      accessibilityRole="button"
+      accessibilityLabel="Open Today’s Focus"
+    >
       <View style={styles.cardHeader}>
         <View style={styles.cardEyebrowWrap}>
           <FocusTargetIcon size={18} color="#8f909a" strokeWidth={1.65} />
@@ -81,7 +88,7 @@ export function AurenTodayFocusCard({ focusCard, loading = false }: Props) {
         </View>
         <Text style={styles.progressLabel}>{progressLabel}</Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -98,6 +105,10 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 16,
     ...shadows.soft,
+  },
+  cardPressed: {
+    transform: [{ scale: 0.99 }],
+    opacity: 0.9,
   },
   cardHeader: {
     flexDirection: 'row',
