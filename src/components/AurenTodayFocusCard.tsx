@@ -13,7 +13,7 @@ export function AurenTodayFocusCard() {
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <View style={styles.cardEyebrowWrap}>
-          <Ionicons name="radio-button-on-outline" size={18} color="#8f909a" />
+          <Ionicons name="radio-button-on-outline" size={17} color="#8f909a" />
           <Text style={styles.eyebrow}>TODAY&apos;S FOCUS</Text>
         </View>
         <Ionicons name="ellipsis-horizontal" size={24} color="#92939d" />
@@ -21,7 +21,7 @@ export function AurenTodayFocusCard() {
 
       <View style={styles.contentRow}>
         <View style={styles.iconBubble}>
-          <Ionicons name="book-outline" size={33} color="#737480" />
+          <Ionicons name="book-outline" size={32} color="#737480" />
         </View>
 
         <View style={styles.taskContent}>
@@ -30,7 +30,7 @@ export function AurenTodayFocusCard() {
             Next step: <Text style={styles.nextStepStrong}>Review equations</Text>
           </Text>
           <View style={styles.timeRow}>
-            <Ionicons name="time-outline" size={18} color="#8a8b95" />
+            <Ionicons name="time-outline" size={17} color="#8a8b95" />
             <Text style={styles.timeText}>25 min session</Text>
           </View>
         </View>
@@ -50,14 +50,14 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: 370,
-    minHeight: 164,
+    height: 184,
     borderRadius: 27,
     borderWidth: 1,
     borderColor: 'rgba(17,24,39,0.055)',
     backgroundColor: 'rgba(255,255,255,0.72)',
     paddingHorizontal: 18,
     paddingTop: 17,
-    paddingBottom: 18,
+    paddingBottom: 17,
     ...shadows.soft,
   },
   cardHeader: {
@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     color: '#8b8c96',
-    fontSize: 12.5,
+    fontSize: 12.2,
     lineHeight: 16,
     letterSpacing: 4,
     fontWeight: '650',
