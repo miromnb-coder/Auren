@@ -29,7 +29,7 @@ import { supabase } from '../lib/supabase';
 import { colors, spacing } from '../theme';
 
 const STUDY_MODE: AurenChatMode = 'study';
-const COMPOSER_CLOSED_BOTTOM = 28;
+const COMPOSER_CLOSED_BOTTOM = 38;
 const COMPOSER_KEYBOARD_GAP = 12;
 const COMPOSER_KEYBOARD_EXTRA_LIFT = 34;
 const CONTENT_KEYBOARD_LIFT = 34;
@@ -622,275 +622,80 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
     };
   }, [composerBottom, contentTranslateY, insets.bottom, pillsOpacity, pillsTranslateY]);
 
-  const appScale = appCardProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 0.945],
-  });
-  const appTranslateY = appCardProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 42],
-  });
-  const appDimOpacity = appCardProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 0.12],
-  });
+  const appScale = appCardProgress.interpolate({ inputRange: [0, 1], outputRange: [1, 0.945] });
+  const appTranslateY = appCardProgress.interpolate({ inputRange: [0, 1], outputRange: [0, 42] });
+  const appDimOpacity = appCardProgress.interpolate({ inputRange: [0, 1], outputRange: [0, 0.12] });
 
   return (
-    <AurenSidebar
-      open={sidebarOpen}
-      onOpen={openSidebar}
-      onClose={closeSidebar}
-      onNewChat={startNewChat}
-      onViewAll={closeSidebar}
-      onOpenProfile={closeSidebar}
-      onOpenRecentChat={openStoredChat}
-      recentChats={recentChats}
-      profile={sidebarProfile}
-    >
+    <AurenSidebar open={sidebarOpen} onOpen={openSidebar} onClose={closeSidebar} onNewChat={startNewChat} onViewAll={closeSidebar} onOpenProfile={closeSidebar} onOpenRecentChat={openStoredChat} recentChats={recentChats} profile={sidebarProfile}>
       <View style={styles.sceneRoot}>
         <StatusBar style={anySheetExpanded ? 'light' : 'dark'} />
         <Animated.View style={[styles.darkFrame, { opacity: appDimOpacity }]} />
-
-        <Animated.View
-          style={[
-            styles.appCard,
-            {
-              borderRadius: anySheetExpanded ? 34 : 0,
-              transform: [{ scale: appScale }, { translateY: appTranslateY }],
-            },
-          ]}
-        >
+        <Animated.View style={[styles.appCard, { borderRadius: anySheetExpanded ? 34 : 0, transform: [{ scale: appScale }, { translateY: appTranslateY }] }]}>
           <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
             <View style={styles.dismissArea}>
               <View style={styles.header}>
-                <Pressable
-                  onPress={openSidebar}
-                  hitSlop={14}
-                  style={({ pressed }) => [styles.menuButton, pressed && styles.menuButtonPressed]}
-                  accessibilityRole="button"
-                  accessibilityLabel="Open menu"
-                >
+                <Pressable onPress={openSidebar} hitSlop={14} style={({ pressed }) => [styles.menuButton, pressed && styles.menuButtonPressed]} accessibilityRole="button" accessibilityLabel="Open menu">
                   <MenuIcon />
                 </Pressable>
-
-                <View style={styles.brandButton} accessibilityRole="header">
-                  <Text style={styles.brand}>Auren</Text>
-                </View>
-
+                <View style={styles.brandButton} accessibilityRole="header"><Text style={styles.brand}>Auren</Text></View>
                 <View style={styles.headerSpacer} />
               </View>
-
-              <Animated.View
-                style={[
-                  styles.content,
-                  hasMessages ? styles.chatContent : styles.startContent,
-                  { transform: [{ translateY: contentTranslateY }] },
-                ]}
-              >
+              <Animated.View style={[styles.content, hasMessages ? styles.chatContent : styles.startContent, { transform: [{ translateY: contentTranslateY }] }]}>
                 {hasMessages ? (
-                  <AurenMessageList
-                    messages={messages}
-                    assistantThinking={assistantThinking}
-                    thinkingState={thinkingState}
-                  />
+                  <AurenMessageList messages={messages} assistantThinking={assistantThinking} thinkingState={thinkingState} />
                 ) : (
                   <Pressable style={styles.startDismissArea} onPress={Keyboard.dismiss}>
                     <View style={styles.hero}>
                       <Text style={styles.title}>{'Good evening,\nlet’s study smarter.'}</Text>
                       <Text style={styles.subtitle}>{'I’m here to help you focus, learn faster,\nand stay on track.'}</Text>
                     </View>
-
-                    <Animated.View
-                      pointerEvents="box-none"
-                      style={[
-                        styles.pillsRow,
-                        {
-                          opacity: pillsOpacity,
-                          transform: [{ translateY: pillsTranslateY }],
-                        },
-                      ]}
-                    >
-                      <AurenActionPill
-                        width={126}
-                        icon={<Ionicons name="book-outline" size={17} color={STUDY_ACTION_ICON_COLOR} />}
-                        label="Explain a concept"
-                      />
-                      <AurenActionPill
-                        width={78}
-                        icon={<Ionicons name="tablet-portrait-outline" size={17} color={STUDY_ACTION_ICON_COLOR} />}
-                        label="Quiz me"
-                      />
-                      <AurenActionPill
-                        width={134}
-                        icon={<Ionicons name="calendar-outline" size={17} color={STUDY_ACTION_ICON_COLOR} />}
-                        label="Make a study plan"
-                      />
+                    <Animated.View pointerEvents="box-none" style={[styles.pillsRow, { opacity: pillsOpacity, transform: [{ translateY: pillsTranslateY }] }]}>
+                      <AurenActionPill width={126} icon={<Ionicons name="book-outline" size={17} color={STUDY_ACTION_ICON_COLOR} />} label="Explain a concept" />
+                      <AurenActionPill width={78} icon={<Ionicons name="tablet-portrait-outline" size={17} color={STUDY_ACTION_ICON_COLOR} />} label="Quiz me" />
+                      <AurenActionPill width={134} icon={<Ionicons name="calendar-outline" size={17} color={STUDY_ACTION_ICON_COLOR} />} label="Make a study plan" />
                     </Animated.View>
-
-                    <View style={styles.focusCardWrap}>
-                      <AurenTodayFocusCard />
-                    </View>
+                    <View style={styles.focusCardWrap}><AurenTodayFocusCard /></View>
                   </Pressable>
                 )}
               </Animated.View>
             </View>
-
             <Animated.View style={[styles.composerWrap, { bottom: composerBottom }]}> 
-              <AurenComposer
-                onOpenPlus={openPlusSheet}
-                onOpenControls={openControlsSheet}
-                onSendMessage={handleSendMessage}
-                onStopGenerating={stopGenerating}
-                onClearWebSearch={clearWebSearch}
-                isGenerating={isGenerating}
-                plusActive={plusSheetOpen}
-                controlsActive={controlsSheetOpen}
-                webSearchActive={webSearchEnabled}
-              />
+              <AurenComposer onOpenPlus={openPlusSheet} onOpenControls={openControlsSheet} onSendMessage={handleSendMessage} onStopGenerating={stopGenerating} onClearWebSearch={clearWebSearch} isGenerating={isGenerating} plusActive={plusSheetOpen} controlsActive={controlsSheetOpen} webSearchActive={webSearchEnabled} />
             </Animated.View>
           </SafeAreaView>
         </Animated.View>
-
         {anySheetOpen ? <Pressable style={styles.plusBackdrop} onPress={closeActiveSheet} /> : null}
-        <AurenPlusSheet
-          stage={plusSheetStage}
-          onStageChange={setPlusStage}
-          webSearchActive={webSearchEnabled}
-          onWebSearchPress={toggleWebSearch}
-        />
+        <AurenPlusSheet stage={plusSheetStage} onStageChange={setPlusStage} webSearchActive={webSearchEnabled} onWebSearchPress={toggleWebSearch} />
         <AurenControlsSheet stage={controlsSheetStage} onStageChange={setControlsStage} />
       </View>
     </AurenSidebar>
   );
 }
 
-const serifFont = Platform.select({
-  ios: 'Georgia',
-  android: 'serif',
-  default: 'serif',
-});
+const serifFont = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
 
 const styles = StyleSheet.create({
-  sceneRoot: {
-    flex: 1,
-    backgroundColor: '#050507',
-  },
-  darkFrame: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#050507',
-  },
-  appCard: {
-    flex: 1,
-    overflow: 'hidden',
-    backgroundColor: colors.background,
-  },
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  dismissArea: {
-    flex: 1,
-  },
-  startDismissArea: {
-    flex: 1,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-  },
-  header: {
-    zIndex: 60,
-    height: 82,
-    paddingHorizontal: spacing.screenX,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  menuButton: {
-    width: 68,
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-  },
-  menuButtonPressed: {
-    opacity: 0.62,
-  },
-  brandButton: {
-    minWidth: 148,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  brand: {
-    color: colors.text,
-    fontSize: 28,
-    lineHeight: 34,
-    letterSpacing: -0.9,
-    fontFamily: serifFont,
-  },
-  headerSpacer: {
-    width: 68,
-  },
-  content: {
-    flex: 1,
-    width: '100%',
-    paddingHorizontal: 18,
-  },
-  startContent: {
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingTop: 146,
-    paddingBottom: 184,
-  },
-  chatContent: {
-    alignItems: 'stretch',
-    justifyContent: 'flex-end',
-    paddingHorizontal: 0,
-    paddingBottom: 0,
-  },
-  hero: {
-    alignItems: 'center',
-    maxWidth: 360,
-  },
-  title: {
-    color: '#686775',
-    fontSize: 31,
-    lineHeight: 37,
-    letterSpacing: -0.95,
-    textAlign: 'center',
-    fontFamily: serifFont,
-  },
-  subtitle: {
-    marginTop: 14,
-    color: colors.muted,
-    fontSize: 15.8,
-    lineHeight: 22,
-    letterSpacing: -0.12,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  pillsRow: {
-    marginTop: 48,
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  focusCardWrap: {
-    width: '100%',
-    alignItems: 'center',
-    marginTop: 38,
-    paddingHorizontal: 6,
-  },
-  composerWrap: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-  },
-  plusBackdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 30,
-  },
+  sceneRoot: { flex: 1, backgroundColor: '#050507' },
+  darkFrame: { ...StyleSheet.absoluteFillObject, backgroundColor: '#050507' },
+  appCard: { flex: 1, overflow: 'hidden', backgroundColor: colors.background },
+  safeArea: { flex: 1, backgroundColor: colors.background },
+  dismissArea: { flex: 1 },
+  startDismissArea: { flex: 1, width: '100%', alignItems: 'center', justifyContent: 'flex-start' },
+  header: { zIndex: 60, height: 82, paddingHorizontal: spacing.screenX, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  menuButton: { width: 68, alignItems: 'flex-start', justifyContent: 'center' },
+  menuButtonPressed: { opacity: 0.62 },
+  brandButton: { minWidth: 148, alignItems: 'center', justifyContent: 'center' },
+  brand: { color: colors.text, fontSize: 28, lineHeight: 34, letterSpacing: -0.9, fontFamily: serifFont },
+  headerSpacer: { width: 68 },
+  content: { flex: 1, width: '100%', paddingHorizontal: 18 },
+  startContent: { alignItems: 'center', justifyContent: 'flex-start', paddingTop: 52, paddingBottom: 190 },
+  chatContent: { alignItems: 'stretch', justifyContent: 'flex-end', paddingHorizontal: 0, paddingBottom: 0 },
+  hero: { alignItems: 'center', maxWidth: 360 },
+  title: { color: '#686775', fontSize: 31, lineHeight: 37, letterSpacing: -0.95, textAlign: 'center', fontFamily: serifFont },
+  subtitle: { marginTop: 14, color: colors.muted, fontSize: 15.8, lineHeight: 22, letterSpacing: -0.12, textAlign: 'center', fontWeight: '500' },
+  pillsRow: { marginTop: 48, width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  focusCardWrap: { width: '100%', alignItems: 'center', marginTop: 38, paddingHorizontal: 6 },
+  composerWrap: { position: 'absolute', left: 16, right: 16 },
+  plusBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 30 },
 });
