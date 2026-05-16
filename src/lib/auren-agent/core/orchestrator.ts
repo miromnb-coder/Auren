@@ -16,6 +16,7 @@ import type {
   AurenPlanStep,
   AurenResponseDraft,
   AurenResponseEvaluation,
+  AurenResponseMetadata,
   AurenSuggestion,
   AurenThinkingStage,
   AurenToolResult,
@@ -27,6 +28,7 @@ type ResponseGenerationState = {
   draft: AurenResponseDraft;
   usedFallback: boolean;
   errorMessage?: string;
+  metadata?: AurenResponseMetadata;
 };
 
 type ToolExecutionState = {
@@ -333,6 +335,7 @@ const normalizeDraft = (
       suggestions.length > 0
         ? suggestions
         : createFallbackSuggestions(input, plan),
+    ...(draft.metadata ? { metadata: draft.metadata } : {}),
   };
 };
 
@@ -372,13 +375,27 @@ const createSafeFallbackPlan = (
   };
 };
 
+const createInternalFallbackMetadata = (fallbackReason: string): AurenResponseMetadata => {
+  return {
+    fallback: true,
+    fallbackReason,
+    debug: {
+      fallback: true,
+      fallbackReason,
+      source: 'orchestrator.createFallbackDraft',
+    },
+  };
+};
+
 const createFallbackDraft = (
   input: AurenAgentInput,
   plan: AurenPlan,
   toolResults: AurenToolResult[],
+  fallbackReason = 'orchestrator_fallback',
 ): AurenResponseDraft => {
   const unavailableTools = toolResults.filter((result) => !result.success);
   const firstReadyStep = plan.steps.find((step) => step.status === 'ready') ?? plan.steps[0];
+  const metadata = createInternalFallbackMetadata(fallbackReason);
 
   if (unavailableTools.length > 0) {
     const toolNames = unavailableTools.map((result) => result.name).join(', ');
@@ -386,6 +403,7 @@ const createFallbackDraft = (
     return {
       answer: `I cannot use ${toolNames} yet, but I can still help with the next step.`,
       suggestions: createFallbackSuggestions(input, plan),
+      metadata,
     };
   }
 
@@ -399,6 +417,7 @@ const createFallbackDraft = (
         answer ||
         'I had trouble generating the full response, but I can still help continue from your last message.',
       suggestions: createFallbackSuggestions(input, plan),
+      metadata,
     };
   }
 
@@ -407,7 +426,21 @@ const createFallbackDraft = (
       ? 'I had trouble generating the full response, but I can still help continue from your last message.'
       : 'Send me a message and I’ll help with the next step.',
     suggestions: createFallbackSuggestions(input, plan),
+    metadata,
   };
+};
+
+const getResponseFallbackReason = (draft: AurenResponseDraft) => {
+  return (
+    draft.metadata?.fallbackReason ??
+    (typeof draft.metadata?.debug?.fallbackReason === 'string'
+      ? draft.metadata.debug.fallbackReason
+      : undefined)
+  );
+};
+
+const isResponseFallback = (draft: AurenResponseDraft) => {
+  return draft.metadata?.fallback === true || draft.metadata?.debug?.fallback === true;
 };
 
 const createFallbackEvaluation = (errorMessage?: string): AurenResponseEvaluation => {
@@ -543,22 +576,43 @@ const safeGenerateFinalResponse = async (
     const draft = normalizeDraft(input, plan, rawDraft);
 
     if (!cleanAnswerText(draft.answer)) {
+      const fallbackDraft = createFallbackDraft(
+        input,
+        plan,
+        toolResults,
+        'empty_response_from_generator',
+      );
+
       return {
-        draft: createFallbackDraft(input, plan, toolResults),
+        draft: fallbackDraft,
         usedFallback: true,
         errorMessage: 'The response generator returned an empty answer.',
+        metadata: fallbackDraft.metadata,
       };
     }
 
+    const responseUsedFallback = isResponseFallback(draft);
+    const fallbackReason = getResponseFallbackReason(draft);
+
     return {
       draft,
-      usedFallback: false,
+      usedFallback: responseUsedFallback,
+      errorMessage: responseUsedFallback ? fallbackReason ?? 'Response generator used fallback.' : undefined,
+      metadata: draft.metadata,
     };
   } catch (error) {
+    const fallbackDraft = createFallbackDraft(
+      input,
+      plan,
+      toolResults,
+      error instanceof Error ? error.message : 'response_generation_exception',
+    );
+
     return {
-      draft: createFallbackDraft(input, plan, toolResults),
+      draft: fallbackDraft,
       usedFallback: true,
       errorMessage: error instanceof Error ? error.message : 'Response generation failed.',
+      metadata: fallbackDraft.metadata,
     };
   }
 };
@@ -608,6 +662,7 @@ const persistAgentRun = async (input: {
   planError?: string;
   responseUsedFallback: boolean;
   responseError?: string;
+  responseMetadata?: AurenResponseMetadata;
   toolError?: string;
   timings: RunTimings;
 }) => {
@@ -657,6 +712,12 @@ const persistAgentRun = async (input: {
           response: {
             usedFallback: input.responseUsedFallback,
             error: input.responseError,
+            metadata: input.responseMetadata,
+            fallbackReason: input.responseMetadata?.fallbackReason,
+            groqStatus: input.responseMetadata?.groqStatus,
+            groqError: input.responseMetadata?.groqError,
+            groqErrorType: input.responseMetadata?.groqErrorType,
+            model: input.responseMetadata?.model,
           },
           tools: {
             error: input.toolError,
@@ -882,6 +943,7 @@ export const orchestrateAurenAgent = async (
       planError: planState.errorMessage,
       responseUsedFallback: responseState.usedFallback,
       responseError: responseState.errorMessage,
+      responseMetadata: responseState.metadata,
       toolError: toolState.errorMessage,
       timings,
     }),
