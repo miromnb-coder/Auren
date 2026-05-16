@@ -1,4 +1,5 @@
 import { Platform, StyleSheet, Text, View } from 'react-native';
+import type { StudyFocusCard } from '../lib/aurenStudyFocus';
 import { colors, shadows } from '../theme';
 import { FocusClockIcon, FocusNotebookIcon, FocusTargetIcon, MoreDotsIcon } from './AurenStudyIcons';
 
@@ -8,7 +9,45 @@ const serifFont = Platform.select({
   default: 'serif',
 });
 
-export function AurenTodayFocusCard() {
+type Props = {
+  focusCard?: StudyFocusCard | null;
+  loading?: boolean;
+};
+
+function getProgressWidth(progress: number) {
+  const safeProgress = Math.min(Math.max(progress, 0), 1);
+  return `${Math.round(safeProgress * 100)}%` as const;
+}
+
+function getFocusTitle(focusCard: StudyFocusCard | null | undefined, loading: boolean) {
+  if (loading) return 'Loading focus…';
+  return focusCard?.title?.trim() || 'Set your study focus';
+}
+
+function getNextStep(focusCard: StudyFocusCard | null | undefined, loading: boolean) {
+  if (loading) return 'Checking your study plan';
+  return focusCard?.nextStep?.trim() || 'Tell Auren what you are working on today';
+}
+
+function getSessionText(focusCard: StudyFocusCard | null | undefined, loading: boolean) {
+  if (loading) return 'Loading session';
+  if (!focusCard || focusCard.status === 'empty') return 'Add first focus';
+  return `${focusCard.sessionMinutes} min session`;
+}
+
+function getProgressLabel(focusCard: StudyFocusCard | null | undefined, loading: boolean) {
+  if (loading) return '— / — tasks';
+  if (!focusCard || focusCard.status === 'empty') return '0 / 1 tasks';
+  return `${focusCard.completedSteps} / ${focusCard.totalSteps} tasks`;
+}
+
+export function AurenTodayFocusCard({ focusCard, loading = false }: Props) {
+  const title = getFocusTitle(focusCard, loading);
+  const nextStep = getNextStep(focusCard, loading);
+  const sessionText = getSessionText(focusCard, loading);
+  const progressLabel = getProgressLabel(focusCard, loading);
+  const progressWidth = getProgressWidth(loading ? 0 : focusCard?.progress ?? 0);
+
   return (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
@@ -25,22 +64,22 @@ export function AurenTodayFocusCard() {
         </View>
 
         <View style={styles.taskContent}>
-          <Text style={styles.taskTitle}>Math exam prep</Text>
-          <Text style={styles.nextStep}>
-            Next step: <Text style={styles.nextStepStrong}>Review equations</Text>
+          <Text style={styles.taskTitle} numberOfLines={1}>{title}</Text>
+          <Text style={styles.nextStep} numberOfLines={1}>
+            Next step: <Text style={styles.nextStepStrong}>{nextStep}</Text>
           </Text>
           <View style={styles.timeRow}>
             <FocusClockIcon size={18} color="#8a8b95" strokeWidth={1.75} />
-            <Text style={styles.timeText}>25 min session</Text>
+            <Text style={styles.timeText}>{sessionText}</Text>
           </View>
         </View>
       </View>
 
       <View style={styles.progressRow}>
         <View style={styles.progressTrack}>
-          <View style={styles.progressFill} />
+          <View style={[styles.progressFill, { width: progressWidth }]} />
         </View>
-        <Text style={styles.progressLabel}>2 / 5 tasks</Text>
+        <Text style={styles.progressLabel}>{progressLabel}</Text>
       </View>
     </View>
   );
@@ -141,7 +180,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   progressFill: {
-    width: '40%',
     height: '100%',
     borderRadius: 999,
     backgroundColor: '#777886',
