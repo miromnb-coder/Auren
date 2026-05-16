@@ -12,6 +12,7 @@ import { MenuIcon } from '../components/AurenIcons';
 import { AurenMessageList, type AurenMessage } from '../components/AurenMessageList';
 import { AurenPlusSheet, type PlusSheetStage } from '../components/AurenPlusSheet';
 import { AurenSidebar } from '../components/AurenSidebar';
+import { StudyBookIcon, StudyCalendarIcon, StudyQuizIcon } from '../components/AurenStudyIcons';
 import { AurenTodayFocusCard } from '../components/AurenTodayFocusCard';
 import { sendAurenChatMessageStream, type AurenChatMode } from '../lib/aurenChatApi';
 import type { AurenThinkingEvent } from '../lib/auren-agent/core/types';
@@ -408,9 +409,9 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
                       <Text style={styles.subtitle}>{'I’m here to help you focus, learn faster,\nand stay on track.'}</Text>
                     </View>
                     <Animated.View pointerEvents="box-none" style={[styles.pillsRow, { opacity: pillsOpacity, transform: [{ translateY: pillsTranslateY }] }]}>
-                      <AurenActionPill width={126} icon={<Ionicons name="book-outline" size={17} color={STUDY_ACTION_ICON_COLOR} />} label="Explain a concept" />
-                      <AurenActionPill width={78} icon={<Ionicons name="tablet-portrait-outline" size={17} color={STUDY_ACTION_ICON_COLOR} />} label="Quiz me" />
-                      <AurenActionPill width={134} icon={<Ionicons name="calendar-outline" size={17} color={STUDY_ACTION_ICON_COLOR} />} label="Make a study plan" />
+                      <AurenActionPill width={126} icon={<StudyBookIcon size={17} color={STUDY_ACTION_ICON_COLOR} strokeWidth={1.7} />} label="Explain a concept" />
+                      <AurenActionPill width={78} icon={<StudyQuizIcon size={17} color={STUDY_ACTION_ICON_COLOR} strokeWidth={1.7} />} label="Quiz me" />
+                      <AurenActionPill width={134} icon={<StudyCalendarIcon size={17} color={STUDY_ACTION_ICON_COLOR} strokeWidth={1.7} />} label="Make a study plan" />
                     </Animated.View>
                     <View style={styles.focusCardWrap}><AurenTodayFocusCard /></View>
                   </Pressable>
