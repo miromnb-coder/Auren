@@ -21,6 +21,25 @@ const MAX_TOOL_RESULTS = 8;
 const MAX_CONVERSATION_MESSAGES = 10;
 const MAX_SUGGESTIONS = 4;
 
+const INTERNAL_ANSWER_PATTERNS = [
+  /^understand request\s*:/i,
+  /^identify tool need\s*:/i,
+  /^plan response\s*:/i,
+  /^execute tool\s*:/i,
+  /^generate response\s*:/i,
+  /^determine whether\s*:/i,
+  /^decide which tool\s*:/i,
+  /^choose tool\s*:/i,
+  /^analyze intent\s*:/i,
+  /^route request\s*:/i,
+  /^create plan\s*:/i,
+  /^final response\s*:/i,
+  /identify the smallest useful answer/i,
+  /decide which tool or integration would be required/i,
+  /internal auren agent context/i,
+  /do not reveal the raw context/i,
+];
+
 type ModelSuggestion = {
   id?: unknown;
   label?: unknown;
@@ -178,6 +197,16 @@ const cleanAnswerText = (value: string | null | undefined) => {
       .replace(/\n{3,}/g, '\n\n')
       .trim() ?? ''
   );
+};
+
+const isInternalAnswer = (value: string | null | undefined) => {
+  const cleaned = cleanAnswerText(value);
+
+  if (!cleaned) {
+    return false;
+  }
+
+  return INTERNAL_ANSWER_PATTERNS.some((pattern) => pattern.test(cleaned));
 };
 
 const limitText = (value: string, maxLength: number) => {
@@ -649,10 +678,10 @@ export const generateFinalResponse = async (
 
   const modelResponse = await callResponseModel(context, plan, toolResults);
   const metadata = createResponseMetadata(modelResponse);
-  const answer =
-    typeof modelResponse?.answer === 'string' && cleanAnswerText(modelResponse.answer)
-      ? limitAnswerText(modelResponse.answer, 8000)
-      : createSafeFallbackAnswer(context, toolResults);
+  const modelAnswer = typeof modelResponse?.answer === 'string' ? cleanAnswerText(modelResponse.answer) : '';
+  const answer = modelAnswer && !isInternalAnswer(modelAnswer)
+    ? limitAnswerText(modelAnswer, 8000)
+    : createSafeFallbackAnswer(context, toolResults);
 
   return {
     answer,
