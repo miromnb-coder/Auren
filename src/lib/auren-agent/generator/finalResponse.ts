@@ -300,25 +300,9 @@ const getFallbackSuggestions = (
     planGoal: plan.goal,
   };
 
-  const planStepSuggestions = plan.steps
-    .filter((step) => cleanText(step.title))
-    .slice(0, MAX_SUGGESTIONS)
-    .map((step, index) =>
-      createSuggestion(
-        `plan_step_${index + 1}`,
-        limitText(step.title, 32),
-        `plan_step_${index + 1}`,
-        basePayload,
-      ),
-    );
-
-  if (planStepSuggestions.length > 0) {
-    return dedupeSuggestions(planStepSuggestions);
-  }
-
   return [
-    createSuggestion('continue', 'Continue', 'continue', basePayload),
-    createSuggestion('make_plan', 'Make a plan', 'make_plan', basePayload),
+    createSuggestion('try_again', 'Try again', 'try_again', basePayload),
+    createSuggestion('ask_differently', 'Ask differently', 'ask_differently', basePayload),
   ];
 };
 
@@ -595,32 +579,49 @@ const callResponseModel = async (
   return parseModelResponse(response.data);
 };
 
-const createFallbackAnswer = (
-  context: AurenContext,
-  plan: AurenPlan,
-  toolResults: AurenToolResult[],
-) => {
-  const userMessage = cleanText(context.message);
-  const firstUsefulStep = plan.steps.find((step) => step.status === 'ready') ?? plan.steps[0];
+const inferFallbackLanguage = (context: AurenContext) => {
+  const text = `${context.message} ${context.input.message}`.toLowerCase();
+  const finnishSignals = [
+    'mikä',
+    'mitä',
+    'kuka',
+    'miksi',
+    'miten',
+    'milloin',
+    'haluan',
+    'kerro',
+    'etsi',
+    'hae',
+    'tarkista',
+    'vertaa',
+    'paras',
+    'hinta',
+    'saatavilla',
+  ];
+
+  return finnishSignals.some((signal) => text.includes(signal)) ? 'fi' : 'en';
+};
+
+const createSafeFallbackAnswer = (context: AurenContext, toolResults: AurenToolResult[]) => {
+  const language = inferFallbackLanguage(context);
   const unavailableTools = toolResults.filter((result) => !result.success);
+  const wantsWebSearch = context.input.metadata?.browserSearch === true;
+
+  if (wantsWebSearch) {
+    return language === 'fi'
+      ? 'En saanut web-hakua valmiiksi juuri nyt. Kokeile hetken päästä uudelleen tai kysy sama hieman lyhyemmin.'
+      : 'I could not complete web search right now. Try again in a moment or ask a shorter version.';
+  }
 
   if (unavailableTools.length > 0) {
-    const names = unavailableTools.map((result) => result.name).join(', ');
-    return `I cannot use ${names} yet, but I can still help with the next step.`;
+    return language === 'fi'
+      ? 'En saanut tarvittavaa työkalua käyttöön juuri nyt, mutta voin silti auttaa jatkamaan tästä.'
+      : 'I could not use the needed tool right now, but I can still help continue from here.';
   }
 
-  if (firstUsefulStep) {
-    const title = cleanText(firstUsefulStep.title);
-    const description = cleanText(firstUsefulStep.description);
-
-    return [title, description].filter(Boolean).join(': ');
-  }
-
-  if (userMessage) {
-    return 'I had trouble generating the full response, but I can still help continue from your last message.';
-  }
-
-  return 'Send me a message and I’ll help with the next step.';
+  return language === 'fi'
+    ? 'En saanut muodostettua kokonaista vastausta juuri nyt, mutta voin silti auttaa. Kokeile kysyä uudelleen hieman lyhyemmin.'
+    : 'I could not generate the full response right now, but I can still help. Try asking again with a shorter version.';
 };
 
 export const generateFinalResponse = async (
@@ -651,7 +652,7 @@ export const generateFinalResponse = async (
   const answer =
     typeof modelResponse?.answer === 'string' && cleanAnswerText(modelResponse.answer)
       ? limitAnswerText(modelResponse.answer, 8000)
-      : createFallbackAnswer(context, plan, toolResults);
+      : createSafeFallbackAnswer(context, toolResults);
 
   return {
     answer,
