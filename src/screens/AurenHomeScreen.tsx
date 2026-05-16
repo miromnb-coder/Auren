@@ -17,6 +17,7 @@ import { AurenTodayFocusCard } from '../components/AurenTodayFocusCard';
 import { sendAurenChatMessageStream, type AurenChatMode } from '../lib/aurenChatApi';
 import type { AurenThinkingEvent } from '../lib/auren-agent/core/types';
 import { createChatTitle, createUserChat, formatChatTime, listUserChats, loadChatMessages, saveChatMessage, touchChat, type StoredChat } from '../lib/aurenChatStorage';
+import { loadTodayStudyFocusCard, type StudyFocusCard } from '../lib/aurenStudyFocus';
 import { supabase } from '../lib/supabase';
 import { colors, spacing } from '../theme';
 
@@ -103,6 +104,8 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   const [chats, setChats] = useState<StoredChat[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<AurenMessage[]>([]);
+  const [todayFocusCard, setTodayFocusCard] = useState<StudyFocusCard | null>(null);
+  const [todayFocusLoading, setTodayFocusLoading] = useState(true);
   const [assistantThinking, setAssistantThinking] = useState(false);
   const [thinkingState, setThinkingState] = useState<AurenThinkingEvent | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -351,6 +354,23 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   }, [session.user.id]);
 
   useEffect(() => {
+    let active = true;
+    async function loadTodayFocus() {
+      setTodayFocusLoading(true);
+      try {
+        const card = await loadTodayStudyFocusCard(session.user.id);
+        if (active) setTodayFocusCard(card);
+      } catch {
+        if (active) setTodayFocusCard(null);
+      } finally {
+        if (active) setTodayFocusLoading(false);
+      }
+    }
+    void loadTodayFocus();
+    return () => { active = false; };
+  }, [session.user.id]);
+
+  useEffect(() => {
     Animated.timing(appCardProgress, { toValue: anySheetExpanded ? 1 : 0, duration: anySheetExpanded ? 320 : 260, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, [anySheetExpanded, appCardProgress]);
 
@@ -413,7 +433,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
                       <AurenActionPill width={78} icon={<StudyQuizIcon size={17} color={STUDY_ACTION_ICON_COLOR} strokeWidth={1.7} />} label="Quiz me" />
                       <AurenActionPill width={134} icon={<StudyCalendarIcon size={17} color={STUDY_ACTION_ICON_COLOR} strokeWidth={1.7} />} label="Make a study plan" />
                     </Animated.View>
-                    <View style={styles.focusCardWrap}><AurenTodayFocusCard /></View>
+                    <View style={styles.focusCardWrap}><AurenTodayFocusCard focusCard={todayFocusCard} loading={todayFocusLoading} /></View>
                   </Pressable>
                 )}
               </Animated.View>
