@@ -12,6 +12,7 @@ import { MenuIcon } from '../components/AurenIcons';
 import { AurenMessageList, type AurenMessage } from '../components/AurenMessageList';
 import { AurenPlusSheet, type PlusSheetStage } from '../components/AurenPlusSheet';
 import { AurenSidebar } from '../components/AurenSidebar';
+import { AurenTodayFocusCard } from '../components/AurenTodayFocusCard';
 import { sendAurenChatMessageStream, type AurenChatMode } from '../lib/aurenChatApi';
 import type { AurenThinkingEvent } from '../lib/auren-agent/core/types';
 import {
@@ -28,7 +29,7 @@ import { supabase } from '../lib/supabase';
 import { colors, spacing } from '../theme';
 
 const STUDY_MODE: AurenChatMode = 'study';
-const COMPOSER_CLOSED_BOTTOM = 34;
+const COMPOSER_CLOSED_BOTTOM = 28;
 const COMPOSER_KEYBOARD_GAP = 12;
 const COMPOSER_KEYBOARD_EXTRA_LIFT = 34;
 const CONTENT_KEYBOARD_LIFT = 34;
@@ -725,6 +726,10 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
                         label="Make a study plan"
                       />
                     </Animated.View>
+
+                    <View style={styles.focusCardWrap}>
+                      <AurenTodayFocusCard />
+                    </View>
                   </Pressable>
                 )}
               </Animated.View>
@@ -790,11 +795,11 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
   },
   header: {
     zIndex: 60,
-    height: 88,
+    height: 82,
     paddingHorizontal: spacing.screenX,
     flexDirection: 'row',
     alignItems: 'center',
@@ -830,8 +835,9 @@ const styles = StyleSheet.create({
   },
   startContent: {
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingBottom: 220,
+    justifyContent: 'flex-start',
+    paddingTop: 146,
+    paddingBottom: 184,
   },
   chatContent: {
     alignItems: 'stretch',
@@ -841,7 +847,6 @@ const styles = StyleSheet.create({
   },
   hero: {
     alignItems: 'center',
-    marginTop: 18,
     maxWidth: 360,
   },
   title: {
@@ -868,6 +873,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+  },
+  focusCardWrap: {
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 38,
+    paddingHorizontal: 6,
   },
   composerWrap: {
     position: 'absolute',
