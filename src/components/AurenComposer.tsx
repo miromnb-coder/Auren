@@ -100,7 +100,7 @@ export function AurenComposer({
       <TextInput
         value={draft}
         onChangeText={updateDraft}
-        placeholder="Ask anything, or assign a task"
+        placeholder="Ask anything about your studies"
         placeholderTextColor={colors.mutedSoft}
         style={[styles.input, { height: inputHeight }]}
         multiline
