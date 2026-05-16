@@ -1,4 +1,9 @@
 import { supabase } from '../../supabase';
+import {
+  getSearchAnswerFromPipelineResult,
+  getSearchMetadataFromReport,
+  runSearchPipeline,
+} from '../search/runSearchPipeline';
 import type {
   AurenContext,
   AurenPlan,
@@ -9,9 +14,7 @@ import type {
 } from '../core/types';
 
 const AUREN_RESPONSE_FUNCTION = 'auren-generate-response';
-const AUREN_BROWSER_SEARCH_FUNCTION = 'auren-browser-search';
 const MODEL_TIMEOUT_MS = 18000;
-const BROWSER_SEARCH_TIMEOUT_MS = 45000;
 const MAX_PLAN_STEPS = 6;
 const MAX_MEMORY_ITEMS = 8;
 const MAX_TOOL_RESULTS = 8;
@@ -435,27 +438,6 @@ const createModelPayload = (
   };
 };
 
-const createBrowserSearchPayload = (
-  context: AurenContext,
-  plan: AurenPlan,
-  toolResults: AurenToolResult[],
-) => {
-  const compactContext = createCompactContext(context, plan, toolResults);
-
-  return {
-    message: context.message,
-    context: compactContext,
-    instructions: [
-      'You are Auren, a personal AI agent inside a premium mobile app.',
-      'Use browser search to answer the user with current, source-backed information.',
-      'Reply in the same language the user used.',
-      'Keep the answer mobile-friendly, concise, and natural.',
-      'Mention uncertainty if the search does not find enough reliable information.',
-      'Do not return JSON. Return only the user-facing answer text.',
-    ].join('\n'),
-  };
-};
-
 const parseModelResponse = (value: unknown): ModelResponse | null => {
   if (!value) {
     return null;
@@ -568,6 +550,20 @@ const createResponseMetadata = (modelResponse: ModelResponse | null): AurenRespo
   return hasMetadata ? metadata : undefined;
 };
 
+const createSearchResponseMetadata = (
+  searchMetadata: ReturnType<typeof getSearchMetadataFromReport>,
+  debug?: Record<string, unknown>,
+): AurenResponseMetadata => {
+  return {
+    debug: {
+      ...(debug ?? {}),
+      browserSearchUsed: searchMetadata.used,
+      search: searchMetadata,
+    },
+    model: searchMetadata.model,
+  };
+};
+
 const callResponseModel = async (
   context: AurenContext,
   plan: AurenPlan,
@@ -599,49 +595,6 @@ const callResponseModel = async (
   return parseModelResponse(response.data);
 };
 
-const callBrowserSearchModel = async (
-  context: AurenContext,
-  plan: AurenPlan,
-  toolResults: AurenToolResult[],
-): Promise<ModelResponse | null> => {
-  const payload = createBrowserSearchPayload(context, plan, toolResults);
-
-  const response = await withTimeout(
-    supabase.functions.invoke(AUREN_BROWSER_SEARCH_FUNCTION, {
-      body: payload,
-    }),
-    BROWSER_SEARCH_TIMEOUT_MS,
-  );
-
-  if (response.error) {
-    return {
-      answer: undefined,
-      suggestions: [],
-      fallback: true,
-      fallbackReason: response.error.message || 'browser_search_function_error',
-      debug: {
-        fallback: true,
-        browserSearchUsed: true,
-        fallbackReason: response.error.message || 'browser_search_function_error',
-        source: 'finalResponse.callBrowserSearchModel',
-      },
-    };
-  }
-
-  const parsed = parseModelResponse(response.data);
-
-  return parsed
-    ? {
-        ...parsed,
-        browserSearchUsed: true,
-        debug: {
-          ...(getDebugField(parsed.debug) ?? {}),
-          browserSearchUsed: true,
-        },
-      }
-    : null;
-};
-
 const createFallbackAnswer = (
   context: AurenContext,
   plan: AurenPlan,
@@ -670,18 +623,30 @@ const createFallbackAnswer = (
   return 'Send me a message and I’ll help with the next step.';
 };
 
-const shouldUseBrowserSearch = (context: AurenContext) => {
-  return context.input.metadata?.browserSearch === true;
-};
-
 export const generateFinalResponse = async (
   context: AurenContext,
   plan: AurenPlan,
   toolResults: AurenToolResult[],
 ): Promise<AurenResponseDraft> => {
-  const modelResponse = shouldUseBrowserSearch(context)
-    ? await callBrowserSearchModel(context, plan, toolResults)
-    : await callResponseModel(context, plan, toolResults);
+  const searchResult = await runSearchPipeline({
+    context,
+    plan,
+    toolResults,
+    metadata: context.input.metadata,
+  });
+
+  if (searchResult.shouldUseSearchAnswer) {
+    const searchAnswer = getSearchAnswerFromPipelineResult(searchResult);
+    const searchMetadata = getSearchMetadataFromReport(searchResult.report);
+
+    return {
+      answer: limitAnswerText(searchAnswer, 8000),
+      suggestions: getFallbackSuggestions(context, plan),
+      metadata: createSearchResponseMetadata(searchMetadata, searchResult.report.debug),
+    };
+  }
+
+  const modelResponse = await callResponseModel(context, plan, toolResults);
   const metadata = createResponseMetadata(modelResponse);
   const answer =
     typeof modelResponse?.answer === 'string' && cleanAnswerText(modelResponse.answer)
