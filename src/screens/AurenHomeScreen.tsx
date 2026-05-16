@@ -15,16 +15,7 @@ import { AurenSidebar } from '../components/AurenSidebar';
 import { AurenTodayFocusCard } from '../components/AurenTodayFocusCard';
 import { sendAurenChatMessageStream, type AurenChatMode } from '../lib/aurenChatApi';
 import type { AurenThinkingEvent } from '../lib/auren-agent/core/types';
-import {
-  createChatTitle,
-  createUserChat,
-  formatChatTime,
-  listUserChats,
-  loadChatMessages,
-  saveChatMessage,
-  touchChat,
-  type StoredChat,
-} from '../lib/aurenChatStorage';
+import { createChatTitle, createUserChat, formatChatTime, listUserChats, loadChatMessages, saveChatMessage, touchChat, type StoredChat } from '../lib/aurenChatStorage';
 import { supabase } from '../lib/supabase';
 import { colors, spacing } from '../theme';
 
@@ -36,21 +27,10 @@ const CONTENT_KEYBOARD_LIFT = 34;
 const PILLS_KEYBOARD_LIFT = 20;
 const STUDY_ACTION_ICON_COLOR = '#70717a';
 
-type AurenHomeScreenProps = {
-  session: Session;
-};
+type AurenHomeScreenProps = { session: Session };
+type SidebarProfile = { name: string; email: string; initials: string };
 
-type SidebarProfile = {
-  name: string;
-  email: string;
-  initials: string;
-};
-
-const CHAT_MODE_OPTIONS: Array<{
-  mode: AurenChatMode;
-  title: string;
-  icon: keyof typeof Ionicons.glyphMap;
-}> = [
+const CHAT_MODE_OPTIONS: Array<{ mode: AurenChatMode; title: string; icon: keyof typeof Ionicons.glyphMap }> = [
   { mode: 'personal', title: 'Personal', icon: 'chatbubble-outline' },
   { mode: 'study', title: 'Study', icon: 'school-outline' },
   { mode: 'money', title: 'Money', icon: 'wallet-outline' },
@@ -58,12 +38,10 @@ const CHAT_MODE_OPTIONS: Array<{
 
 function runHaptic(type: 'open' | 'close') {
   if (Platform.OS === 'web') return;
-
   if (type === 'open') {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     return;
   }
-
   void Haptics.selectionAsync();
 }
 
@@ -72,10 +50,7 @@ function createMessageId(role: AurenMessage['role']) {
 }
 
 function getErrorMessage(error: unknown) {
-  if (error instanceof Error && error.message.trim().length > 0) {
-    return error.message;
-  }
-
+  if (error instanceof Error && error.message.trim().length > 0) return error.message;
   return 'Auren had trouble connecting. Try again in a moment.';
 }
 
@@ -86,37 +61,20 @@ function getModeOption(mode: AurenChatMode) {
 function getEmailLocalName(email: string) {
   const localPart = email.split('@')[0] ?? '';
   const cleaned = localPart.replace(/[._-]+/g, ' ').trim();
-
   if (!cleaned) return 'Auren user';
-
-  return cleaned
-    .split(' ')
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
+  return cleaned.split(' ').filter(Boolean).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
 }
 
 function getInitials(name: string, email: string) {
   const source = name.trim() || getEmailLocalName(email);
-  const initials = source
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join('');
-
+  const initials = source.split(' ').filter(Boolean).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('');
   return initials || 'AU';
 }
 
 function createSidebarProfile(name: string | null | undefined, email: string | null | undefined): SidebarProfile {
   const safeEmail = email?.trim() ?? '';
   const safeName = name?.trim() || (safeEmail ? getEmailLocalName(safeEmail) : 'Auren user');
-
-  return {
-    name: safeName,
-    email: safeEmail,
-    initials: getInitials(safeName, safeEmail),
-  };
+  return { name: safeName, email: safeEmail, initials: getInitials(safeName, safeEmail) };
 }
 
 function getUserMetadataName(session: Session) {
@@ -124,23 +82,15 @@ function getUserMetadataName(session: Session) {
   const displayName = metadata?.display_name;
   const fullName = metadata?.full_name;
   const name = metadata?.name;
-
   if (typeof displayName === 'string' && displayName.trim()) return displayName;
   if (typeof fullName === 'string' && fullName.trim()) return fullName;
   if (typeof name === 'string' && name.trim()) return name;
-
   return null;
 }
 
 function toAurenMessage(row: { id: string; role: string; content: string; created_at: string }): AurenMessage | null {
   if (row.role !== 'user' && row.role !== 'assistant') return null;
-
-  return {
-    id: row.id,
-    role: row.role,
-    content: row.content,
-    createdAt: new Date(row.created_at).getTime(),
-  };
+  return { id: row.id, role: row.role, content: row.content, createdAt: new Date(row.created_at).getTime() };
 }
 
 export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
@@ -155,9 +105,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   const [assistantThinking, setAssistantThinking] = useState(false);
   const [thinkingState, setThinkingState] = useState<AurenThinkingEvent | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [sidebarProfile, setSidebarProfile] = useState<SidebarProfile>(() =>
-    createSidebarProfile(getUserMetadataName(session), session.user.email),
-  );
+  const [sidebarProfile, setSidebarProfile] = useState<SidebarProfile>(() => createSidebarProfile(getUserMetadataName(session), session.user.email));
   const composerBottom = useRef(new Animated.Value(COMPOSER_CLOSED_BOTTOM)).current;
   const contentTranslateY = useRef(new Animated.Value(0)).current;
   const pillsOpacity = useRef(new Animated.Value(1)).current;
@@ -170,34 +118,21 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   const anySheetOpen = plusSheetOpen || controlsSheetOpen;
   const anySheetExpanded = plusSheetStage === 'expanded' || controlsSheetStage === 'expanded';
   const hasMessages = messages.length > 0;
-  const recentChats = chats.map((chat) => ({
-    id: chat.id,
-    title: chat.title,
-    time: formatChatTime(chat.updated_at),
-    icon: getModeOption(chat.mode).icon,
-  }));
+  const recentChats = chats.map((chat) => ({ id: chat.id, title: chat.title, time: formatChatTime(chat.updated_at), icon: getModeOption(chat.mode).icon }));
 
   async function refreshChats() {
     const nextChats = await listUserChats(session.user.id);
     setChats(nextChats);
   }
 
-  function clearThinkingState() {
-    setThinkingState(null);
-  }
+  function clearThinkingState() { setThinkingState(null); }
 
   function setPlusStage(nextStage: PlusSheetStage) {
     setPlusSheetStage((current) => {
       if (current === nextStage) return current;
-
-      if (current === 'closed' && nextStage !== 'closed') {
-        runHaptic('open');
-      } else if (current !== 'closed' && nextStage === 'closed') {
-        runHaptic('close');
-      } else if (current !== nextStage) {
-        runHaptic('open');
-      }
-
+      if (current === 'closed' && nextStage !== 'closed') runHaptic('open');
+      else if (current !== 'closed' && nextStage === 'closed') runHaptic('close');
+      else if (current !== nextStage) runHaptic('open');
       return nextStage;
     });
   }
@@ -205,27 +140,16 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   function setControlsStage(nextStage: ControlsSheetStage) {
     setControlsSheetStage((current) => {
       if (current === nextStage) return current;
-
-      if (current === 'closed' && nextStage !== 'closed') {
-        runHaptic('open');
-      } else if (current !== 'closed' && nextStage === 'closed') {
-        runHaptic('close');
-      } else if (current !== nextStage) {
-        runHaptic('open');
-      }
-
+      if (current === 'closed' && nextStage !== 'closed') runHaptic('open');
+      else if (current !== 'closed' && nextStage === 'closed') runHaptic('close');
+      else if (current !== nextStage) runHaptic('open');
       return nextStage;
     });
   }
 
   function closeAllSheets() {
-    if (plusSheetOpen) {
-      setPlusStage('closed');
-    }
-
-    if (controlsSheetOpen) {
-      setControlsStage('closed');
-    }
+    if (plusSheetOpen) setPlusStage('closed');
+    if (controlsSheetOpen) setControlsStage('closed');
   }
 
   function openSidebar() {
@@ -259,7 +183,6 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
 
   function stopGenerating() {
     if (!abortControllerRef.current) return;
-
     abortControllerRef.current.abort();
     abortControllerRef.current = null;
     setAssistantThinking(false);
@@ -275,7 +198,6 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
     clearThinkingState();
     setIsGenerating(false);
     setWebSearchEnabled(false);
-
     try {
       const chat = await createUserChat(session.user.id, 'New chat', STUDY_MODE);
       setActiveChatId(chat.id);
@@ -298,7 +220,6 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
     setWebSearchEnabled(false);
     closeSidebar();
     setActiveChatId(chatId);
-
     try {
       const storedMessages = await loadChatMessages(session.user.id, chatId);
       setMessages(storedMessages.map(toAurenMessage).filter((message): message is AurenMessage => Boolean(message)));
@@ -309,7 +230,6 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
 
   async function ensureActiveChat(firstMessage: string) {
     if (activeChatId) return activeChatId;
-
     const chat = await createUserChat(session.user.id, createChatTitle(firstMessage), STUDY_MODE);
     setActiveChatId(chat.id);
     setChats((currentChats) => [chat, ...currentChats.filter((item) => item.id !== chat.id)]);
@@ -318,24 +238,13 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
 
   async function handleSendMessage(message: string) {
     const useWebSearch = webSearchEnabled;
-
     closeAllSheets();
     setWebSearchEnabled(false);
     abortControllerRef.current?.abort();
 
-    const userMessage: AurenMessage = {
-      id: createMessageId('user'),
-      role: 'user',
-      content: message,
-      createdAt: Date.now(),
-    };
+    const userMessage: AurenMessage = { id: createMessageId('user'), role: 'user', content: message, createdAt: Date.now() };
     const assistantMessageId = createMessageId('assistant');
-    const assistantMessage: AurenMessage = {
-      id: assistantMessageId,
-      role: 'assistant',
-      content: '',
-      createdAt: Date.now(),
-    };
+    const assistantMessage: AurenMessage = { id: assistantMessageId, role: 'assistant', content: '', createdAt: Date.now() };
     const nextMessages = [...messages, userMessage];
     const abortController = new AbortController();
     let receivedAnyToken = false;
@@ -350,94 +259,41 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
 
     try {
       chatIdForSend = await ensureActiveChat(message);
-      await saveChatMessage({
-        chatId: chatIdForSend,
-        userId: session.user.id,
-        role: 'user',
-        content: message,
-      });
-
+      await saveChatMessage({ chatId: chatIdForSend, userId: session.user.id, role: 'user', content: message });
       const activeChat = chats.find((chat) => chat.id === chatIdForSend);
       const shouldUpdateTitle = !activeChat || activeChat.title === 'New chat';
       const nextTitle = shouldUpdateTitle ? createChatTitle(message) : undefined;
-
-      if (nextTitle) {
-        setChats((currentChats) =>
-          currentChats.map((chat) => (chat.id === chatIdForSend ? { ...chat, title: nextTitle } : chat)),
-        );
-      }
-
-      await sendAurenChatMessageStream(
-        nextMessages.map((item) => ({
-          role: item.role,
-          content: item.content,
-        })),
-        {
-          mode: STUDY_MODE,
-          browserSearch: useWebSearch,
-          signal: abortController.signal,
-          onThinkingState: setThinkingState,
-          onToken: (token) => {
-            receivedAnyToken = true;
-            assistantContent += token;
-            setAssistantThinking(false);
-            clearThinkingState();
-            setMessages((currentMessages) =>
-              currentMessages.map((currentMessage) =>
-                currentMessage.id === assistantMessageId
-                  ? { ...currentMessage, content: currentMessage.content + token }
-                  : currentMessage,
-              ),
-            );
-          },
+      if (nextTitle) setChats((currentChats) => currentChats.map((chat) => (chat.id === chatIdForSend ? { ...chat, title: nextTitle } : chat)));
+      await sendAurenChatMessageStream(nextMessages.map((item) => ({ role: item.role, content: item.content })), {
+        mode: STUDY_MODE,
+        browserSearch: useWebSearch,
+        signal: abortController.signal,
+        onThinkingState: setThinkingState,
+        onToken: (token) => {
+          receivedAnyToken = true;
+          assistantContent += token;
+          setAssistantThinking(false);
+          clearThinkingState();
+          setMessages((currentMessages) => currentMessages.map((currentMessage) => currentMessage.id === assistantMessageId ? { ...currentMessage, content: currentMessage.content + token } : currentMessage));
         },
-      );
-
-      if (assistantContent.trim()) {
-        await saveChatMessage({
-          chatId: chatIdForSend,
-          userId: session.user.id,
-          role: 'assistant',
-          content: assistantContent,
-        });
-      }
-
+      });
+      if (assistantContent.trim()) await saveChatMessage({ chatId: chatIdForSend, userId: session.user.id, role: 'assistant', content: assistantContent });
       await touchChat({ chatId: chatIdForSend, userId: session.user.id, title: nextTitle });
       await refreshChats();
     } catch (error) {
       if (abortController.signal.aborted) return;
-
-      const fallbackText = receivedAnyToken
-        ? '\n\nConnection stopped before Auren finished.'
-        : getErrorMessage(error);
+      const fallbackText = receivedAnyToken ? '\n\nConnection stopped before Auren finished.' : getErrorMessage(error);
       assistantContent += fallbackText;
-
-      setMessages((currentMessages) =>
-        currentMessages.map((currentMessage) =>
-          currentMessage.id === assistantMessageId
-            ? { ...currentMessage, content: currentMessage.content + fallbackText }
-            : currentMessage,
-        ),
-      );
-
+      setMessages((currentMessages) => currentMessages.map((currentMessage) => currentMessage.id === assistantMessageId ? { ...currentMessage, content: currentMessage.content + fallbackText } : currentMessage));
       if (chatIdForSend && assistantContent.trim()) {
         try {
-          await saveChatMessage({
-            chatId: chatIdForSend,
-            userId: session.user.id,
-            role: 'assistant',
-            content: assistantContent,
-          });
+          await saveChatMessage({ chatId: chatIdForSend, userId: session.user.id, role: 'assistant', content: assistantContent });
           await touchChat({ chatId: chatIdForSend, userId: session.user.id });
           await refreshChats();
-        } catch {
-          // Keep local chat usable even if persistence fails.
-        }
+        } catch {}
       }
     } finally {
-      if (abortControllerRef.current === abortController) {
-        abortControllerRef.current = null;
-      }
+      if (abortControllerRef.current === abortController) abortControllerRef.current = null;
       setAssistantThinking(false);
       clearThinkingState();
       setIsGenerating(false);
@@ -447,179 +303,82 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   function openPlusSheet() {
     Keyboard.dismiss();
     setSidebarOpen(false);
-    if (controlsSheetOpen) {
-      setControlsSheetStage('closed');
-    }
+    if (controlsSheetOpen) setControlsSheetStage('closed');
     setPlusStage('peek');
   }
 
   function openControlsSheet() {
     Keyboard.dismiss();
     setSidebarOpen(false);
-    if (plusSheetOpen) {
-      setPlusSheetStage('closed');
-    }
+    if (plusSheetOpen) setPlusSheetStage('closed');
     setControlsStage('peek');
   }
 
-  function closeActiveSheet() {
-    closeAllSheets();
-  }
+  function closeActiveSheet() { closeAllSheets(); }
 
   useEffect(() => {
     let active = true;
     const fallbackEmail = session.user.email ?? '';
     const fallbackName = getUserMetadataName(session);
-
     setSidebarProfile(createSidebarProfile(fallbackName, fallbackEmail));
-
     async function loadProfile() {
-      const { data } = await supabase
-        .from('profiles')
-        .select('email, display_name, avatar_url')
-        .eq('id', session.user.id)
-        .maybeSingle();
-
+      const { data } = await supabase.from('profiles').select('email, display_name, avatar_url').eq('id', session.user.id).maybeSingle();
       if (!active) return;
-
       if (data) {
-        const nextEmail = data.email ?? fallbackEmail;
-        const nextName = data.display_name ?? fallbackName;
-        setSidebarProfile(createSidebarProfile(nextName, nextEmail));
+        setSidebarProfile(createSidebarProfile(data.display_name ?? fallbackName, data.email ?? fallbackEmail));
         return;
       }
-
-      await supabase.from('profiles').upsert({
-        id: session.user.id,
-        email: fallbackEmail,
-        display_name: fallbackName,
-      });
-
-      if (active) {
-        setSidebarProfile(createSidebarProfile(fallbackName, fallbackEmail));
-      }
+      await supabase.from('profiles').upsert({ id: session.user.id, email: fallbackEmail, display_name: fallbackName });
+      if (active) setSidebarProfile(createSidebarProfile(fallbackName, fallbackEmail));
     }
-
     void loadProfile();
-
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [session]);
 
   useEffect(() => {
     let active = true;
-
     async function loadChats() {
       try {
         const nextChats = await listUserChats(session.user.id);
-        if (active) {
-          setChats(nextChats);
-        }
+        if (active) setChats(nextChats);
       } catch {
-        if (active) {
-          setChats([]);
-        }
+        if (active) setChats([]);
       }
     }
-
     void loadChats();
-
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [session.user.id]);
 
   useEffect(() => {
-    Animated.timing(appCardProgress, {
-      toValue: anySheetExpanded ? 1 : 0,
-      duration: anySheetExpanded ? 320 : 260,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
+    Animated.timing(appCardProgress, { toValue: anySheetExpanded ? 1 : 0, duration: anySheetExpanded ? 320 : 260, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, [anySheetExpanded, appCardProgress]);
 
-  useEffect(() => {
-    return () => {
-      abortControllerRef.current?.abort();
-    };
-  }, []);
+  useEffect(() => () => { abortControllerRef.current?.abort(); }, []);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
     const showSubscription = Keyboard.addListener(showEvent, (event) => {
       const keyboardHeight = event.endCoordinates.height;
       const duration = event.duration ?? 250;
-      const nextBottom = Math.max(
-        COMPOSER_CLOSED_BOTTOM,
-        keyboardHeight - insets.bottom + COMPOSER_KEYBOARD_GAP + COMPOSER_KEYBOARD_EXTRA_LIFT,
-      );
-
+      const nextBottom = Math.max(COMPOSER_CLOSED_BOTTOM, keyboardHeight - insets.bottom + COMPOSER_KEYBOARD_GAP + COMPOSER_KEYBOARD_EXTRA_LIFT);
       Animated.parallel([
-        Animated.timing(composerBottom, {
-          toValue: nextBottom,
-          duration,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: false,
-        }),
-        Animated.timing(contentTranslateY, {
-          toValue: -CONTENT_KEYBOARD_LIFT,
-          duration,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pillsOpacity, {
-          toValue: 0,
-          duration: Math.min(duration, 190),
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pillsTranslateY, {
-          toValue: -PILLS_KEYBOARD_LIFT,
-          duration,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
+        Animated.timing(composerBottom, { toValue: nextBottom, duration, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
+        Animated.timing(contentTranslateY, { toValue: -CONTENT_KEYBOARD_LIFT, duration, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(pillsOpacity, { toValue: 0, duration: Math.min(duration, 190), easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(pillsTranslateY, { toValue: -PILLS_KEYBOARD_LIFT, duration, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       ]).start();
     });
-
     const hideSubscription = Keyboard.addListener(hideEvent, (event) => {
       const duration = event.duration ?? 220;
-
       Animated.parallel([
-        Animated.timing(composerBottom, {
-          toValue: COMPOSER_CLOSED_BOTTOM,
-          duration,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: false,
-        }),
-        Animated.timing(contentTranslateY, {
-          toValue: 0,
-          duration,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pillsOpacity, {
-          toValue: 1,
-          duration,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pillsTranslateY, {
-          toValue: 0,
-          duration,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
+        Animated.timing(composerBottom, { toValue: COMPOSER_CLOSED_BOTTOM, duration, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
+        Animated.timing(contentTranslateY, { toValue: 0, duration, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(pillsOpacity, { toValue: 1, duration, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(pillsTranslateY, { toValue: 0, duration, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       ]).start();
     });
-
-    return () => {
-      showSubscription.remove();
-      hideSubscription.remove();
-    };
+    return () => { showSubscription.remove(); hideSubscription.remove(); };
   }, [composerBottom, contentTranslateY, insets.bottom, pillsOpacity, pillsTranslateY]);
 
   const appScale = appCardProgress.interpolate({ inputRange: [0, 1], outputRange: [1, 0.945] });
@@ -635,9 +394,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
           <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
             <View style={styles.dismissArea}>
               <View style={styles.header}>
-                <Pressable onPress={openSidebar} hitSlop={14} style={({ pressed }) => [styles.menuButton, pressed && styles.menuButtonPressed]} accessibilityRole="button" accessibilityLabel="Open menu">
-                  <MenuIcon />
-                </Pressable>
+                <Pressable onPress={openSidebar} hitSlop={14} style={({ pressed }) => [styles.menuButton, pressed && styles.menuButtonPressed]} accessibilityRole="button" accessibilityLabel="Open menu"><MenuIcon /></Pressable>
                 <View style={styles.brandButton} accessibilityRole="header"><Text style={styles.brand}>Auren</Text></View>
                 <View style={styles.headerSpacer} />
               </View>
@@ -689,7 +446,7 @@ const styles = StyleSheet.create({
   brand: { color: colors.text, fontSize: 28, lineHeight: 34, letterSpacing: -0.9, fontFamily: serifFont },
   headerSpacer: { width: 68 },
   content: { flex: 1, width: '100%', paddingHorizontal: 18 },
-  startContent: { alignItems: 'center', justifyContent: 'flex-start', paddingTop: 52, paddingBottom: 190 },
+  startContent: { alignItems: 'center', justifyContent: 'flex-start', paddingTop: 112, paddingBottom: 190 },
   chatContent: { alignItems: 'stretch', justifyContent: 'flex-end', paddingHorizontal: 0, paddingBottom: 0 },
   hero: { alignItems: 'center', maxWidth: 360 },
   title: { color: '#686775', fontSize: 31, lineHeight: 37, letterSpacing: -0.95, textAlign: 'center', fontFamily: serifFont },
