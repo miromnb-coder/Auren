@@ -1,6 +1,6 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { colors, shadows } from '../theme';
+import { FocusClockIcon, FocusNotebookIcon, FocusTargetIcon, MoreDotsIcon } from './AurenStudyIcons';
 
 const serifFont = Platform.select({
   ios: 'Georgia',
@@ -13,15 +13,15 @@ export function AurenTodayFocusCard() {
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <View style={styles.cardEyebrowWrap}>
-          <Ionicons name="radio-button-on-outline" size={17} color="#8f909a" />
+          <FocusTargetIcon size={18} color="#8f909a" strokeWidth={1.65} />
           <Text style={styles.eyebrow}>TODAY&apos;S FOCUS</Text>
         </View>
-        <Ionicons name="ellipsis-horizontal" size={24} color="#92939d" />
+        <MoreDotsIcon size={25} color="#92939d" />
       </View>
 
       <View style={styles.contentRow}>
         <View style={styles.iconBubble}>
-          <Ionicons name="reader-outline" size={32} color="#737480" />
+          <FocusNotebookIcon size={34} color="#737480" strokeWidth={1.7} />
         </View>
 
         <View style={styles.taskContent}>
@@ -30,7 +30,7 @@ export function AurenTodayFocusCard() {
             Next step: <Text style={styles.nextStepStrong}>Review equations</Text>
           </Text>
           <View style={styles.timeRow}>
-            <Ionicons name="time-outline" size={17} color="#8a8b95" />
+            <FocusClockIcon size={18} color="#8a8b95" strokeWidth={1.75} />
             <Text style={styles.timeText}>25 min session</Text>
           </View>
         </View>
