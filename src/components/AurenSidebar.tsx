@@ -12,6 +12,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { PanGestureHandler, State, type PanGestureHandlerStateChangeEvent } from 'react-native-gesture-handler';
 import { AurenAccountSheet, type AccountSheetStage } from './AurenAccountSheet';
 import { AurenActivityScreen } from './AurenActivityScreen';
 import { addAurenNotificationResponseListener, registerForAurenPushNotifications } from '../lib/aurenPushNotifications';
@@ -50,12 +51,11 @@ const DRAWER_MIN_WIDTH = 315;
 const DRAWER_MAX_WIDTH = 620;
 const SWIPE_DISTANCE = 42;
 const SWIPE_EDGE_WIDTH = 96;
-const SWIPE_PRIMARY_EDGE_WIDTH = 28;
 const SWIPE_START_DISTANCE = 10;
 const EDGE_SWIPE_TOP_OFFSET = 112;
 const EDGE_SWIPE_BOTTOM_OFFSET = 178;
 const HORIZONTAL_LOCK_RATIO = 1.25;
-const EXTENDED_EDGE_HORIZONTAL_LOCK_RATIO = 2.15;
+const OPEN_EDGE_VERTICAL_FAIL_OFFSET = 14;
 
 const DEFAULT_RECENT_CHATS: RecentChat[] = [
   {
@@ -84,36 +84,10 @@ const DEFAULT_PROFILE: SidebarProfile = {
   initials: 'AU',
 };
 
-type SwipeGestureState = {
-  dx: number;
-  dy: number;
-  x0: number;
-};
-
-function getOpenSwipeLockRatio(startX: number) {
-  return startX <= SWIPE_PRIMARY_EDGE_WIDTH ? HORIZONTAL_LOCK_RATIO : EXTENDED_EDGE_HORIZONTAL_LOCK_RATIO;
-}
-
-function isHorizontalGesture(dx: number, dy: number, ratio = HORIZONTAL_LOCK_RATIO) {
+function isHorizontalGesture(dx: number, dy: number) {
   const horizontalDistance = Math.abs(dx);
   const verticalDistance = Math.abs(dy);
-  return horizontalDistance > 10 && horizontalDistance > verticalDistance * ratio;
-}
-
-function shouldStartOpenSwipe(gestureState: SwipeGestureState) {
-  if (gestureState.dx <= SWIPE_START_DISTANCE) return false;
-  if (gestureState.x0 > SWIPE_EDGE_WIDTH) return false;
-
-  const lockRatio = getOpenSwipeLockRatio(gestureState.x0);
-  return isHorizontalGesture(gestureState.dx, gestureState.dy, lockRatio);
-}
-
-function shouldOpenFromSwipe(gestureState: SwipeGestureState) {
-  if (gestureState.dx <= SWIPE_DISTANCE) return false;
-  if (gestureState.x0 > SWIPE_EDGE_WIDTH) return false;
-
-  const lockRatio = getOpenSwipeLockRatio(gestureState.x0);
-  return isHorizontalGesture(gestureState.dx, gestureState.dy, lockRatio);
+  return horizontalDistance > 10 && horizontalDistance > verticalDistance * HORIZONTAL_LOCK_RATIO;
 }
 
 export function AurenSidebar({
@@ -201,31 +175,6 @@ export function AurenSidebar({
     }
   }, [activityOpen, open, refreshUnreadCount]);
 
-  const openSwipeResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponder: (_event, gestureState) => {
-          if (open || activityOpen) return false;
-          return shouldStartOpenSwipe(gestureState);
-        },
-        onMoveShouldSetPanResponderCapture: (_event, gestureState) => {
-          if (open || activityOpen) return false;
-          return shouldStartOpenSwipe(gestureState);
-        },
-        onPanResponderRelease: (_event, gestureState) => {
-          if (shouldOpenFromSwipe(gestureState)) {
-            onOpen?.();
-          }
-        },
-        onPanResponderTerminate: (_event, gestureState) => {
-          if (shouldOpenFromSwipe(gestureState)) {
-            onOpen?.();
-          }
-        },
-      }),
-    [activityOpen, onOpen, open],
-  );
-
   const closeSwipeResponder = useMemo(
     () =>
       PanResponder.create({
@@ -261,6 +210,29 @@ export function AurenSidebar({
     outputRange: [0, drawerWidth],
   });
 
+  const openSwipeHitSlop = useMemo(
+    () => ({
+      left: 0,
+      top: EDGE_SWIPE_TOP_OFFSET,
+      bottom: EDGE_SWIPE_BOTTOM_OFFSET,
+      width: SWIPE_EDGE_WIDTH,
+    }),
+    [],
+  );
+
+  function handleOpenSwipeStateChange(event: PanGestureHandlerStateChangeEvent) {
+    if (open || activityOpen) return;
+
+    const { state, translationX, translationY } = event.nativeEvent;
+    const gestureFinished = state === State.END || state === State.CANCELLED || state === State.FAILED;
+
+    if (!gestureFinished) return;
+
+    if (translationX > SWIPE_DISTANCE && isHorizontalGesture(translationX, translationY)) {
+      onOpen?.();
+    }
+  }
+
   function openAccountSheet() {
     setAccountSheetStage('expanded');
     onOpenProfile?.();
@@ -273,18 +245,25 @@ export function AurenSidebar({
 
   return (
     <View style={styles.root}>
-      <Animated.View
-        style={[
-          styles.mainScreen,
-          {
-            transform: [{ translateX: mainTranslateX }],
-          },
-        ]}
+      <PanGestureHandler
+        enabled={!open && !activityOpen}
+        activeOffsetX={SWIPE_START_DISTANCE}
+        failOffsetY={[-OPEN_EDGE_VERTICAL_FAIL_OFFSET, OPEN_EDGE_VERTICAL_FAIL_OFFSET]}
+        hitSlop={openSwipeHitSlop}
+        onHandlerStateChange={handleOpenSwipeStateChange}
       >
-        {children}
-      </Animated.View>
-
-      {!open && !activityOpen ? <View style={styles.edgeSwipeArea} {...openSwipeResponder.panHandlers} /> : null}
+        <Animated.View
+          collapsable={false}
+          style={[
+            styles.mainScreen,
+            {
+              transform: [{ translateX: mainTranslateX }],
+            },
+          ]}
+        >
+          {children}
+        </Animated.View>
+      </PanGestureHandler>
 
       {open ? (
         <Pressable style={styles.peekCloseArea} onPress={onClose} {...closeSwipeResponder.panHandlers} />
@@ -391,14 +370,6 @@ const styles = StyleSheet.create({
   },
   mainScreen: {
     ...StyleSheet.absoluteFillObject,
-  },
-  edgeSwipeArea: {
-    position: 'absolute',
-    top: EDGE_SWIPE_TOP_OFFSET,
-    left: 0,
-    bottom: EDGE_SWIPE_BOTTOM_OFFSET,
-    width: SWIPE_EDGE_WIDTH,
-    zIndex: 30,
   },
   peekCloseArea: {
     position: 'absolute',
