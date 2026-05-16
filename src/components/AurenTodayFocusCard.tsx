@@ -21,7 +21,7 @@ export function AurenTodayFocusCard() {
 
       <View style={styles.contentRow}>
         <View style={styles.iconBubble}>
-          <Ionicons name="book-outline" size={32} color="#737480" />
+          <Ionicons name="reader-outline" size={32} color="#737480" />
         </View>
 
         <View style={styles.taskContent}>
@@ -50,14 +50,14 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: 370,
-    height: 184,
+    height: 176,
     borderRadius: 27,
     borderWidth: 1,
     borderColor: 'rgba(17,24,39,0.055)',
     backgroundColor: 'rgba(255,255,255,0.72)',
     paddingHorizontal: 18,
-    paddingTop: 17,
-    paddingBottom: 17,
+    paddingTop: 16,
+    paddingBottom: 16,
     ...shadows.soft,
   },
   cardHeader: {
@@ -78,13 +78,13 @@ const styles = StyleSheet.create({
     fontWeight: '650',
   },
   contentRow: {
-    marginTop: 17,
+    marginTop: 16,
     flexDirection: 'row',
     alignItems: 'center',
   },
   iconBubble: {
-    width: 72,
-    height: 72,
+    width: 70,
+    height: 70,
     borderRadius: 999,
     marginRight: 16,
     backgroundColor: 'rgba(245,245,246,0.9)',
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   timeRow: {
-    marginTop: 14,
+    marginTop: 13,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   progressRow: {
-    marginTop: 17,
+    marginTop: 15,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 18,
