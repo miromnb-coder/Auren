@@ -20,6 +20,8 @@ export type PlusSheetStage = 'closed' | 'peek' | 'expanded';
 type AurenPlusSheetProps = {
   stage: PlusSheetStage;
   onStageChange: (stage: PlusSheetStage) => void;
+  webSearchActive?: boolean;
+  onWebSearchPress?: () => void;
 };
 
 type RecentPhoto = {
@@ -70,7 +72,12 @@ function PaperclipIcon() {
   );
 }
 
-export function AurenPlusSheet({ stage, onStageChange }: AurenPlusSheetProps) {
+export function AurenPlusSheet({
+  stage,
+  onStageChange,
+  webSearchActive = false,
+  onWebSearchPress,
+}: AurenPlusSheetProps) {
   const { height } = useWindowDimensions();
   const [recentPhotos, setRecentPhotos] = useState<RecentPhoto[]>([]);
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([]);
@@ -320,15 +327,24 @@ export function AurenPlusSheet({ stage, onStageChange }: AurenPlusSheetProps) {
         <View style={styles.photoDivider} />
 
         <View style={styles.actionsCard}>
-          <Pressable style={({ pressed }) => [styles.actionRow, pressed && styles.actionRowPressed]}>
+          <Pressable
+            onPress={onWebSearchPress}
+            style={({ pressed }) => [
+              styles.actionRow,
+              webSearchActive && styles.actionRowActive,
+              pressed && styles.actionRowPressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={webSearchActive ? 'Disable web search for next message' : 'Enable web search for next message'}
+          >
             <View style={styles.actionIconWrap}>
               <GlobeIcon />
             </View>
             <View style={styles.actionTextWrap}>
               <Text style={styles.actionTitle}>Web search</Text>
-              <Text style={styles.actionSubtitle}>Search current information</Text>
+              <Text style={styles.actionSubtitle}>{webSearchActive ? 'Enabled for next message' : 'Search current information'}</Text>
             </View>
-            <Text style={styles.actionChevron}>›</Text>
+            <Text style={styles.actionChevron}>{webSearchActive ? '✓' : '›'}</Text>
           </Pressable>
 
           <View style={styles.actionDivider} />
@@ -491,6 +507,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  actionRowActive: {
+    backgroundColor: 'rgba(17,24,39,0.045)',
+  },
   actionRowPressed: {
     backgroundColor: 'rgba(17,24,39,0.035)',
   },
@@ -535,10 +554,10 @@ const styles = StyleSheet.create({
   },
   actionChevron: {
     marginLeft: 8,
-    color: '#a0a4ad',
-    fontSize: 28,
+    color: '#6d7078',
+    fontSize: 24,
     lineHeight: 30,
-    fontWeight: '300',
+    fontWeight: '500',
   },
   confirmButton: {
     position: 'absolute',
