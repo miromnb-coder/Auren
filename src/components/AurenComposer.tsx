@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Keyboard, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors, shadows } from '../theme';
 import { ChatIcon, ControlsIcon, MicIcon, PlusIcon, SendIcon, StopIcon } from './AurenIcons';
 
@@ -7,6 +7,8 @@ const INPUT_LINE_HEIGHT = 22;
 const MIN_VISIBLE_LINES = 1;
 const MAX_VISIBLE_LINES = 5;
 const BASE_COMPOSER_HEIGHT = 112;
+const SEARCH_CHIP_HEIGHT = 36;
+const SEARCH_CHIP_GAP = 13;
 const MIN_INPUT_HEIGHT = INPUT_LINE_HEIGHT * MIN_VISIBLE_LINES;
 const MAX_INPUT_HEIGHT = INPUT_LINE_HEIGHT * MAX_VISIBLE_LINES;
 const APPROX_CHARS_PER_LINE = 31;
@@ -18,9 +20,11 @@ type AurenComposerProps = {
   onOpenChatMode?: () => void;
   onSendMessage?: (message: string) => void;
   onStopGenerating?: () => void;
+  onClearWebSearch?: () => void;
   plusActive?: boolean;
   controlsActive?: boolean;
   chatModeActive?: boolean;
+  webSearchActive?: boolean;
   isGenerating?: boolean;
 };
 
@@ -41,9 +45,11 @@ export function AurenComposer({
   onOpenChatMode,
   onSendMessage,
   onStopGenerating,
+  onClearWebSearch,
   plusActive = false,
   controlsActive = false,
   chatModeActive = false,
+  webSearchActive = false,
   isGenerating = false,
 }: AurenComposerProps) {
   const [draft, setDraft] = useState('');
@@ -54,7 +60,8 @@ export function AurenComposer({
   const canPressPrimary = isGenerating || canSend;
   const inputHeight = Math.min(visibleLineCount, MAX_VISIBLE_LINES) * INPUT_LINE_HEIGHT;
   const inputScrollable = visibleLineCount > MAX_VISIBLE_LINES;
-  const composerHeight = BASE_COMPOSER_HEIGHT + inputHeight - MIN_INPUT_HEIGHT;
+  const modeChipHeight = webSearchActive ? SEARCH_CHIP_HEIGHT + SEARCH_CHIP_GAP : 0;
+  const composerHeight = BASE_COMPOSER_HEIGHT + inputHeight - MIN_INPUT_HEIGHT + modeChipHeight;
 
   function updateDraft(nextDraft: string) {
     setDraft(nextDraft);
@@ -77,6 +84,19 @@ export function AurenComposer({
 
   return (
     <View style={[styles.shell, { height: composerHeight }]}>
+      {webSearchActive ? (
+        <Pressable
+          onPress={onClearWebSearch}
+          style={({ pressed }) => [styles.searchChip, pressed && styles.searchChipPressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Clear web search mode"
+        >
+          <Text style={styles.searchChipIcon}>◎</Text>
+          <Text style={styles.searchChipText}>Search</Text>
+          <Text style={styles.searchChipClose}>×</Text>
+        </Pressable>
+      ) : null}
+
       <TextInput
         value={draft}
         onChangeText={updateDraft}
@@ -99,7 +119,7 @@ export function AurenComposer({
         <View style={styles.leftActions}>
           <Pressable
             onPress={onOpenPlus}
-            style={[styles.iconButton, plusActive && styles.iconButtonActive]}
+            style={[styles.iconButton, (plusActive || webSearchActive) && styles.iconButtonActive]}
             accessibilityRole="button"
             accessibilityLabel="Open add menu"
           >
@@ -142,7 +162,7 @@ const styles = StyleSheet.create({
   shell: {
     width: '100%',
     minHeight: BASE_COMPOSER_HEIGHT,
-    maxHeight: BASE_COMPOSER_HEIGHT + MAX_INPUT_HEIGHT - MIN_INPUT_HEIGHT,
+    maxHeight: BASE_COMPOSER_HEIGHT + MAX_INPUT_HEIGHT - MIN_INPUT_HEIGHT + SEARCH_CHIP_HEIGHT + SEARCH_CHIP_GAP,
     borderRadius: 40,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.84)',
@@ -152,6 +172,46 @@ const styles = StyleSheet.create({
     paddingBottom: 17,
     overflow: 'hidden',
     ...shadows.soft,
+  },
+  searchChip: {
+    alignSelf: 'flex-start',
+    height: SEARCH_CHIP_HEIGHT,
+    marginBottom: SEARCH_CHIP_GAP,
+    paddingLeft: 12,
+    paddingRight: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(17,24,39,0.105)',
+    backgroundColor: 'rgba(246,247,249,0.88)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    shadowColor: '#111827',
+    shadowOpacity: 0.035,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+  },
+  searchChipPressed: {
+    opacity: 0.68,
+  },
+  searchChipIcon: {
+    color: '#4f535d',
+    fontSize: 22,
+    lineHeight: 24,
+    fontWeight: '500',
+  },
+  searchChipText: {
+    color: '#4f535d',
+    fontSize: 17,
+    lineHeight: 20,
+    fontWeight: '600',
+    letterSpacing: -0.22,
+  },
+  searchChipClose: {
+    color: '#4f535d',
+    fontSize: 22,
+    lineHeight: 24,
+    fontWeight: '500',
   },
   input: {
     padding: 0,
