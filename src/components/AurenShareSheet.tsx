@@ -132,8 +132,8 @@ export function AurenShareSheet({ open, onClose }: AurenShareSheetProps) {
                 <View style={styles.optionRow}>
                   <ShareOptionIcon name="document-outline" label="PDF" />
                   <View style={styles.optionCopy}>
-                    <Text style={styles.optionTitle}>PDF summary</Text>
-                    <Text style={styles.optionSubtitle}>Export this session as a clean study PDF</Text>
+                    <Text style={styles.optionTitle} numberOfLines={1}>PDF summary</Text>
+                    <Text style={styles.optionSubtitle} numberOfLines={2}>Export this session as a clean study PDF</Text>
                   </View>
                   <Ionicons name="checkmark" size={26} color="#111217" />
                 </View>
@@ -143,8 +143,8 @@ export function AurenShareSheet({ open, onClose }: AurenShareSheetProps) {
                 <View style={styles.optionRow}>
                   <ShareOptionIcon name="document-text-outline" />
                   <View style={styles.optionCopy}>
-                    <Text style={styles.optionTitle}>Notes copy</Text>
-                    <Text style={styles.optionSubtitle}>Copy the session as formatted study notes</Text>
+                    <Text style={styles.optionTitle} numberOfLines={1}>Notes copy</Text>
+                    <Text style={styles.optionSubtitle} numberOfLines={2}>Copy the session as formatted study notes</Text>
                   </View>
                   <View style={styles.emptyCheckSpace} />
                 </View>
@@ -154,8 +154,8 @@ export function AurenShareSheet({ open, onClose }: AurenShareSheetProps) {
                 <View style={styles.optionRow}>
                   <ShareOptionIcon name="lock-closed-outline" />
                   <View style={styles.optionCopy}>
-                    <Text style={styles.optionTitle}>Private copy</Text>
-                    <Text style={styles.optionSubtitle}>Visible only in your account</Text>
+                    <Text style={styles.optionTitle} numberOfLines={1}>Private copy</Text>
+                    <Text style={styles.optionSubtitle} numberOfLines={2}>Visible only in your account</Text>
                   </View>
                   <Ionicons name="checkmark" size={26} color="#111217" />
                 </View>
@@ -165,8 +165,8 @@ export function AurenShareSheet({ open, onClose }: AurenShareSheetProps) {
                 <View style={styles.optionRow}>
                   <ShareOptionIcon name="globe-outline" />
                   <View style={styles.optionCopy}>
-                    <Text style={styles.optionTitle}>Class link</Text>
-                    <Text style={styles.optionSubtitle}>Create a read-only link for classmates</Text>
+                    <Text style={styles.optionTitle} numberOfLines={1}>Class link</Text>
+                    <Text style={styles.optionSubtitle} numberOfLines={2}>Create a read-only link for classmates</Text>
                   </View>
                   <View style={styles.emptyCheckSpace} />
                 </View>
@@ -181,7 +181,9 @@ export function AurenShareSheet({ open, onClose }: AurenShareSheetProps) {
             </View>
           </Pressable>
 
-          <Text style={styles.footerNote}>{exportActive ? 'Export only the study content you want to keep or share.' : 'Share only the study content you want others to see.'}</Text>
+          <View style={styles.footerNoteWrap}>
+            <Text style={styles.footerNote} numberOfLines={2}>{exportActive ? 'Export only the study content you want to keep or share.' : 'Share only the study content you want others to see.'}</Text>
+          </View>
         </Animated.View>
       </View>
     </Modal>
@@ -198,7 +200,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.56)',
   },
   sheet: {
-    minHeight: 390,
+    height: 444,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     backgroundColor: '#fbfbfa',
@@ -282,10 +284,11 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   optionsWrap: {
+    height: 150,
     marginTop: 25,
   },
   optionRow: {
-    minHeight: 69,
+    height: 74,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -336,7 +339,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     height: 55,
-    marginTop: 27,
+    marginTop: 18,
     borderRadius: 13,
     backgroundColor: '#080808',
     alignItems: 'center',
@@ -358,8 +361,13 @@ const styles = StyleSheet.create({
     letterSpacing: -0.32,
     fontWeight: '500',
   },
+  footerNoteWrap: {
+    height: 42,
+    marginTop: 20,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+  },
   footerNote: {
-    marginTop: 22,
     color: '#9c9da2',
     fontSize: 13.5,
     lineHeight: 18.5,
