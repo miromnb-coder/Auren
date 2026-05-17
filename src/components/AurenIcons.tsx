@@ -12,6 +12,7 @@ export type AurenStatusIconType = 'memory' | 'saved' | 'done' | 'alert' | 'searc
 const ink = '#1d1d1f';
 const lightInk = '#f8f8f6';
 const softInk = '#70717a';
+const headerInk = '#2b2c2f';
 
 const STATUS_ICON_MAP: Record<AurenStatusIconType, keyof typeof Ionicons.glyphMap> = {
   memory: 'sparkles',
@@ -29,6 +30,14 @@ export function MenuIcon() {
       <View style={[styles.menuLine, { width: 18 }]} />
     </View>
   );
+}
+
+export function HeaderShareIcon() {
+  return <Ionicons name="arrow-redo-outline" size={30} color={headerInk} />;
+}
+
+export function HeaderMoreIcon() {
+  return <Ionicons name="ellipsis-horizontal" size={29} color={headerInk} />;
 }
 
 export function PlusIcon() {
