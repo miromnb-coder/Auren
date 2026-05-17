@@ -451,9 +451,9 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
                       <Text style={styles.subtitle}>{'I’m here to help you focus, learn faster,\nand stay on track.'}</Text>
                     </View>
                     <Animated.View pointerEvents="box-none" style={[styles.pillsRow, { opacity: pillsOpacity, transform: [{ translateY: pillsTranslateY }] }]}>
-                      <AurenActionPill width={126} icon={<StudyBookIcon size={17} color={STUDY_ACTION_ICON_COLOR} strokeWidth={1.7} />} label="Explain a concept" />
-                      <AurenActionPill width={78} icon={<StudyQuizIcon size={17} color={STUDY_ACTION_ICON_COLOR} strokeWidth={1.7} />} label="Quiz me" />
-                      <AurenActionPill width={134} icon={<StudyCalendarIcon size={17} color={STUDY_ACTION_ICON_COLOR} strokeWidth={1.7} />} label="Make a study plan" />
+                      <AurenActionPill width={108} icon={<StudyBookIcon size={29} color={STUDY_ACTION_ICON_COLOR} strokeWidth={1.75} />} label="Explain a concept" />
+                      <AurenActionPill width={108} icon={<StudyQuizIcon size={29} color={STUDY_ACTION_ICON_COLOR} strokeWidth={1.75} />} label="Quiz me" />
+                      <AurenActionPill width={108} icon={<StudyCalendarIcon size={29} color={STUDY_ACTION_ICON_COLOR} strokeWidth={1.75} />} label="Make a study plan" />
                     </Animated.View>
                     <View style={styles.focusCardWrap}><AurenTodayFocusCard focusCard={todayFocusCard} loading={todayFocusLoading} onPress={openFocusSetup} /></View>
                   </Pressable>
@@ -488,13 +488,13 @@ const styles = StyleSheet.create({
   brand: { color: colors.text, fontSize: 28, lineHeight: 34, letterSpacing: -0.9, fontFamily: serifFont },
   headerSpacer: { width: 68 },
   content: { flex: 1, width: '100%', paddingHorizontal: 18 },
-  startContent: { alignItems: 'center', justifyContent: 'flex-start', paddingTop: 112, paddingBottom: 190 },
+  startContent: { alignItems: 'center', justifyContent: 'flex-start', paddingTop: 84, paddingBottom: 190 },
   chatContent: { alignItems: 'stretch', justifyContent: 'flex-end', paddingHorizontal: 0, paddingBottom: 0 },
-  hero: { alignItems: 'center', maxWidth: 360 },
-  title: { color: '#686775', fontSize: 31, lineHeight: 37, letterSpacing: -0.95, textAlign: 'center', fontFamily: serifFont },
-  subtitle: { marginTop: 14, color: colors.muted, fontSize: 15.8, lineHeight: 22, letterSpacing: -0.12, textAlign: 'center', fontWeight: '500' },
-  pillsRow: { marginTop: 48, width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  focusCardWrap: { width: '100%', alignItems: 'center', marginTop: 38, paddingHorizontal: 6 },
+  hero: { alignItems: 'center', maxWidth: 370 },
+  title: { color: '#686775', fontSize: 33.5, lineHeight: 40, letterSpacing: -1.08, textAlign: 'center', fontFamily: serifFont },
+  subtitle: { marginTop: 14, color: colors.muted, fontSize: 15.8, lineHeight: 22.5, letterSpacing: -0.14, textAlign: 'center', fontWeight: '500' },
+  pillsRow: { marginTop: 38, width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
+  focusCardWrap: { width: '100%', alignItems: 'center', marginTop: 34, paddingHorizontal: 6 },
   composerWrap: { position: 'absolute', left: 16, right: 16 },
   plusBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 30 },
 });
