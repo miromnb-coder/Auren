@@ -6,41 +6,29 @@ export function selectMode(
 ): AurenModeResult {
   if (requestedMode) {
     return {
-      mode: requestedMode,
-      reason: 'Using the mode explicitly provided by the app UI.',
+      mode: requestedMode === 'general' ? 'study' : requestedMode,
+      reason: requestedMode === 'general'
+        ? 'Auren is locked as a study agent, so General Mode is routed to Study Mode.'
+        : 'Using the mode explicitly provided by the app UI.',
     };
   }
 
-  if (intent.intent === 'study_help') {
+  if (intent.intent === 'money_help') {
     return {
-      mode: 'study',
-      reason: 'Selected Study Mode from the detected intent.',
-    };
-  }
-
-  if (intent.intent === 'daily_planning') {
-    return {
-      mode: 'today',
-      reason: 'Selected Today Mode from the detected intent.',
+      mode: 'money',
+      reason: 'Selected Money Mode from the detected intent.',
     };
   }
 
   if (intent.intent === 'save_memory' || intent.intent === 'recall_memory') {
     return {
       mode: 'memory',
-      reason: 'Selected Memory Mode from the detected intent.',
-    };
-  }
-
-  if (intent.intent === 'focus_help') {
-    return {
-      mode: 'focus',
-      reason: 'Selected Focus Mode from the detected intent.',
+      reason: 'Selected Memory Mode only for explicit memory work.',
     };
   }
 
   return {
-    mode: 'general',
-    reason: 'Using General Mode as the safe default for Auren v0.1.',
+    mode: 'study',
+    reason: 'Auren is locked as a personal AI Study Agent by default.',
   };
 }
