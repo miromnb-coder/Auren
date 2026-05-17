@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, shadows } from '../theme';
+import { colors } from '../theme';
 
 type Props = {
   icon: ReactNode;
@@ -20,33 +20,39 @@ export function AurenActionPill({ icon, label, width = 110, onPress }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    height: 78,
+    height: 64,
     paddingHorizontal: 8,
-    paddingTop: 14,
-    paddingBottom: 12,
-    borderRadius: 17,
+    paddingTop: 10,
+    paddingBottom: 9,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(17,24,39,0.052)',
-    backgroundColor: 'rgba(255,255,255,0.74)',
+    borderColor: 'rgba(17,24,39,0.045)',
+    backgroundColor: 'rgba(255,255,255,0.54)',
     alignItems: 'center',
     justifyContent: 'space-between',
-    ...shadows.tiny,
+    shadowColor: '#111827',
+    shadowOpacity: 0.028,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 1,
   },
   pressed: {
-    transform: [{ scale: 0.985 }],
-    opacity: 0.86,
+    transform: [{ scale: 0.99 }],
+    opacity: 0.82,
   },
   icon: {
-    height: 30,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
+    opacity: 0.82,
   },
   label: {
     color: colors.text,
-    fontSize: 12.35,
-    lineHeight: 16,
+    fontSize: 12.1,
+    lineHeight: 15,
     letterSpacing: -0.22,
     fontWeight: '500',
     textAlign: 'center',
+    opacity: 0.9,
   },
 });
