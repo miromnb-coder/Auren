@@ -20,13 +20,20 @@ export const buildAurenContext = async (
     buildMemoryContext(input),
     getStudyContext(input),
   ]);
+  const userWithStudy = {
+    ...user,
+    preferences: {
+      ...user.preferences,
+      study,
+    },
+  };
 
   return {
     input,
     message: input.message,
     intent,
     mode,
-    user,
+    user: userWithStudy,
     environment: getEnvironmentContext(),
     conversation: input.conversation ?? [],
     memory,
