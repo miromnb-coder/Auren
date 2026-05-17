@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { shadows } from '../theme';
 
@@ -19,67 +19,71 @@ function ShareOptionIcon({ name }: { name: keyof typeof Ionicons.glyphMap }) {
 export function AurenShareSheet({ open, onClose }: AurenShareSheetProps) {
   const insets = useSafeAreaInsets();
 
-  if (!open) return null;
-
   return (
-    <View style={styles.layer} pointerEvents="box-none">
-      <Pressable style={styles.backdrop} onPress={onClose} />
+    <Modal
+      visible={open}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
+      <View style={styles.layer} pointerEvents="box-none">
+        <Pressable style={styles.backdrop} onPress={onClose} />
 
-      <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 18) + 8 }]}>
-        <View style={styles.headerRow}>
-          <Pressable onPress={onClose} hitSlop={14} style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel="Close share sheet">
-            <Ionicons name="close" size={35} color="#111217" />
+        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 18) + 8 }]}>
+          <View style={styles.headerRow}>
+            <Pressable onPress={onClose} hitSlop={14} style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel="Close share sheet">
+              <Ionicons name="close" size={35} color="#111217" />
+            </Pressable>
+            <Text style={styles.title}>Share conversation</Text>
+            <View style={styles.headerSpacer} />
+          </View>
+
+          <View style={styles.segmentedControl}>
+            <View style={styles.segmentActive}>
+              <Text style={styles.segmentActiveText}>Share</Text>
+            </View>
+            <View style={styles.segmentInactive}>
+              <Text style={styles.segmentInactiveText}>Export</Text>
+            </View>
+          </View>
+
+          <View style={styles.optionsWrap}>
+            <View style={styles.optionRow}>
+              <ShareOptionIcon name="lock-closed-outline" />
+              <View style={styles.optionCopy}>
+                <Text style={styles.optionTitle}>Only me</Text>
+                <Text style={styles.optionSubtitle}>Keep this chat private</Text>
+              </View>
+              <Ionicons name="checkmark" size={31} color="#111217" />
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.optionRow}>
+              <ShareOptionIcon name="globe-outline" />
+              <View style={styles.optionCopy}>
+                <Text style={styles.optionTitle}>Public link</Text>
+                <Text style={styles.optionSubtitle}>Anyone with the link can view</Text>
+              </View>
+              <View style={styles.emptyCheckSpace} />
+            </View>
+          </View>
+
+          <Pressable style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]} accessibilityRole="button" accessibilityLabel="Share now">
+            <Text style={styles.primaryButtonText}>Share now</Text>
           </Pressable>
-          <Text style={styles.title}>Share conversation</Text>
-          <View style={styles.headerSpacer} />
+
+          <Text style={styles.footerNote}>Share study chats carefully. Avoid sensitive{`\n`}personal information.</Text>
         </View>
-
-        <View style={styles.segmentedControl}>
-          <View style={styles.segmentActive}>
-            <Text style={styles.segmentActiveText}>Share</Text>
-          </View>
-          <View style={styles.segmentInactive}>
-            <Text style={styles.segmentInactiveText}>Export</Text>
-          </View>
-        </View>
-
-        <View style={styles.optionsWrap}>
-          <View style={styles.optionRow}>
-            <ShareOptionIcon name="lock-closed-outline" />
-            <View style={styles.optionCopy}>
-              <Text style={styles.optionTitle}>Only me</Text>
-              <Text style={styles.optionSubtitle}>Keep this chat private</Text>
-            </View>
-            <Ionicons name="checkmark" size={31} color="#111217" />
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.optionRow}>
-            <ShareOptionIcon name="globe-outline" />
-            <View style={styles.optionCopy}>
-              <Text style={styles.optionTitle}>Public link</Text>
-              <Text style={styles.optionSubtitle}>Anyone with the link can view</Text>
-            </View>
-            <View style={styles.emptyCheckSpace} />
-          </View>
-        </View>
-
-        <Pressable style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]} accessibilityRole="button" accessibilityLabel="Share now">
-          <Text style={styles.primaryButtonText}>Share now</Text>
-        </Pressable>
-
-        <Text style={styles.footerNote}>Share study chats carefully. Avoid sensitive{`\n`}personal information.</Text>
       </View>
-    </View>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   layer: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 80,
-    elevation: 80,
+    flex: 1,
     justifyContent: 'flex-end',
   },
   backdrop: {
