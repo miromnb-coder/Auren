@@ -11,7 +11,7 @@ type AurenShareSheetProps = {
 function ShareOptionIcon({ name }: { name: keyof typeof Ionicons.glyphMap }) {
   return (
     <View style={styles.optionIconBox}>
-      <Ionicons name={name} size={27} color="#111217" />
+      <Ionicons name={name} size={23} color="#111217" />
     </View>
   );
 }
@@ -30,10 +30,10 @@ export function AurenShareSheet({ open, onClose }: AurenShareSheetProps) {
       <View style={styles.layer} pointerEvents="box-none">
         <Pressable style={styles.backdrop} onPress={onClose} />
 
-        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 18) + 8 }]}>
+        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 18) + 2 }]}>
           <View style={styles.headerRow}>
             <Pressable onPress={onClose} hitSlop={14} style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel="Close share sheet">
-              <Ionicons name="close" size={35} color="#111217" />
+              <Ionicons name="close" size={29} color="#111217" />
             </Pressable>
             <Text style={styles.title}>Share conversation</Text>
             <View style={styles.headerSpacer} />
@@ -55,7 +55,7 @@ export function AurenShareSheet({ open, onClose }: AurenShareSheetProps) {
                 <Text style={styles.optionTitle}>Only me</Text>
                 <Text style={styles.optionSubtitle}>Keep this chat private</Text>
               </View>
-              <Ionicons name="checkmark" size={31} color="#111217" />
+              <Ionicons name="checkmark" size={26} color="#111217" />
             </View>
 
             <View style={styles.divider} />
@@ -91,25 +91,25 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.56)',
   },
   sheet: {
-    minHeight: 566,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
+    minHeight: 390,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     backgroundColor: '#fbfbfa',
-    paddingTop: 28,
+    paddingTop: 22,
     paddingHorizontal: 24,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.74)',
     ...shadows.soft,
   },
   headerRow: {
-    height: 42,
+    height: 34,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   closeButton: {
-    width: 42,
-    height: 42,
+    width: 34,
+    height: 34,
     alignItems: 'flex-start',
     justifyContent: 'center',
   },
@@ -119,23 +119,23 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     color: '#050505',
-    fontSize: 25,
-    lineHeight: 31,
-    letterSpacing: -0.55,
+    fontSize: 18.2,
+    lineHeight: 23,
+    letterSpacing: -0.32,
     fontWeight: '750',
     textAlign: 'center',
   },
   headerSpacer: {
-    width: 42,
-    height: 42,
+    width: 34,
+    height: 34,
   },
   segmentedControl: {
-    marginTop: 27,
-    height: 61,
+    marginTop: 22,
+    height: 48,
     borderRadius: 9,
     backgroundColor: '#eeeeef',
     borderWidth: 1,
-    borderColor: 'rgba(17,24,39,0.04)',
+    borderColor: 'rgba(17,24,39,0.045)',
     padding: 2,
     flexDirection: 'row',
     overflow: 'hidden',
@@ -147,9 +147,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#111827',
-    shadowOpacity: 0.07,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.065,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
     elevation: 2,
   },
   segmentInactive: {
@@ -159,34 +159,34 @@ const styles = StyleSheet.create({
   },
   segmentActiveText: {
     color: '#050505',
-    fontSize: 19,
-    lineHeight: 24,
+    fontSize: 15.5,
+    lineHeight: 20,
     fontWeight: '700',
-    letterSpacing: -0.28,
+    letterSpacing: -0.22,
   },
   segmentInactiveText: {
     color: '#050505',
-    fontSize: 19,
-    lineHeight: 24,
+    fontSize: 15.5,
+    lineHeight: 20,
     fontWeight: '450',
-    letterSpacing: -0.24,
+    letterSpacing: -0.2,
   },
   optionsWrap: {
-    marginTop: 30,
+    marginTop: 25,
   },
   optionRow: {
-    minHeight: 90,
+    minHeight: 69,
     flexDirection: 'row',
     alignItems: 'center',
   },
   optionIconBox: {
-    width: 64,
-    height: 64,
-    borderRadius: 12,
+    width: 48,
+    height: 48,
+    borderRadius: 10,
     backgroundColor: '#f0f0ef',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 19,
+    marginRight: 16,
   },
   optionCopy: {
     flex: 1,
@@ -194,31 +194,31 @@ const styles = StyleSheet.create({
   },
   optionTitle: {
     color: '#202020',
-    fontSize: 24,
-    lineHeight: 30,
-    letterSpacing: -0.45,
+    fontSize: 20,
+    lineHeight: 25,
+    letterSpacing: -0.36,
     fontWeight: '450',
   },
   optionSubtitle: {
     marginTop: 1,
     color: '#8c8c91',
-    fontSize: 19,
-    lineHeight: 24,
-    letterSpacing: -0.22,
+    fontSize: 15.7,
+    lineHeight: 20,
+    letterSpacing: -0.16,
     fontWeight: '400',
   },
   divider: {
     height: 1,
-    marginLeft: 83,
+    marginLeft: 64,
     backgroundColor: 'rgba(17,24,39,0.075)',
   },
   emptyCheckSpace: {
-    width: 31,
+    width: 26,
   },
   primaryButton: {
-    height: 74,
-    marginTop: 39,
-    borderRadius: 16,
+    height: 55,
+    marginTop: 27,
+    borderRadius: 13,
     backgroundColor: '#080808',
     alignItems: 'center',
     justifyContent: 'center',
@@ -228,17 +228,17 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: '#ffffff',
-    fontSize: 24,
-    lineHeight: 29,
-    letterSpacing: -0.42,
+    fontSize: 18.5,
+    lineHeight: 23,
+    letterSpacing: -0.32,
     fontWeight: '500',
   },
   footerNote: {
-    marginTop: 28,
+    marginTop: 22,
     color: '#9c9da2',
-    fontSize: 16,
-    lineHeight: 22,
-    letterSpacing: -0.18,
+    fontSize: 13.5,
+    lineHeight: 18.5,
+    letterSpacing: -0.12,
     textAlign: 'center',
     fontWeight: '400',
   },
