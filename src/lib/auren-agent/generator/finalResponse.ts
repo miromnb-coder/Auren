@@ -12,6 +12,7 @@ import type {
   AurenSuggestion,
   AurenToolResult,
 } from '../core/types';
+import { createStudyDataAnswer, shouldPreferStudyDataAnswer } from './studyResponse';
 
 const AUREN_RESPONSE_FUNCTION = 'auren-generate-response';
 const MODEL_TIMEOUT_MS = 18000;
@@ -662,10 +663,10 @@ const createSafeFallbackAnswer = (context: AurenContext, toolResults: AurenToolR
       : 'I could not use the needed tool right now, but I can still help continue from here.';
   }
 
-  if (context.study?.summary?.suggestedNextAction && context.study.summary.hasFocus) {
-    return language === 'fi'
-      ? `En saanut muodostettua kokonaista vastausta juuri nyt, mutta seuraava opiskeluaskeleesi on: ${context.study.summary.suggestedNextAction}`
-      : `I could not generate the full response right now, but your next study step is: ${context.study.summary.suggestedNextAction}`;
+  const studyFallbackAnswer = createStudyDataAnswer(context);
+
+  if (studyFallbackAnswer && context.study?.summary?.hasFocus) {
+    return studyFallbackAnswer;
   }
 
   return language === 'fi'
@@ -699,9 +700,12 @@ export const generateFinalResponse = async (
   const modelResponse = await callResponseModel(context, plan, toolResults);
   const metadata = createResponseMetadata(modelResponse);
   const modelAnswer = typeof modelResponse?.answer === 'string' ? cleanAnswerText(modelResponse.answer) : '';
-  const answer = modelAnswer && !isInternalAnswer(modelAnswer)
-    ? limitAnswerText(modelAnswer, 8000)
-    : createSafeFallbackAnswer(context, toolResults);
+  const studyDataAnswer = createStudyDataAnswer(context);
+  const answer = studyDataAnswer && shouldPreferStudyDataAnswer(context, modelAnswer)
+    ? limitAnswerText(studyDataAnswer, 8000)
+    : modelAnswer && !isInternalAnswer(modelAnswer)
+      ? limitAnswerText(modelAnswer, 8000)
+      : createSafeFallbackAnswer(context, toolResults);
 
   return {
     answer,
