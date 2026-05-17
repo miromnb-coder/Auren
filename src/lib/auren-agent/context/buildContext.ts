@@ -7,6 +7,7 @@ import type {
 import { buildMemoryContext } from '../memory/memoryEngine';
 import { getAvailableTools } from '../tools/toolRegistry';
 import { getEnvironmentContext } from './environmentContext';
+import { getStudyContext } from './studyContext';
 import { getUserContext } from './userContext';
 
 export const buildAurenContext = async (
@@ -14,9 +15,10 @@ export const buildAurenContext = async (
   intent: AurenIntentResult,
   mode: AurenMode,
 ): Promise<AurenContext> => {
-  const [user, memory] = await Promise.all([
+  const [user, memory, study] = await Promise.all([
     getUserContext(input),
     buildMemoryContext(input),
+    getStudyContext(input),
   ]);
 
   return {
@@ -28,6 +30,7 @@ export const buildAurenContext = async (
     environment: getEnvironmentContext(),
     conversation: input.conversation ?? [],
     memory,
+    study,
     availableTools: getAvailableTools(),
     createdAt: new Date().toISOString(),
   };
