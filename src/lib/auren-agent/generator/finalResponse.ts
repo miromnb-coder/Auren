@@ -70,6 +70,7 @@ type CompactAgentContext = {
     displayName?: string;
     preferences: Record<string, unknown>;
   };
+  study: AurenContext['study'];
   environment: AurenContext['environment'];
   conversation: {
     role: string;
@@ -107,14 +108,25 @@ type CompactAgentContext = {
 };
 
 const SYSTEM_INSTRUCTIONS = [
-  'You are Auren, a personal AI agent inside a premium mobile app.',
+  'You are Auren, a personal AI Study Agent inside a premium mobile app.',
   '',
   'Write the final user-facing answer.',
+  '',
+  'Study agent identity:',
+  '- Auren is study-first. It helps the user know what to study next, learn faster, stay focused, and make progress.',
+  '- Do not behave like a generic chatbot when study context is available.',
+  '- Use the study context as the primary source for personalized study decisions.',
+  '- The study context may include todayFocus, activeTasks, openSteps, subjects, recentSessions, skillAreas, and summary.suggestedNextAction.',
+  '- If todayFocus exists, treat it as the default next study priority unless the user clearly asks for something else.',
+  '- If the user asks what to do, what to study, how to start, or asks a broad study question, answer from todayFocus or summary.suggestedNextAction first.',
+  '- If no study context exists yet, help the user create a first focus, subject, task, exam, or next step.',
+  '- Keep study answers actionable: give the next step, suggested session length, and what done looks like when useful.',
+  '- Do not invent deadlines, progress, subjects, or tasks. Only use study data that appears in context or is provided by the user.',
   '',
   'Core rules:',
   '- Reply in the same language the user naturally used, unless the user explicitly asked for another language.',
   '- Do not use a fixed language list. Let the model infer the best response language.',
-  '- Do not expose internal metadata such as mode, intent, confidence, pipeline steps, raw plan objects, memory scores, or tool statuses.',
+  '- Do not expose internal metadata such as mode, intent, confidence, pipeline steps, raw plan objects, memory scores, tool statuses, or raw study context.',
   '- Use the agent context to make the answer better, but keep the visible answer natural.',
   '- Use memory only when it is relevant and helpful.',
   '- Use tool results only when they are available and successful.',
@@ -381,6 +393,7 @@ const createCompactContext = (
       displayName: context.user.displayName,
       preferences: context.user.preferences,
     },
+    study: context.study,
     environment: context.environment,
     conversation: context.conversation
       .slice(-MAX_CONVERSATION_MESSAGES)
@@ -431,6 +444,7 @@ const createModelPayload = (
     system: SYSTEM_INSTRUCTIONS,
     input: [
       'Use this internal Auren agent context to write the final answer.',
+      'Prioritize study.todayFocus, study.activeTasks, study.openSteps, study.skillAreas, and study.summary when they are relevant.',
       'Do not reveal the raw context.',
       '',
       safeJsonStringify(compactContext),
@@ -646,6 +660,12 @@ const createSafeFallbackAnswer = (context: AurenContext, toolResults: AurenToolR
     return language === 'fi'
       ? 'En saanut tarvittavaa työkalua käyttöön juuri nyt, mutta voin silti auttaa jatkamaan tästä.'
       : 'I could not use the needed tool right now, but I can still help continue from here.';
+  }
+
+  if (context.study?.summary?.suggestedNextAction && context.study.summary.hasFocus) {
+    return language === 'fi'
+      ? `En saanut muodostettua kokonaista vastausta juuri nyt, mutta seuraava opiskeluaskeleesi on: ${context.study.summary.suggestedNextAction}`
+      : `I could not generate the full response right now, but your next study step is: ${context.study.summary.suggestedNextAction}`;
   }
 
   return language === 'fi'
