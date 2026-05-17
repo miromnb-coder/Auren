@@ -442,7 +442,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
                 <Pressable onPress={openSidebar} hitSlop={14} style={({ pressed }) => [styles.menuButton, pressed && styles.menuButtonPressed]} accessibilityRole="button" accessibilityLabel="Open menu"><MenuIcon /></Pressable>
                 <View style={styles.brandButton} accessibilityRole="header"><Text style={styles.brand}>Auren</Text></View>
                 {hasMessages ? (
-                  <View style={styles.headerActions} pointerEvents="none">
+                  <View style={styles.headerActions}>
                     <View style={styles.headerActionIcon}><HeaderShareIcon /></View>
                     <View style={styles.headerActionIcon}><HeaderMoreIcon /></View>
                   </View>
