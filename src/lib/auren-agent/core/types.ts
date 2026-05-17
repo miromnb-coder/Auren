@@ -103,6 +103,87 @@ export type AurenEnvironmentContext = {
   platform: 'native' | 'web' | 'unknown';
 };
 
+export type AurenStudyContext = {
+  available: boolean;
+  note?: string;
+  todayFocus: {
+    id: string;
+    date: string;
+    title: string;
+    nextStep: string;
+    sessionMinutes: number;
+    completedSteps: number;
+    totalSteps: number;
+    progress: number;
+    status: string;
+    selectedBy: string | null;
+    priorityScore: number;
+    reason: string | null;
+  } | null;
+  subjects: Array<{
+    id: string;
+    name: string;
+    level: string;
+    status: string;
+  }>;
+  activeTasks: Array<{
+    id: string;
+    subjectId: string | null;
+    topicId: string | null;
+    type: string;
+    title: string;
+    description: string | null;
+    dueAt: string | null;
+    scheduledFor: string | null;
+    priority: string;
+    status: string;
+    estimatedMinutes: number | null;
+    difficulty: string;
+  }>;
+  openSteps: Array<{
+    id: string;
+    taskId: string;
+    title: string;
+    status: string;
+    estimatedMinutes: number | null;
+    orderIndex: number;
+  }>;
+  recentSessions: Array<{
+    id: string;
+    subjectId: string | null;
+    taskId: string | null;
+    focusCardId: string | null;
+    goal: string | null;
+    status: string;
+    plannedMinutes: number | null;
+    actualMinutes: number | null;
+    completedSteps: number | null;
+    totalSteps: number | null;
+    productivityScore: number | null;
+    startedAt: string | null;
+    endedAt: string | null;
+  }>;
+  skillAreas: Array<{
+    id: string;
+    subjectId: string | null;
+    topicId: string | null;
+    name: string;
+    masteryScore: number;
+    confidence: number;
+    correctCount: number;
+    mistakeCount: number;
+    status: string;
+    lastPracticedAt: string | null;
+  }>;
+  summary: {
+    hasFocus: boolean;
+    activeTaskCount: number;
+    upcomingDeadlineCount: number;
+    weakAreaCount: number;
+    suggestedNextAction: string;
+  };
+};
+
 export type AurenMemoryType =
   | 'user_preference'
   | 'study_goal'
@@ -146,6 +227,7 @@ export type AurenContext = {
   environment: AurenEnvironmentContext;
   conversation: AurenConversationMessage[];
   memory: AurenMemoryResult;
+  study: AurenStudyContext;
   availableTools: AurenToolDefinition[];
   createdAt: string;
 };
