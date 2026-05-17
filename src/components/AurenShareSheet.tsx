@@ -9,14 +9,17 @@ type AurenShareSheetProps = {
   onClose: () => void;
 };
 
+type ShareSheetTab = 'link' | 'export';
+
 const SHEET_CLOSED_TRANSLATE_Y = 520;
 const SHEET_OPEN_DURATION = 330;
 const SHEET_CLOSE_DURATION = 240;
 
-function ShareOptionIcon({ name }: { name: keyof typeof Ionicons.glyphMap }) {
+function ShareOptionIcon({ name, label }: { name: keyof typeof Ionicons.glyphMap; label?: string }) {
   return (
     <View style={styles.optionIconBox}>
       <Ionicons name={name} size={23} color="#111217" />
+      {label ? <Text style={styles.optionIconLabel}>{label}</Text> : null}
     </View>
   );
 }
@@ -24,14 +27,17 @@ function ShareOptionIcon({ name }: { name: keyof typeof Ionicons.glyphMap }) {
 export function AurenShareSheet({ open, onClose }: AurenShareSheetProps) {
   const insets = useSafeAreaInsets();
   const [mounted, setMounted] = useState(open);
+  const [activeTab, setActiveTab] = useState<ShareSheetTab>('link');
   const mountedRef = useRef(open);
   const sheetTranslateY = useRef(new Animated.Value(SHEET_CLOSED_TRANSLATE_Y)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const exportActive = activeTab === 'export';
 
   useEffect(() => {
     if (open) {
       mountedRef.current = true;
       setMounted(true);
+      setActiveTab('link');
       sheetTranslateY.setValue(SHEET_CLOSED_TRANSLATE_Y);
       backdropOpacity.setValue(0);
 
@@ -102,44 +108,80 @@ export function AurenShareSheet({ open, onClose }: AurenShareSheetProps) {
           </View>
 
           <View style={styles.segmentedControl}>
-            <View style={styles.segmentActive}>
-              <Text style={styles.segmentActiveText}>Link</Text>
-            </View>
-            <View style={styles.segmentInactive}>
-              <Text style={styles.segmentInactiveText}>Export</Text>
-            </View>
+            <Pressable
+              onPress={() => setActiveTab('link')}
+              style={({ pressed }) => [activeTab === 'link' ? styles.segmentActive : styles.segmentInactive, pressed && styles.segmentPressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Show link sharing options"
+            >
+              <Text style={activeTab === 'link' ? styles.segmentActiveText : styles.segmentInactiveText}>Link</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setActiveTab('export')}
+              style={({ pressed }) => [exportActive ? styles.segmentActive : styles.segmentInactive, pressed && styles.segmentPressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Show export options"
+            >
+              <Text style={exportActive ? styles.segmentActiveText : styles.segmentInactiveText}>Export</Text>
+            </Pressable>
           </View>
 
           <View style={styles.optionsWrap}>
-            <View style={styles.optionRow}>
-              <ShareOptionIcon name="lock-closed-outline" />
-              <View style={styles.optionCopy}>
-                <Text style={styles.optionTitle}>Private copy</Text>
-                <Text style={styles.optionSubtitle}>Visible only in your account</Text>
-              </View>
-              <Ionicons name="checkmark" size={26} color="#111217" />
-            </View>
+            {exportActive ? (
+              <>
+                <View style={styles.optionRow}>
+                  <ShareOptionIcon name="document-outline" label="PDF" />
+                  <View style={styles.optionCopy}>
+                    <Text style={styles.optionTitle}>PDF summary</Text>
+                    <Text style={styles.optionSubtitle}>Export this session as a clean study PDF</Text>
+                  </View>
+                  <Ionicons name="checkmark" size={26} color="#111217" />
+                </View>
 
-            <View style={styles.divider} />
+                <View style={styles.divider} />
 
-            <View style={styles.optionRow}>
-              <ShareOptionIcon name="globe-outline" />
-              <View style={styles.optionCopy}>
-                <Text style={styles.optionTitle}>Class link</Text>
-                <Text style={styles.optionSubtitle}>Create a read-only link for classmates</Text>
-              </View>
-              <View style={styles.emptyCheckSpace} />
-            </View>
+                <View style={styles.optionRow}>
+                  <ShareOptionIcon name="document-text-outline" />
+                  <View style={styles.optionCopy}>
+                    <Text style={styles.optionTitle}>Notes copy</Text>
+                    <Text style={styles.optionSubtitle}>Copy the session as formatted study notes</Text>
+                  </View>
+                  <View style={styles.emptyCheckSpace} />
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={styles.optionRow}>
+                  <ShareOptionIcon name="lock-closed-outline" />
+                  <View style={styles.optionCopy}>
+                    <Text style={styles.optionTitle}>Private copy</Text>
+                    <Text style={styles.optionSubtitle}>Visible only in your account</Text>
+                  </View>
+                  <Ionicons name="checkmark" size={26} color="#111217" />
+                </View>
+
+                <View style={styles.divider} />
+
+                <View style={styles.optionRow}>
+                  <ShareOptionIcon name="globe-outline" />
+                  <View style={styles.optionCopy}>
+                    <Text style={styles.optionTitle}>Class link</Text>
+                    <Text style={styles.optionSubtitle}>Create a read-only link for classmates</Text>
+                  </View>
+                  <View style={styles.emptyCheckSpace} />
+                </View>
+              </>
+            )}
           </View>
 
-          <Pressable style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]} accessibilityRole="button" accessibilityLabel="Generate link">
+          <Pressable style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]} accessibilityRole="button" accessibilityLabel={exportActive ? 'Export file' : 'Generate link'}>
             <View style={styles.primaryButtonContent}>
-              <Ionicons name="link-outline" size={22} color="#ffffff" />
-              <Text style={styles.primaryButtonText}>Generate link</Text>
+              <Ionicons name={exportActive ? 'download-outline' : 'link-outline'} size={22} color="#ffffff" />
+              <Text style={styles.primaryButtonText}>{exportActive ? 'Export file' : 'Generate link'}</Text>
             </View>
           </Pressable>
 
-          <Text style={styles.footerNote}>Share only the study content you want others to see.</Text>
+          <Text style={styles.footerNote}>{exportActive ? 'Export only the study content you want to keep or share.' : 'Share only the study content you want others to see.'}</Text>
         </Animated.View>
       </View>
     </Modal>
@@ -222,6 +264,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  segmentPressed: {
+    opacity: 0.72,
+  },
   segmentActiveText: {
     color: '#050505',
     fontSize: 15.5,
@@ -252,6 +297,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
+  },
+  optionIconLabel: {
+    position: 'absolute',
+    top: 25,
+    color: '#111217',
+    fontSize: 7.4,
+    lineHeight: 9,
+    letterSpacing: -0.08,
+    fontWeight: '800',
   },
   optionCopy: {
     flex: 1,
