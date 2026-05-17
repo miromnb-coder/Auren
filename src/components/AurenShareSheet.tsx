@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { shadows } from '../theme';
 
@@ -7,6 +8,10 @@ type AurenShareSheetProps = {
   open: boolean;
   onClose: () => void;
 };
+
+const SHEET_CLOSED_TRANSLATE_Y = 520;
+const SHEET_OPEN_DURATION = 330;
+const SHEET_CLOSE_DURATION = 240;
 
 function ShareOptionIcon({ name }: { name: keyof typeof Ionicons.glyphMap }) {
   return (
@@ -18,19 +23,76 @@ function ShareOptionIcon({ name }: { name: keyof typeof Ionicons.glyphMap }) {
 
 export function AurenShareSheet({ open, onClose }: AurenShareSheetProps) {
   const insets = useSafeAreaInsets();
+  const [mounted, setMounted] = useState(open);
+  const mountedRef = useRef(open);
+  const sheetTranslateY = useRef(new Animated.Value(SHEET_CLOSED_TRANSLATE_Y)).current;
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (open) {
+      mountedRef.current = true;
+      setMounted(true);
+      sheetTranslateY.setValue(SHEET_CLOSED_TRANSLATE_Y);
+      backdropOpacity.setValue(0);
+
+      requestAnimationFrame(() => {
+        Animated.parallel([
+          Animated.timing(backdropOpacity, {
+            toValue: 1,
+            duration: 190,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(sheetTranslateY, {
+            toValue: 0,
+            duration: SHEET_OPEN_DURATION,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]).start();
+      });
+
+      return;
+    }
+
+    if (mountedRef.current) {
+      Animated.parallel([
+        Animated.timing(backdropOpacity, {
+          toValue: 0,
+          duration: 180,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(sheetTranslateY, {
+          toValue: SHEET_CLOSED_TRANSLATE_Y,
+          duration: SHEET_CLOSE_DURATION,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        if (!finished) return;
+        mountedRef.current = false;
+        setMounted(false);
+      });
+    }
+  }, [backdropOpacity, open, sheetTranslateY]);
+
+  if (!mounted) return null;
 
   return (
     <Modal
-      visible={open}
+      visible={mounted}
       transparent
-      animationType="fade"
+      animationType="none"
       statusBarTranslucent
       onRequestClose={onClose}
     >
       <View style={styles.layer} pointerEvents="box-none">
-        <Pressable style={styles.backdrop} onPress={onClose} />
+        <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        </Animated.View>
 
-        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 18) + 2 }]}>
+        <Animated.View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 18) + 2, transform: [{ translateY: sheetTranslateY }] }]}>
           <View style={styles.headerRow}>
             <Pressable onPress={onClose} hitSlop={14} style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel="Close share sheet">
               <Ionicons name="close" size={29} color="#111217" />
@@ -75,7 +137,7 @@ export function AurenShareSheet({ open, onClose }: AurenShareSheetProps) {
           </Pressable>
 
           <Text style={styles.footerNote}>Share study chats carefully. Avoid sensitive{`\n`}personal information.</Text>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
