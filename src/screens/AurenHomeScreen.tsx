@@ -8,7 +8,7 @@ import type { Session } from '@supabase/supabase-js';
 import { AurenActionPill } from '../components/AurenActionPill';
 import { AurenComposer } from '../components/AurenComposer';
 import { AurenControlsSheet, type ControlsSheetStage } from '../components/AurenControlsSheet';
-import { MenuIcon } from '../components/AurenIcons';
+import { HeaderMoreIcon, HeaderShareIcon, MenuIcon } from '../components/AurenIcons';
 import { AurenMessageList, type AurenMessage } from '../components/AurenMessageList';
 import { AurenPlusSheet, type PlusSheetStage } from '../components/AurenPlusSheet';
 import { AurenSidebar } from '../components/AurenSidebar';
@@ -441,7 +441,14 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
               <View style={styles.header}>
                 <Pressable onPress={openSidebar} hitSlop={14} style={({ pressed }) => [styles.menuButton, pressed && styles.menuButtonPressed]} accessibilityRole="button" accessibilityLabel="Open menu"><MenuIcon /></Pressable>
                 <View style={styles.brandButton} accessibilityRole="header"><Text style={styles.brand}>Auren</Text></View>
-                <View style={styles.headerSpacer} />
+                {hasMessages ? (
+                  <View style={styles.headerActions} pointerEvents="none">
+                    <View style={styles.headerActionIcon}><HeaderShareIcon /></View>
+                    <View style={styles.headerActionIcon}><HeaderMoreIcon /></View>
+                  </View>
+                ) : (
+                  <View style={styles.headerSpacer} />
+                )}
               </View>
               <Animated.View style={[styles.content, hasMessages ? styles.chatContent : styles.startContent, { transform: [{ translateY: contentTranslateY }] }]}>
                 {hasMessages ? <AurenMessageList messages={messages} assistantThinking={assistantThinking} thinkingState={thinkingState} /> : (
@@ -487,6 +494,8 @@ const styles = StyleSheet.create({
   brandButton: { minWidth: 148, alignItems: 'center', justifyContent: 'center' },
   brand: { color: colors.text, fontSize: 28, lineHeight: 34, letterSpacing: -0.9, fontFamily: serifFont },
   headerSpacer: { width: 68 },
+  headerActions: { width: 92, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 15 },
+  headerActionIcon: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
   content: { flex: 1, width: '100%', paddingHorizontal: 18 },
   startContent: { alignItems: 'center', justifyContent: 'flex-start', paddingTop: 66, paddingBottom: 190 },
   chatContent: { alignItems: 'stretch', justifyContent: 'flex-end', paddingHorizontal: 0, paddingBottom: 0 },
