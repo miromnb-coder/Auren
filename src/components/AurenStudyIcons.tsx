@@ -102,3 +102,72 @@ export function MoreDotsIcon(props: IconProps) {
     </Svg>
   );
 }
+
+export function FocusBooksCapIcon(props: IconProps) {
+  return (
+    <Svg {...iconProps(props)}>
+      <Path d="M5.2 9.1 12 6.2l6.8 2.9L12 12 5.2 9.1Z" />
+      <Path d="M8.2 10.6v3.2c1.1.8 2.4 1.2 3.8 1.2s2.7-.4 3.8-1.2v-3.2" />
+      <Path d="M18.7 9.3v4.2" />
+      <Path d="M7.1 16.3h8.4c1.2 0 2.1.7 2.1 1.7s-.9 1.7-2.1 1.7H7.1" />
+      <Path d="M7.1 12.9h7.4c1.2 0 2.1.7 2.1 1.7s-.9 1.7-2.1 1.7H7.1" />
+      <Path d="M7.1 12.9c-1 0-1.8.7-1.8 1.7s.8 1.7 1.8 1.7" />
+      <Path d="M7.1 16.3c-1 0-1.8.7-1.8 1.7s.8 1.7 1.8 1.7" />
+    </Svg>
+  );
+}
+
+export function FocusFlameIcon(props: IconProps) {
+  return (
+    <Svg {...iconProps(props)}>
+      <Path d="M12.6 21c3.4-.4 5.8-2.8 5.8-6.1 0-2.1-1-4-2.6-5.4-.4 1.2-1 2.1-1.9 2.8.1-2.8-1.2-5.2-4-7.3.1 3-1.2 4.5-2.5 6.1-1 1.2-1.8 2.4-1.8 4.1 0 3 2.2 5.4 5.4 5.8" />
+      <Path d="M12.1 18.3c1.2-.2 2-1.1 2-2.2 0-.9-.4-1.7-1.2-2.3-.2.7-.6 1.2-1.2 1.6 0-1-.4-1.9-1.3-2.7.1 1.3-.6 2-1.1 2.7-.4.5-.6.9-.6 1.5 0 1.1.8 2.1 2.1 2.3" />
+    </Svg>
+  );
+}
+
+export function FocusChecklistIcon(props: IconProps) {
+  return (
+    <Svg {...iconProps(props)}>
+      <Path d="M6.2 7.2 7.4 8.4l2-2.3" />
+      <Path d="M12 7.5h6" />
+      <Path d="M6.2 12 7.4 13.2l2-2.3" />
+      <Path d="M12 12.3h6" />
+      <Path d="M6.2 16.8 7.4 18l2-2.3" />
+      <Path d="M12 17.1h6" />
+    </Svg>
+  );
+}
+
+export function FocusSparkleIcon(props: IconProps) {
+  return (
+    <Svg {...iconProps(props)}>
+      <Path d="M12 3.8c.7 3.3 2.5 5.1 5.8 5.8-3.3.7-5.1 2.5-5.8 5.8-.7-3.3-2.5-5.1-5.8-5.8 3.3-.7 5.1-2.5 5.8-5.8Z" />
+      <Path d="M18.5 14.1c.3 1.4 1.1 2.2 2.5 2.5-1.4.3-2.2 1.1-2.5 2.5-.3-1.4-1.1-2.2-2.5-2.5 1.4-.3 2.2-1.1 2.5-2.5Z" />
+    </Svg>
+  );
+}
+
+export function FocusProgressRing({ size = 58, color = DEFAULT_COLOR, progress = 0 }: IconProps & { progress?: number }) {
+  const safeProgress = Math.min(Math.max(progress, 0), 1);
+  const radius = 22;
+  const circumference = 2 * Math.PI * radius;
+  const dashOffset = circumference * (1 - safeProgress);
+
+  return (
+    <Svg width={size} height={size} viewBox="0 0 58 58" fill="none">
+      <Circle cx="29" cy="29" r={radius} stroke="rgba(220,221,226,0.95)" strokeWidth="6" />
+      <Circle
+        cx="29"
+        cy="29"
+        r={radius}
+        stroke={color}
+        strokeWidth="6"
+        strokeLinecap="round"
+        strokeDasharray={`${circumference} ${circumference}`}
+        strokeDashoffset={dashOffset}
+        transform="rotate(-90 29 29)"
+      />
+    </Svg>
+  );
+}
