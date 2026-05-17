@@ -97,13 +97,13 @@ export function AurenShareSheet({ open, onClose }: AurenShareSheetProps) {
             <Pressable onPress={onClose} hitSlop={14} style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel="Close share sheet">
               <Ionicons name="close" size={29} color="#111217" />
             </Pressable>
-            <Text style={styles.title}>Share conversation</Text>
+            <Text style={styles.title}>Share study session</Text>
             <View style={styles.headerSpacer} />
           </View>
 
           <View style={styles.segmentedControl}>
             <View style={styles.segmentActive}>
-              <Text style={styles.segmentActiveText}>Share</Text>
+              <Text style={styles.segmentActiveText}>Link</Text>
             </View>
             <View style={styles.segmentInactive}>
               <Text style={styles.segmentInactiveText}>Export</Text>
@@ -114,8 +114,8 @@ export function AurenShareSheet({ open, onClose }: AurenShareSheetProps) {
             <View style={styles.optionRow}>
               <ShareOptionIcon name="lock-closed-outline" />
               <View style={styles.optionCopy}>
-                <Text style={styles.optionTitle}>Only me</Text>
-                <Text style={styles.optionSubtitle}>Keep this chat private</Text>
+                <Text style={styles.optionTitle}>Private copy</Text>
+                <Text style={styles.optionSubtitle}>Visible only in your account</Text>
               </View>
               <Ionicons name="checkmark" size={26} color="#111217" />
             </View>
@@ -125,18 +125,21 @@ export function AurenShareSheet({ open, onClose }: AurenShareSheetProps) {
             <View style={styles.optionRow}>
               <ShareOptionIcon name="globe-outline" />
               <View style={styles.optionCopy}>
-                <Text style={styles.optionTitle}>Public link</Text>
-                <Text style={styles.optionSubtitle}>Anyone with the link can view</Text>
+                <Text style={styles.optionTitle}>Class link</Text>
+                <Text style={styles.optionSubtitle}>Create a read-only link for classmates</Text>
               </View>
               <View style={styles.emptyCheckSpace} />
             </View>
           </View>
 
-          <Pressable style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]} accessibilityRole="button" accessibilityLabel="Share now">
-            <Text style={styles.primaryButtonText}>Share now</Text>
+          <Pressable style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]} accessibilityRole="button" accessibilityLabel="Generate link">
+            <View style={styles.primaryButtonContent}>
+              <Ionicons name="link-outline" size={22} color="#ffffff" />
+              <Text style={styles.primaryButtonText}>Generate link</Text>
+            </View>
           </Pressable>
 
-          <Text style={styles.footerNote}>Share study chats carefully. Avoid sensitive{`\n`}personal information.</Text>
+          <Text style={styles.footerNote}>Share only the study content you want others to see.</Text>
         </Animated.View>
       </View>
     </Modal>
@@ -287,6 +290,12 @@ const styles = StyleSheet.create({
   },
   primaryButtonPressed: {
     opacity: 0.86,
+  },
+  primaryButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
   },
   primaryButtonText: {
     color: '#ffffff',
