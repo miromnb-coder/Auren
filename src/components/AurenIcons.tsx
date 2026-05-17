@@ -1,6 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme';
+import { AurenShareSheet } from './AurenShareSheet';
 
 type IconProps = {
   muted?: boolean;
@@ -33,7 +35,22 @@ export function MenuIcon() {
 }
 
 export function HeaderShareIcon() {
-  return <Ionicons name="arrow-redo-outline" size={30} color={headerInk} />;
+  const [shareSheetOpen, setShareSheetOpen] = useState(false);
+
+  return (
+    <>
+      <Pressable
+        onPress={() => setShareSheetOpen(true)}
+        hitSlop={10}
+        style={({ pressed }) => [styles.headerIconPressable, pressed && styles.headerIconPressed]}
+        accessibilityRole="button"
+        accessibilityLabel="Share conversation"
+      >
+        <Ionicons name="arrow-redo-outline" size={30} color={headerInk} />
+      </Pressable>
+      <AurenShareSheet open={shareSheetOpen} onClose={() => setShareSheetOpen(false)} />
+    </>
+  );
 }
 
 export function HeaderMoreIcon() {
@@ -94,6 +111,15 @@ const styles = StyleSheet.create({
     height: 2,
     borderRadius: 99,
     backgroundColor: colors.muted,
+  },
+  headerIconPressable: {
+    width: 34,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerIconPressed: {
+    opacity: 0.58,
   },
   chevron: {
     marginLeft: 8,
