@@ -21,13 +21,12 @@ type AurenChatStreamOptions = {
   browserSearch?: boolean;
 };
 
-const DEFAULT_AUREN_CHAT_MODE: AurenChatMode = 'personal';
+const DEFAULT_AUREN_CHAT_MODE: AurenChatMode = 'study';
 
 function mapChatModeToAgentMode(mode: AurenChatMode): AurenMode {
-  if (mode === 'study') return 'study';
   if (mode === 'money') return 'money';
 
-  return 'general';
+  return 'study';
 }
 
 function getLatestUserMessage(messages: AurenChatApiMessage[]) {
