@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
-import type { AurenThinkingEvent } from '../lib/auren-agent/core/types';
+import type { AurenVisibleThinkingState } from '../lib/aurenThinkingStateStore';
 import { colors } from '../theme';
 
 type AurenThinkingStateProps = {
-  thinkingState: AurenThinkingEvent;
+  thinkingState: AurenVisibleThinkingState;
 };
 
 export function AurenThinkingState({ thinkingState }: AurenThinkingStateProps) {
@@ -27,7 +27,7 @@ export function AurenThinkingState({ thinkingState }: AurenThinkingStateProps) {
     return () => {
       loop.stop();
     };
-  }, [shimmerProgress, thinkingState.stage, thinkingState.sequence]);
+  }, [shimmerProgress, thinkingState.sequence]);
 
   const shimmerTranslateX = shimmerProgress.interpolate({
     inputRange: [0, 1],
