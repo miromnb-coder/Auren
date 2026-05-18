@@ -1,7 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import type { AurenThinkingEvent } from '../lib/auren-agent/core/types';
-import { subscribeToAurenThinkingState } from '../lib/aurenThinkingStateStore';
+import { subscribeToAurenThinkingState, type AurenVisibleThinkingState } from '../lib/aurenThinkingStateStore';
 import { AurenStatusIcon, type AurenStatusIconType } from './AurenIcons';
 import { AurenThinkingState } from './AurenThinkingState';
 import { colors } from '../theme';
@@ -16,7 +15,7 @@ export type AurenMessage = {
 type AurenMessageListProps = {
   messages: AurenMessage[];
   assistantThinking: boolean;
-  thinkingState?: AurenThinkingEvent | null;
+  thinkingState?: AurenVisibleThinkingState | null;
 };
 
 const BOX_DRAWINGS_LIGHT_HORIZONTAL = '\u2500';
@@ -24,17 +23,13 @@ const BOX_DRAWINGS_LIGHT_VERTICAL = '\u2502';
 const ASSISTANT_DIVIDER = BOX_DRAWINGS_LIGHT_HORIZONTAL.repeat(8);
 const AUREN_MARKER_PATTERN = /^\s*\[auren:(memory|saved|done|alert|search|idea)\]\s*(.*)$/i;
 
-function createFallbackThinkingState(): AurenThinkingEvent {
+function createFallbackThinkingState(): AurenVisibleThinkingState {
   return {
-    type: 'thinking_state',
-    stage: 'understanding',
-    title: 'Understanding your request',
-    detail: 'Finding the most useful way to help...',
+    type: 'loading',
+    title: 'Thinking',
+    detail: 'Auren is writing a response...',
     sequence: 0,
     timestamp: new Date().toISOString(),
-    metadata: {
-      source: 'ui-fallback',
-    },
   };
 }
 
@@ -209,7 +204,7 @@ function AurenAssistantText({ content }: { content: string }) {
 
 export function AurenMessageList({ messages, assistantThinking, thinkingState }: AurenMessageListProps) {
   const scrollViewRef = useRef<ScrollView | null>(null);
-  const [storedThinkingState, setStoredThinkingState] = useState<AurenThinkingEvent | null>(null);
+  const [storedThinkingState, setStoredThinkingState] = useState<AurenVisibleThinkingState | null>(null);
   const messageContentSignature = useMemo(
     () => messages.map((message) => `${message.id}:${message.content.length}`).join('|'),
     [messages],
