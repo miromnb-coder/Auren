@@ -402,8 +402,6 @@ export function AurenSidebar({
                 <Text style={styles.profileName} numberOfLines={1}>{currentProfile.name}</Text>
                 <Text style={styles.profileEmail} numberOfLines={1}>{currentProfile.email}</Text>
               </View>
-
-              <Ionicons name="chevron-forward" size={16} color="#8d8f98" />
             </Pressable>
 
             <Pressable onPress={onNewChat} style={({ pressed }) => [styles.newChatButton, pressed && styles.pressed]}>
