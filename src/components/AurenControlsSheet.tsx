@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useEffect, useMemo, useRef } from 'react';
 import {
   Animated,
   Easing,
-  Image,
   PanResponder,
   Pressable,
   ScrollView,
@@ -20,54 +20,25 @@ type AurenControlsSheetProps = {
   onStageChange: (stage: ControlsSheetStage) => void;
 };
 
-type ServiceItem = {
+type SourceStatus = 'Connected' | 'Available' | 'Connect';
+type IoniconName = keyof typeof Ionicons.glyphMap;
+
+type ControlItem = {
+  id: string;
+  title: string;
+  description: string;
+  state: string;
+  icon: IoniconName;
+  active?: boolean;
+};
+
+type SourceItem = {
   id: string;
   name: string;
   description: string;
-  status: 'Connected' | 'Connect';
-  iconUri: string;
+  status: SourceStatus;
+  icon: IoniconName;
 };
-
-const SERVICES: ServiceItem[] = [
-  {
-    id: 'google-drive',
-    name: 'Google Drive',
-    description: 'Files and documents',
-    status: 'Connected',
-    iconUri: 'https://raw.githubusercontent.com/miromnb-coder/Auren/main/assets/services/google-drive.PNG',
-  },
-  {
-    id: 'gmail',
-    name: 'Gmail',
-    description: 'Emails and receipts',
-    status: 'Connected',
-    iconUri: 'https://raw.githubusercontent.com/miromnb-coder/Auren/main/assets/services/gmail.PNG',
-  },
-  {
-    id: 'google-calendar',
-    name: 'Google Calendar',
-    description: 'Events and schedule',
-    status: 'Connected',
-    iconUri: 'https://raw.githubusercontent.com/miromnb-coder/Auren/main/assets/services/google-calendar.PNG',
-  },
-  {
-    id: 'outlook-calendar',
-    name: 'Outlook Calendar',
-    description: 'Work calendar',
-    status: 'Connected',
-    iconUri: 'https://raw.githubusercontent.com/miromnb-coder/Auren/main/assets/services/outlook-calendar.PNG',
-  },
-  {
-    id: 'outlook-mail',
-    name: 'Outlook Mail',
-    description: 'Work email',
-    status: 'Connected',
-    iconUri: 'https://raw.githubusercontent.com/miromnb-coder/Auren/main/assets/services/outlook-mail.PNG',
-  },
-];
-
-const FEATURED_SERVICES = [SERVICES[1], SERVICES[0], SERVICES[2]];
-const FEATURED_ROTATION_MS = 3400;
 
 const PEEK_HEIGHT_RATIO = 0.54;
 const EXPANDED_HEIGHT_RATIO = 0.92;
@@ -77,27 +48,113 @@ const EXPANDED_MIN_HEIGHT = 690;
 const DRAG_THRESHOLD = 72;
 const FAST_SWIPE_VELOCITY = 0.85;
 
+const CONTROL_ITEMS: ControlItem[] = [
+  {
+    id: 'study-context',
+    title: 'Study context',
+    description: 'Use your focus, recent chats and study progress.',
+    state: 'On',
+    icon: 'school-outline',
+    active: true,
+  },
+  {
+    id: 'calendar-aware',
+    title: 'Calendar aware',
+    description: 'Let Auren notice exams, free time and deadlines.',
+    state: 'On',
+    icon: 'calendar-outline',
+    active: true,
+  },
+  {
+    id: 'web-search',
+    title: 'Web search',
+    description: 'Use current sources only when you ask for them.',
+    state: 'Off',
+    icon: 'search-outline',
+  },
+];
+
+const SOURCE_ITEMS: SourceItem[] = [
+  {
+    id: 'google-calendar',
+    name: 'Google Calendar',
+    description: 'Exams, lessons and study sessions',
+    status: 'Connected',
+    icon: 'calendar-outline',
+  },
+  {
+    id: 'google-drive',
+    name: 'Google Drive',
+    description: 'Notes, PDFs and assignments',
+    status: 'Connected',
+    icon: 'folder-open-outline',
+  },
+  {
+    id: 'gmail',
+    name: 'Gmail',
+    description: 'School messages and deadlines',
+    status: 'Connected',
+    icon: 'mail-outline',
+  },
+  {
+    id: 'notes',
+    name: 'Notes',
+    description: 'Quick notes and saved explanations',
+    status: 'Available',
+    icon: 'document-text-outline',
+  },
+];
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
+function statusStyle(status: SourceStatus) {
+  if (status === 'Connected') return [styles.statusPill, styles.statusPillConnected];
+  if (status === 'Available') return [styles.statusPill, styles.statusPillAvailable];
+  return [styles.statusPill, styles.statusPillMuted];
+}
+
+function ControlRow({ item, last }: { item: ControlItem; last: boolean }) {
+  return (
+    <Pressable style={({ pressed }) => [styles.controlRow, !last && styles.rowBorder, pressed && styles.pressed]}>
+      <View style={[styles.controlIconTile, item.active && styles.controlIconTileActive]}>
+        <Ionicons name={item.icon} size={21} color={item.active ? '#111113' : '#777b84'} />
+      </View>
+
+      <View style={styles.rowTextWrap}>
+        <Text style={styles.rowTitle}>{item.title}</Text>
+        <Text style={styles.rowDescription} numberOfLines={2}>{item.description}</Text>
+      </View>
+
+      <View style={[styles.statePill, item.active && styles.statePillActive]}>
+        <Text style={[styles.statePillText, item.active && styles.statePillTextActive]}>{item.state}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+function SourceRow({ item, last }: { item: SourceItem; last: boolean }) {
+  return (
+    <Pressable style={({ pressed }) => [styles.sourceRow, !last && styles.rowBorder, pressed && styles.pressed]}>
+      <View style={styles.sourceIconTile}>
+        <Ionicons name={item.icon} size={21} color="#3f424a" />
+      </View>
+
+      <View style={styles.rowTextWrap}>
+        <Text style={styles.rowTitle}>{item.name}</Text>
+        <Text style={styles.rowDescription} numberOfLines={1}>{item.description}</Text>
+      </View>
+
+      <View style={statusStyle(item.status)}>
+        <Text style={styles.statusText}>{item.status}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
 export function AurenControlsSheet({ stage, onStageChange }: AurenControlsSheetProps) {
   const { height } = useWindowDimensions();
-  const [featuredIndex, setFeaturedIndex] = useState(1);
-  const featuredOpacity = useRef(new Animated.Value(1)).current;
-  const featuredTranslateX = useRef(new Animated.Value(0)).current;
-
-  const visibleFeaturedServices = useMemo(() => {
-    const serviceCount = FEATURED_SERVICES.length;
-    const previousIndex = (featuredIndex - 1 + serviceCount) % serviceCount;
-    const nextIndex = (featuredIndex + 1) % serviceCount;
-
-    return [
-      FEATURED_SERVICES[previousIndex],
-      FEATURED_SERVICES[featuredIndex],
-      FEATURED_SERVICES[nextIndex],
-    ];
-  }, [featuredIndex]);
 
   const { closedY, expandedHeight, expandedY, peekY } = useMemo(() => {
     const nextExpandedHeight = Math.min(
@@ -143,49 +200,6 @@ export function AurenControlsSheet({ stage, onStageChange }: AurenControlsSheetP
     animateToStage(stage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, closedY, expandedY, peekY]);
-
-  useEffect(() => {
-    if (stage === 'closed') return undefined;
-
-    const rotateFeatured = () => {
-      Animated.parallel([
-        Animated.timing(featuredOpacity, {
-          toValue: 0.72,
-          duration: 280,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(featuredTranslateX, {
-          toValue: -14,
-          duration: 280,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setFeaturedIndex((currentIndex) => (currentIndex + 1) % FEATURED_SERVICES.length);
-        featuredTranslateX.setValue(14);
-
-        Animated.parallel([
-          Animated.timing(featuredOpacity, {
-            toValue: 1,
-            duration: 560,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-          Animated.timing(featuredTranslateX, {
-            toValue: 0,
-            duration: 560,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-        ]).start();
-      });
-    };
-
-    const rotationTimer = setInterval(rotateFeatured, FEATURED_ROTATION_MS);
-
-    return () => clearInterval(rotationTimer);
-  }, [featuredOpacity, featuredTranslateX, stage]);
 
   const panResponder = useMemo(
     () =>
@@ -269,93 +283,72 @@ export function AurenControlsSheet({ stage, onStageChange }: AurenControlsSheetP
         contentContainerStyle={styles.content}
       >
         <View style={styles.headerBlock}>
-          <Text style={styles.title}>Services</Text>
-          <Text style={styles.subtitle}>Connect the apps you use every day. Auren will bring everything together.</Text>
+          <Text style={styles.eyebrow}>Auren controls</Text>
+          <Text style={styles.title}>Study setup</Text>
+          <Text style={styles.subtitle}>Choose what Auren can use when it helps you plan, explain and revise.</Text>
         </View>
 
-        <Animated.View
-          style={[
-            styles.featuredRow,
-            {
-              opacity: featuredOpacity,
-              transform: [{ translateX: featuredTranslateX }],
-            },
-          ]}
-        >
-          {visibleFeaturedServices.map((service, index) => (
-            <View
-              key={`${service.id}-${index}`}
-              style={[
-                styles.featuredCard,
-                index === 1 && styles.featuredCardActive,
-              ]}
-            >
-              <Image source={{ uri: service.iconUri }} style={styles.featuredIcon} resizeMode="contain" />
-              <Text style={styles.featuredName} numberOfLines={1}>{service.name.replace('Google ', '')}</Text>
-              <Text style={styles.featuredDescription} numberOfLines={1}>{service.description}</Text>
-            </View>
-          ))}
-        </Animated.View>
-
-        <View style={styles.paginationRow}>
-          {FEATURED_SERVICES.map((service, index) => (
-            <View
-              key={service.id}
-              style={[
-                styles.paginationDot,
-                index === featuredIndex && styles.paginationDotActive,
-              ]}
-            />
-          ))}
-        </View>
-
-        <Text style={styles.sectionLabel}>Connected services</Text>
-
-        <View style={styles.servicesCard}>
-          {SERVICES.map((service, index) => (
-            <Pressable
-              key={service.id}
-              style={[
-                styles.serviceRow,
-                index === SERVICES.length - 1 && styles.serviceRowLast,
-              ]}
-            >
-              <View style={styles.iconSlot}>
-                <Image source={{ uri: service.iconUri }} style={styles.serviceIcon} resizeMode="contain" />
-              </View>
-
-              <View style={styles.serviceTextWrap}>
-                <Text style={styles.serviceName} numberOfLines={1}>
-                  {service.name}
-                </Text>
-                <Text style={styles.serviceDescription} numberOfLines={1}>
-                  {service.description}
-                </Text>
-              </View>
-
-              <View style={styles.statusPill}>
-                <View style={styles.statusDot} />
-                <Text style={styles.statusPillText} numberOfLines={1}>
-                  {service.status}
-                </Text>
-              </View>
-
-              <Text style={styles.chevron}>›</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <Pressable style={styles.addMoreButton}>
-          <View style={styles.addMoreIcon}>
-            <Text style={styles.addMorePlus}>+</Text>
+        <View style={styles.statusCard}>
+          <View style={styles.statusIconCircle}>
+            <Ionicons name="sparkles-outline" size={28} color="#111113" />
           </View>
-          <Text style={styles.addMoreText}>Add more services</Text>
-          <Text style={styles.addMoreChevron}>›</Text>
+          <View style={styles.statusTextWrap}>
+            <Text style={styles.statusTitle}>Study agent ready</Text>
+            <Text style={styles.statusSubtitle}>Calendar, files and study context are available for smarter answers.</Text>
+          </View>
+          <View style={styles.readyPill}>
+            <Text style={styles.readyPillText}>Ready</Text>
+          </View>
+        </View>
+
+        <Text style={styles.sectionLabel}>Chat controls</Text>
+        <View style={styles.groupCard}>
+          {CONTROL_ITEMS.map((item, index) => (
+            <ControlRow key={item.id} item={item} last={index === CONTROL_ITEMS.length - 1} />
+          ))}
+        </View>
+
+        <Text style={styles.sectionLabel}>Study sources</Text>
+        <View style={styles.groupCard}>
+          {SOURCE_ITEMS.map((item, index) => (
+            <SourceRow key={item.id} item={item} last={index === SOURCE_ITEMS.length - 1} />
+          ))}
+        </View>
+
+        <View style={styles.privacyCard}>
+          <Ionicons name="shield-checkmark-outline" size={22} color="#686b75" />
+          <View style={styles.privacyTextWrap}>
+            <Text style={styles.privacyTitle}>You stay in control</Text>
+            <Text style={styles.privacySubtitle}>Auren only uses connected sources to help with your study tasks.</Text>
+          </View>
+        </View>
+
+        <Pressable style={({ pressed }) => [styles.addMoreButton, pressed && styles.pressed]}>
+          <View style={styles.addMoreIcon}>
+            <Ionicons name="add" size={21} color="#ffffff" />
+          </View>
+          <Text style={styles.addMoreText}>Add study source</Text>
+          <Ionicons name="chevron-forward" size={22} color="#727680" />
         </Pressable>
       </ScrollView>
     </Animated.View>
   );
 }
+
+const baseCardShadow = {
+  shadowColor: '#111827',
+  shadowOpacity: 0.035,
+  shadowRadius: 16,
+  shadowOffset: { width: 0, height: 9 },
+  elevation: 4,
+};
+
+const cardSurface = {
+  borderWidth: 1,
+  borderColor: 'rgba(17,24,39,0.055)',
+  backgroundColor: 'rgba(255,255,255,0.72)',
+  ...baseCardShadow,
+};
 
 const styles = StyleSheet.create({
   sheet: {
@@ -386,178 +379,251 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(110,113,124,0.28)',
   },
   content: {
-    paddingTop: 48,
+    paddingTop: 34,
     paddingHorizontal: 24,
     paddingBottom: 42,
   },
   headerBlock: {
-    marginBottom: 26,
+    marginBottom: 22,
+  },
+  eyebrow: {
+    color: '#8a8d96',
+    fontSize: 12.5,
+    lineHeight: 16,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: 9,
   },
   title: {
     color: '#111217',
-    fontSize: 42,
-    lineHeight: 47,
+    fontSize: 39,
+    lineHeight: 44,
     fontWeight: '700',
-    letterSpacing: -1.35,
+    letterSpacing: -1.25,
   },
   subtitle: {
     marginTop: 12,
-    maxWidth: 320,
+    maxWidth: 335,
     color: '#858891',
-    fontSize: 17,
-    lineHeight: 24,
-    letterSpacing: -0.28,
+    fontSize: 16.5,
+    lineHeight: 23,
+    letterSpacing: -0.24,
   },
-  featuredRow: {
-    marginHorizontal: -8,
+  statusCard: {
+    minHeight: 108,
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    ...cardSurface,
   },
-  featuredCard: {
-    flex: 1,
-    minHeight: 126,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(17,24,39,0.045)',
-    backgroundColor: 'rgba(255,255,255,0.54)',
+  statusIconCircle: {
+    width: 58,
+    height: 58,
+    borderRadius: 19,
+    marginRight: 15,
+    backgroundColor: '#efedf2',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 10,
-    ...shadows.tiny,
   },
-  featuredCardActive: {
-    minHeight: 146,
-    backgroundColor: 'rgba(255,255,255,0.86)',
+  statusTextWrap: {
+    flex: 1,
+    minWidth: 0,
   },
-  featuredIcon: {
-    width: 48,
-    height: 48,
-    marginBottom: 14,
-  },
-  featuredName: {
+  statusTitle: {
     color: '#18191f',
-    fontSize: 15,
-    lineHeight: 19,
-    fontWeight: '600',
-    letterSpacing: -0.34,
+    fontSize: 19,
+    lineHeight: 24,
+    fontWeight: '650',
+    letterSpacing: -0.38,
   },
-  featuredDescription: {
-    marginTop: 5,
-    color: '#8b8e98',
-    fontSize: 12,
-    lineHeight: 15,
+  statusSubtitle: {
+    marginTop: 4,
+    color: '#7d8089',
+    fontSize: 13.5,
+    lineHeight: 18,
     letterSpacing: -0.12,
   },
-  paginationRow: {
-    marginTop: 18,
-    marginBottom: 28,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  paginationDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 999,
-    backgroundColor: '#d8d9de',
-  },
-  paginationDotActive: {
-    backgroundColor: '#3f4654',
-  },
-  sectionLabel: {
-    marginBottom: 12,
-    color: '#8e919b',
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '700',
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-  },
-  servicesCard: {
-    borderRadius: 23,
-    overflow: 'hidden',
-    gap: 8,
-  },
-  serviceRow: {
-    minHeight: 76,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: 'rgba(17,24,39,0.055)',
-    backgroundColor: 'rgba(255,255,255,0.78)',
-    ...shadows.tiny,
-  },
-  serviceRowLast: {},
-  iconSlot: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(17,24,39,0.045)',
-    backgroundColor: 'rgba(255,255,255,0.72)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  serviceIcon: {
-    width: 34,
-    height: 34,
-  },
-  serviceTextWrap: {
-    flex: 1,
-    marginLeft: 14,
-    marginRight: 10,
-  },
-  serviceName: {
-    color: '#202126',
-    fontSize: 18,
-    lineHeight: 23,
-    fontWeight: '650',
-    letterSpacing: -0.45,
-  },
-  serviceDescription: {
-    marginTop: 3,
-    color: '#858891',
-    fontSize: 14,
-    lineHeight: 18,
-    letterSpacing: -0.18,
-  },
-  statusPill: {
-    height: 32,
+  readyPill: {
+    height: 31,
     paddingHorizontal: 12,
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(34,197,94,0.18)',
-    backgroundColor: 'rgba(34,197,94,0.09)',
+    backgroundColor: '#111113',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 12,
+  },
+  readyPillText: {
+    color: '#ffffff',
+    fontSize: 12.5,
+    lineHeight: 16,
+    fontWeight: '650',
+    letterSpacing: -0.08,
+  },
+  sectionLabel: {
+    marginTop: 24,
+    marginBottom: 11,
+    color: '#8e919b',
+    fontSize: 12.5,
+    lineHeight: 17,
+    fontWeight: '700',
+    letterSpacing: 1.35,
+    textTransform: 'uppercase',
+  },
+  groupCard: {
+    borderRadius: 23,
+    overflow: 'hidden',
+    ...cardSurface,
+  },
+  controlRow: {
+    minHeight: 78,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.42)',
   },
-  statusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 999,
-    marginRight: 7,
-    backgroundColor: '#18bf62',
+  sourceRow: {
+    minHeight: 74,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.42)',
   },
-  statusPillText: {
-    color: '#3f8d52',
-    fontSize: 13,
+  rowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(17,24,39,0.07)',
+  },
+  controlIconTile: {
+    width: 44,
+    height: 44,
+    borderRadius: 15,
+    marginRight: 14,
+    backgroundColor: '#f1f0f3',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  controlIconTileActive: {
+    backgroundColor: '#ecebf0',
+  },
+  sourceIconTile: {
+    width: 44,
+    height: 44,
+    borderRadius: 15,
+    marginRight: 14,
+    backgroundColor: '#f4f3f5',
+    borderWidth: 1,
+    borderColor: 'rgba(17,24,39,0.035)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  rowTitle: {
+    color: '#202126',
+    fontSize: 16.8,
+    lineHeight: 21,
+    fontWeight: '620',
+    letterSpacing: -0.32,
+  },
+  rowDescription: {
+    marginTop: 4,
+    color: '#858891',
+    fontSize: 13.2,
     lineHeight: 17,
-    fontWeight: '600',
-    letterSpacing: -0.16,
+    letterSpacing: -0.1,
   },
-  chevron: {
-    marginLeft: 9,
-    color: '#a2a5ad',
-    fontSize: 34,
-    lineHeight: 36,
-    fontWeight: '300',
+  statePill: {
+    minWidth: 47,
+    height: 30,
+    borderRadius: 999,
+    paddingHorizontal: 11,
+    marginLeft: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(17,24,39,0.08)',
+    backgroundColor: 'rgba(245,245,247,0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statePillActive: {
+    backgroundColor: '#111113',
+    borderColor: '#111113',
+  },
+  statePillText: {
+    color: '#7b7e87',
+    fontSize: 12.4,
+    lineHeight: 15,
+    fontWeight: '650',
+    letterSpacing: -0.08,
+  },
+  statePillTextActive: {
+    color: '#ffffff',
+  },
+  statusPill: {
+    height: 30,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    marginLeft: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusPillConnected: {
+    backgroundColor: '#111113',
+    borderColor: '#111113',
+  },
+  statusPillAvailable: {
+    backgroundColor: 'rgba(245,245,247,0.88)',
+    borderColor: 'rgba(17,24,39,0.08)',
+  },
+  statusPillMuted: {
+    backgroundColor: 'rgba(245,245,247,0.72)',
+    borderColor: 'rgba(17,24,39,0.075)',
+  },
+  statusText: {
+    color: '#ffffff',
+    fontSize: 11.8,
+    lineHeight: 15,
+    fontWeight: '650',
+    letterSpacing: -0.05,
+  },
+  privacyCard: {
+    marginTop: 22,
+    minHeight: 74,
+    borderRadius: 22,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(246,247,249,0.78)',
+    borderWidth: 1,
+    borderColor: 'rgba(17,24,39,0.055)',
+  },
+  privacyTextWrap: {
+    flex: 1,
+    minWidth: 0,
+    marginLeft: 14,
+  },
+  privacyTitle: {
+    color: '#33363d',
+    fontSize: 15.5,
+    lineHeight: 19,
+    fontWeight: '650',
+    letterSpacing: -0.2,
+  },
+  privacySubtitle: {
+    marginTop: 3,
+    color: '#858891',
+    fontSize: 12.8,
+    lineHeight: 16.5,
+    letterSpacing: -0.08,
   },
   addMoreButton: {
-    marginTop: 20,
-    minHeight: 66,
+    marginTop: 18,
+    minHeight: 62,
     paddingHorizontal: 19,
     borderRadius: 22,
     borderWidth: 1,
@@ -567,32 +633,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   addMoreIcon: {
-    width: 28,
-    height: 28,
+    width: 30,
+    height: 30,
     borderRadius: 999,
-    backgroundColor: '#585c66',
+    backgroundColor: '#111113',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addMorePlus: {
-    color: '#ffffff',
-    fontSize: 22,
-    lineHeight: 25,
-    fontWeight: '500',
-  },
   addMoreText: {
     flex: 1,
-    marginLeft: 16,
+    marginLeft: 15,
     color: '#3f424a',
-    fontSize: 18,
-    lineHeight: 23,
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: '650',
-    letterSpacing: -0.35,
+    letterSpacing: -0.32,
   },
-  addMoreChevron: {
-    color: '#727680',
-    fontSize: 34,
-    lineHeight: 36,
-    fontWeight: '300',
+  pressed: {
+    opacity: 0.68,
+    transform: [{ scale: 0.993 }],
   },
 });
