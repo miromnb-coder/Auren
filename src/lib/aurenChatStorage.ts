@@ -19,7 +19,7 @@ export type StoredMessage = {
 type ChatRow = {
   id: string;
   title: string | null;
-  mode: AurenChatMode | null;
+  mode: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -35,7 +35,7 @@ function normalizeChat(row: ChatRow): StoredChat {
   return {
     id: row.id,
     title: row.title?.trim() || 'New chat',
-    mode: row.mode ?? 'personal',
+    mode: 'study',
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
