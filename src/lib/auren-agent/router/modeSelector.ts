@@ -2,33 +2,17 @@ import type { AurenIntentResult, AurenMode, AurenModeResult } from '../core/type
 
 export function selectMode(
   requestedMode: AurenMode | undefined,
-  intent: AurenIntentResult,
+  _intent: AurenIntentResult,
 ): AurenModeResult {
-  if (requestedMode) {
+  if (requestedMode && requestedMode !== 'study') {
     return {
-      mode: requestedMode === 'general' ? 'study' : requestedMode,
-      reason: requestedMode === 'general'
-        ? 'Auren is locked as a study agent, so General Mode is routed to Study Mode.'
-        : 'Using the mode explicitly provided by the app UI.',
-    };
-  }
-
-  if (intent.intent === 'money_help') {
-    return {
-      mode: 'money',
-      reason: 'Selected Money Mode from the detected intent.',
-    };
-  }
-
-  if (intent.intent === 'save_memory' || intent.intent === 'recall_memory') {
-    return {
-      mode: 'memory',
-      reason: 'Selected Memory Mode only for explicit memory work.',
+      mode: 'study',
+      reason: 'Auren is locked as a Study Agent, so non-study modes are routed to Study Mode.',
     };
   }
 
   return {
     mode: 'study',
-    reason: 'Auren is locked as a personal AI Study Agent by default.',
+    reason: 'Auren is locked as a personal AI Study Agent.',
   };
 }
