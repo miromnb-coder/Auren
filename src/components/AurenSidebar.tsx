@@ -90,6 +90,57 @@ function isHorizontalGesture(dx: number, dy: number) {
   return horizontalDistance > 10 && horizontalDistance > verticalDistance * HORIZONTAL_LOCK_RATIO;
 }
 
+function AurenStudyBrief() {
+  return (
+    <View style={styles.studyBriefSection}>
+      <View style={styles.studyBriefHeader}>
+        <Text style={styles.studyBriefSpark}>✧</Text>
+        <Text style={styles.studyBriefTitle}>Study Brief</Text>
+      </View>
+
+      <Pressable style={({ pressed }) => [styles.studyHeroCard, pressed && styles.pressed]}>
+        <View style={styles.studyHeroIconTile}>
+          <Ionicons name="book-outline" size={25} color="#111113" />
+        </View>
+
+        <View style={styles.studyHeroTextWrap}>
+          <Text style={styles.studyHeroTitle} numberOfLines={1}>Math revision</Text>
+          <Text style={styles.studyHeroSubtitle} numberOfLines={1}>Algebra &amp; functions · 25 min</Text>
+        </View>
+
+        <Pressable style={({ pressed }) => [styles.studyStartButton, pressed && styles.pressed]}>
+          <Text style={styles.studyStartButtonText}>Start</Text>
+        </Pressable>
+      </Pressable>
+
+      <Pressable style={({ pressed }) => [styles.studyMiniCard, pressed && styles.pressed]}>
+        <View style={styles.studyMiniIconTile}>
+          <Ionicons name="calendar-outline" size={21} color="#111113" />
+        </View>
+        <View style={styles.studyMiniTextWrap}>
+          <Text style={styles.studyMiniLabel}>Next deadline</Text>
+          <Text style={styles.studyMiniValue} numberOfLines={1}>Math exam · Fri 09:00</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={21} color="#777a84" />
+      </Pressable>
+
+      <Pressable style={({ pressed }) => [styles.studyMiniCard, styles.studyProgressCard, pressed && styles.pressed]}>
+        <View style={styles.studyMiniIconTile}>
+          <Ionicons name="stats-chart-outline" size={21} color="#111113" />
+        </View>
+        <View style={styles.studyMiniTextWrap}>
+          <Text style={styles.studyMiniLabel}>Progress</Text>
+          <Text style={styles.studyMiniValue} numberOfLines={1}>5 day streak · 42% weekly goal</Text>
+          <View style={styles.studyProgressTrack}>
+            <View style={styles.studyProgressFill} />
+          </View>
+        </View>
+        <Ionicons name="chevron-forward" size={21} color="#777a84" />
+      </Pressable>
+    </View>
+  );
+}
+
 export function AurenSidebar({
   open,
   children,
@@ -283,20 +334,31 @@ export function AurenSidebar({
         <View style={styles.drawerInner}>
           <View style={styles.drawerHeader}>
             <Text style={styles.brand}>Auren</Text>
-            <Pressable
-              onPress={openActivityScreen}
-              hitSlop={16}
-              style={({ pressed }) => [styles.activityButton, pressed && styles.pressed]}
-              accessibilityRole="button"
-              accessibilityLabel="Open activity"
-            >
-              <Ionicons name="notifications-outline" size={24} color="#343743" />
-              {activityUnreadCount > 0 ? (
-                <View style={styles.unreadBadge}>
-                  <Text style={styles.unreadBadgeText}>{activityUnreadCount > 99 ? '99+' : activityUnreadCount}</Text>
-                </View>
-              ) : null}
-            </Pressable>
+            <View style={styles.headerActions}>
+              <Pressable
+                onPress={openAccountSheet}
+                hitSlop={12}
+                style={({ pressed }) => [styles.creditsPill, pressed && styles.pressed]}
+                accessibilityRole="button"
+                accessibilityLabel="Open credits overview"
+              >
+                <Text style={styles.creditsPillText}>◇ 184</Text>
+              </Pressable>
+              <Pressable
+                onPress={openActivityScreen}
+                hitSlop={16}
+                style={({ pressed }) => [styles.activityButton, pressed && styles.pressed]}
+                accessibilityRole="button"
+                accessibilityLabel="Open activity"
+              >
+                <Ionicons name="notifications-outline" size={24} color="#343743" />
+                {activityUnreadCount > 0 ? (
+                  <View style={styles.unreadBadge}>
+                    <Text style={styles.unreadBadgeText}>{activityUnreadCount > 99 ? '99+' : activityUnreadCount}</Text>
+                  </View>
+                ) : null}
+              </Pressable>
+            </View>
           </View>
 
           <ScrollView
@@ -305,7 +367,7 @@ export function AurenSidebar({
             showsVerticalScrollIndicator={false}
             bounces
           >
-            <View style={styles.emptyTopSpace} />
+            <AurenStudyBrief />
 
             <View style={styles.recentHeaderRow}>
               <Text style={styles.sectionTitle}>Recent chats</Text>
@@ -414,10 +476,39 @@ const styles = StyleSheet.create({
     lineHeight: 37,
     letterSpacing: -0.85,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginRight: -6,
+  },
+  creditsPill: {
+    minWidth: 72,
+    height: 34,
+    borderRadius: 13,
+    paddingHorizontal: 13,
+    borderWidth: 1,
+    borderColor: 'rgba(17,24,39,0.11)',
+    backgroundColor: 'rgba(255,255,255,0.56)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#111827',
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
+  },
+  creditsPillText: {
+    color: '#555866',
+    fontSize: 14,
+    lineHeight: 17,
+    fontWeight: '520',
+    letterSpacing: -0.15,
+  },
   activityButton: {
     width: 44,
     height: 44,
-    marginRight: -6,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -449,8 +540,158 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 24,
   },
-  emptyTopSpace: {
-    height: 300,
+  studyBriefSection: {
+    paddingTop: 58,
+    marginBottom: 35,
+  },
+  studyBriefHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 17,
+  },
+  studyBriefSpark: {
+    color: '#686b75',
+    fontSize: 24,
+    lineHeight: 28,
+    fontWeight: '300',
+  },
+  studyBriefTitle: {
+    color: '#686b75',
+    fontSize: 16.5,
+    lineHeight: 21,
+    fontWeight: '500',
+    letterSpacing: -0.2,
+  },
+  studyHeroCard: {
+    minHeight: 108,
+    borderRadius: 21,
+    paddingHorizontal: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.67)',
+    borderWidth: 1,
+    borderColor: 'rgba(17,24,39,0.07)',
+    shadowColor: '#111827',
+    shadowOpacity: 0.032,
+    shadowRadius: 17,
+    shadowOffset: { width: 0, height: 9 },
+    elevation: 4,
+  },
+  studyHeroIconTile: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+    marginRight: 16,
+    backgroundColor: 'rgba(241,240,243,0.78)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  studyHeroTextWrap: {
+    flex: 1,
+    minWidth: 0,
+    marginRight: 10,
+  },
+  studyHeroTitle: {
+    color: '#1d1d20',
+    fontFamily: 'Georgia',
+    fontSize: 22,
+    lineHeight: 28,
+    letterSpacing: -0.7,
+  },
+  studyHeroSubtitle: {
+    marginTop: 5,
+    color: '#777b84',
+    fontSize: 13.5,
+    lineHeight: 18,
+    fontWeight: '450',
+    letterSpacing: -0.12,
+  },
+  studyStartButton: {
+    height: 45,
+    minWidth: 74,
+    borderRadius: 15,
+    paddingHorizontal: 18,
+    backgroundColor: '#111113',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+  studyStartButtonText: {
+    color: '#ffffff',
+    fontSize: 15.5,
+    lineHeight: 20,
+    fontWeight: '520',
+    letterSpacing: -0.14,
+  },
+  studyMiniCard: {
+    minHeight: 64,
+    marginTop: 11,
+    borderRadius: 17,
+    paddingLeft: 13,
+    paddingRight: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.58)',
+    borderWidth: 1,
+    borderColor: 'rgba(17,24,39,0.07)',
+    shadowColor: '#111827',
+    shadowOpacity: 0.022,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 3,
+  },
+  studyProgressCard: {
+    minHeight: 73,
+    alignItems: 'center',
+  },
+  studyMiniIconTile: {
+    width: 45,
+    height: 45,
+    borderRadius: 13,
+    marginRight: 13,
+    backgroundColor: 'rgba(246,245,247,0.7)',
+    borderWidth: 1,
+    borderColor: 'rgba(17,24,39,0.035)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  studyMiniTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  studyMiniLabel: {
+    color: '#777b84',
+    fontSize: 13.5,
+    lineHeight: 17,
+    fontWeight: '450',
+    letterSpacing: -0.11,
+  },
+  studyMiniValue: {
+    marginTop: 3,
+    color: '#111113',
+    fontSize: 14.5,
+    lineHeight: 19,
+    fontWeight: '450',
+    letterSpacing: -0.14,
+  },
+  studyProgressTrack: {
+    height: 6,
+    width: '100%',
+    marginTop: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(17,24,39,0.09)',
+    overflow: 'hidden',
+  },
+  studyProgressFill: {
+    width: '42%',
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: '#6d707a',
   },
   recentHeaderRow: {
     marginBottom: 25,
