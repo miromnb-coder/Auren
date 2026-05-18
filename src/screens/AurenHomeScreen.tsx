@@ -12,13 +12,10 @@ import { HeaderMoreIcon, HeaderShareIcon, MenuIcon } from '../components/AurenIc
 import { AurenMessageList, type AurenMessage } from '../components/AurenMessageList';
 import { AurenPlusSheet, type PlusSheetStage } from '../components/AurenPlusSheet';
 import { AurenSidebar } from '../components/AurenSidebar';
-import { AurenStudyFocusSetupSheet, type AurenStudyFocusSetupInput } from '../components/AurenStudyFocusSetupSheet';
 import { StudyBookIcon, StudyCalendarIcon, StudyQuizIcon } from '../components/AurenStudyIcons';
-import { AurenTodayFocusCard } from '../components/AurenTodayFocusCard';
 import { sendAurenChatMessageStream, type AurenChatMode } from '../lib/aurenChatApi';
 import type { AurenVisibleThinkingState } from '../lib/aurenThinkingStateStore';
 import { createChatTitle, createUserChat, formatChatTime, listUserChats, loadChatMessages, saveChatMessage, touchChat, type StoredChat } from '../lib/aurenChatStorage';
-import { createFocusCardFromTask, createStudySubject, createStudyTask, createStudyTaskSteps, listStudySubjects, loadTodayStudyFocusCard, type StudyFocusCard, type StudySubject, type StudyTaskType } from '../lib/aurenStudyFocus';
 import { colors, spacing } from '../theme';
 
 const STUDY_MODE: AurenChatMode = 'study';
@@ -72,51 +69,15 @@ function toAurenMessage(row: { id: string; role: string; content: string; create
   return { id: row.id, role: row.role, content: row.content, createdAt: new Date(row.created_at).getTime() };
 }
 
-function inferStudyTaskType(value: string): StudyTaskType {
-  const text = value.toLowerCase();
-  if (text.includes('exam') || text.includes('test') || text.includes('koe')) return 'exam';
-  if (text.includes('essay') || text.includes('essee')) return 'essay';
-  if (text.includes('quiz')) return 'quiz';
-  if (text.includes('read') || text.includes('luk')) return 'reading';
-  if (text.includes('practice') || text.includes('harjoit')) return 'practice';
-  return 'general_goal';
-}
-
-function parseDeadlineText(value: string) {
-  const cleanValue = value.trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(cleanValue)) return null;
-  const date = new Date(`${cleanValue}T12:00:00`);
-  return Number.isNaN(date.getTime()) ? null : date.toISOString();
-}
-
-async function findOrCreateStudySubject(userId: string, subjectName: string): Promise<StudySubject | null> {
-  const cleanSubject = subjectName.trim();
-  if (!cleanSubject) return null;
-  const subjects = await listStudySubjects(userId);
-  const existing = subjects.find((subject) => subject.name.toLowerCase() === cleanSubject.toLowerCase());
-  if (existing) return existing;
-  try {
-    return await createStudySubject({ userId, name: cleanSubject });
-  } catch {
-    const nextSubjects = await listStudySubjects(userId);
-    return nextSubjects.find((subject) => subject.name.toLowerCase() === cleanSubject.toLowerCase()) ?? null;
-  }
-}
-
 export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   const insets = useSafeAreaInsets();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [plusSheetStage, setPlusSheetStage] = useState<PlusSheetStage>('closed');
   const [controlsSheetStage, setControlsSheetStage] = useState<ControlsSheetStage>('closed');
-  const [focusSetupOpen, setFocusSetupOpen] = useState(false);
-  const [focusSetupSaving, setFocusSetupSaving] = useState(false);
-  const [focusSetupError, setFocusSetupError] = useState<string | null>(null);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [chats, setChats] = useState<StoredChat[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<AurenMessage[]>([]);
-  const [todayFocusCard, setTodayFocusCard] = useState<StudyFocusCard | null>(null);
-  const [todayFocusLoading, setTodayFocusLoading] = useState(true);
   const [assistantThinking, setAssistantThinking] = useState(false);
   const [thinkingState, setThinkingState] = useState<AurenVisibleThinkingState | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -129,18 +90,14 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
 
   const plusSheetOpen = plusSheetStage !== 'closed';
   const controlsSheetOpen = controlsSheetStage !== 'closed';
-  const anySheetOpen = plusSheetOpen || controlsSheetOpen || focusSetupOpen;
-  const anySheetExpanded = plusSheetStage === 'expanded' || controlsSheetStage === 'expanded' || focusSetupOpen;
+  const anySheetOpen = plusSheetOpen || controlsSheetOpen;
+  const anySheetExpanded = plusSheetStage === 'expanded' || controlsSheetStage === 'expanded';
   const hasMessages = messages.length > 0;
   const profile = createSidebarProfile(session);
   const recentChats = chats.map((chat) => ({ id: chat.id, title: chat.title, time: formatChatTime(chat.updated_at), icon: STUDY_CHAT_ICON }));
 
   async function refreshChats() {
     setChats(await listUserChats(session.user.id));
-  }
-
-  async function refreshTodayFocus() {
-    setTodayFocusCard(await loadTodayStudyFocusCard(session.user.id));
   }
 
   function clearThinkingState() { setThinkingState(null); }
@@ -164,8 +121,6 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   function closeAllSheets() {
     if (plusSheetOpen) setPlusStage('closed');
     if (controlsSheetOpen) setControlsStage('closed');
-    if (focusSetupOpen) setFocusSetupOpen(false);
-    setFocusSetupError(null);
   }
 
   function openSidebar() { Keyboard.dismiss(); closeAllSheets(); setSidebarOpen(true); runHaptic('open'); }
@@ -176,66 +131,6 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
     setWebSearchEnabled((current) => !current);
     setPlusStage('closed');
     runHaptic(webSearchEnabled ? 'close' : 'open');
-  }
-
-  function openFocusSetup() {
-    Keyboard.dismiss();
-    setSidebarOpen(false);
-    setPlusSheetStage('closed');
-    setControlsSheetStage('closed');
-    setFocusSetupError(null);
-    setFocusSetupOpen(true);
-    runHaptic('open');
-  }
-
-  function closeFocusSetup() {
-    if (focusSetupSaving) return;
-    setFocusSetupOpen(false);
-    setFocusSetupError(null);
-    runHaptic('close');
-  }
-
-  async function saveStudyFocusSetup(input: AurenStudyFocusSetupInput) {
-    if (focusSetupSaving) return;
-    setFocusSetupSaving(true);
-    setFocusSetupError(null);
-    try {
-      const subject = await findOrCreateStudySubject(session.user.id, input.subject);
-      const dueAt = parseDeadlineText(input.deadlineText);
-      const task = await createStudyTask({
-        userId: session.user.id,
-        title: input.taskTitle,
-        subjectId: subject?.id ?? null,
-        description: input.deadlineText ? `Deadline: ${input.deadlineText}` : null,
-        type: inferStudyTaskType(input.taskTitle),
-        dueAt,
-        priority: dueAt ? 'high' : 'normal',
-        estimatedMinutes: input.sessionMinutes,
-        source: 'manual',
-      });
-      const steps = await createStudyTaskSteps({
-        userId: session.user.id,
-        taskId: task.id,
-        subjectId: subject?.id ?? null,
-        steps: [{ title: input.nextStep, estimatedMinutes: input.sessionMinutes }],
-      });
-      const focusCard = await createFocusCardFromTask({
-        userId: session.user.id,
-        task,
-        steps,
-        selectedBy: 'user',
-        reason: 'Created from Today’s Focus setup',
-        priorityScore: dueAt ? 72 : 55,
-      });
-      setTodayFocusCard(focusCard);
-      setTodayFocusLoading(false);
-      setFocusSetupOpen(false);
-      runHaptic('close');
-    } catch (error) {
-      setFocusSetupError(getErrorMessage(error));
-    } finally {
-      setFocusSetupSaving(false);
-    }
   }
 
   function stopGenerating() {
@@ -331,7 +226,6 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
       if (assistantContent.trim()) await saveChatMessage({ chatId: chatIdForSend, userId: session.user.id, role: 'assistant', content: assistantContent });
       await touchChat({ chatId: chatIdForSend, userId: session.user.id, title: nextTitle });
       await refreshChats();
-      await refreshTodayFocus();
     } catch (error) {
       if (abortController.signal.aborted) return;
       const fallbackText = assistantContent ? '\n\nConnection stopped before Auren finished.' : getErrorMessage(error);
@@ -356,7 +250,6 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
     Keyboard.dismiss();
     setSidebarOpen(false);
     setControlsSheetStage('closed');
-    setFocusSetupOpen(false);
     setPlusStage('peek');
   }
 
@@ -364,28 +257,10 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
     Keyboard.dismiss();
     setSidebarOpen(false);
     setPlusSheetStage('closed');
-    setFocusSetupOpen(false);
     setControlsStage('peek');
   }
 
   useEffect(() => { void refreshChats(); }, [session.user.id]);
-
-  useEffect(() => {
-    let active = true;
-    async function loadTodayFocus() {
-      setTodayFocusLoading(true);
-      try {
-        const card = await loadTodayStudyFocusCard(session.user.id);
-        if (active) setTodayFocusCard(card);
-      } catch {
-        if (active) setTodayFocusCard(null);
-      } finally {
-        if (active) setTodayFocusLoading(false);
-      }
-    }
-    void loadTodayFocus();
-    return () => { active = false; };
-  }, [session.user.id]);
 
   useEffect(() => {
     Animated.timing(appCardProgress, { toValue: anySheetExpanded ? 1 : 0, duration: anySheetExpanded ? 320 : 260, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
@@ -454,7 +329,6 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
                       <AurenActionPill width={104} icon={<StudyQuizIcon size={23} color={STUDY_ACTION_ICON_COLOR} strokeWidth={1.7} />} label="Quiz me" />
                       <AurenActionPill width={104} icon={<StudyCalendarIcon size={23} color={STUDY_ACTION_ICON_COLOR} strokeWidth={1.7} />} label="Make a study plan" />
                     </Animated.View>
-                    <View style={styles.focusCardWrap} pointerEvents="none"><AurenTodayFocusCard focusCard={todayFocusCard} loading={todayFocusLoading} onPress={openFocusSetup} /></View>
                   </Pressable>
                 )}
               </Animated.View>
@@ -467,7 +341,6 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
         {anySheetOpen ? <Pressable style={styles.plusBackdrop} onPress={closeAllSheets} /> : null}
         <AurenPlusSheet stage={plusSheetStage} onStageChange={setPlusStage} webSearchActive={webSearchEnabled} onWebSearchPress={toggleWebSearch} />
         <AurenControlsSheet stage={controlsSheetStage} onStageChange={setControlsStage} />
-        <AurenStudyFocusSetupSheet open={focusSetupOpen} saving={focusSetupSaving} error={focusSetupError} onClose={closeFocusSetup} onSave={saveStudyFocusSetup} />
       </View>
     </AurenSidebar>
   );
@@ -495,7 +368,6 @@ const styles = StyleSheet.create({
   title: { color: '#686775', fontSize: 33.5, lineHeight: 40, letterSpacing: -1.08, textAlign: 'center', fontFamily: serifFont },
   subtitle: { marginTop: 14, color: colors.muted, fontSize: 15.8, lineHeight: 22.5, letterSpacing: -0.14, textAlign: 'center', fontWeight: '500' },
   pillsRow: { marginTop: 32, width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  focusCardWrap: { display: 'none', width: '100%', alignItems: 'center', marginTop: 24, paddingHorizontal: 6 },
   composerWrap: { position: 'absolute', left: 16, right: 16 },
   plusBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 30 },
 });
