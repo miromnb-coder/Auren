@@ -16,7 +16,7 @@ import { AurenStudyFocusSetupSheet, type AurenStudyFocusSetupInput } from '../co
 import { StudyBookIcon, StudyCalendarIcon, StudyQuizIcon } from '../components/AurenStudyIcons';
 import { AurenTodayFocusCard } from '../components/AurenTodayFocusCard';
 import { sendAurenChatMessageStream, type AurenChatMode } from '../lib/aurenChatApi';
-import type { AurenThinkingEvent } from '../lib/auren-agent/core/types';
+import type { AurenVisibleThinkingState } from '../lib/aurenThinkingStateStore';
 import { createChatTitle, createUserChat, formatChatTime, listUserChats, loadChatMessages, saveChatMessage, touchChat, type StoredChat } from '../lib/aurenChatStorage';
 import { createFocusCardFromTask, createStudySubject, createStudyTask, createStudyTaskSteps, listStudySubjects, loadTodayStudyFocusCard, type StudyFocusCard, type StudySubject, type StudyTaskType } from '../lib/aurenStudyFocus';
 import { colors, spacing } from '../theme';
@@ -118,7 +118,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   const [todayFocusCard, setTodayFocusCard] = useState<StudyFocusCard | null>(null);
   const [todayFocusLoading, setTodayFocusLoading] = useState(true);
   const [assistantThinking, setAssistantThinking] = useState(false);
-  const [thinkingState, setThinkingState] = useState<AurenThinkingEvent | null>(null);
+  const [thinkingState, setThinkingState] = useState<AurenVisibleThinkingState | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const composerBottom = useRef(new Animated.Value(COMPOSER_CLOSED_BOTTOM)).current;
   const contentTranslateY = useRef(new Animated.Value(0)).current;
