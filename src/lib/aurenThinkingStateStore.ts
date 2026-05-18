@@ -1,6 +1,10 @@
-import type { AurenThinkingEvent } from './auren-agent/core/types';
-
-export type AurenVisibleThinkingState = AurenThinkingEvent;
+export type AurenVisibleThinkingState = {
+  type: 'loading';
+  title: string;
+  detail: string;
+  sequence: number;
+  timestamp: string;
+};
 
 type ThinkingListener = (thinkingState: AurenVisibleThinkingState | null) => void;
 
