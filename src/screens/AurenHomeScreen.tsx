@@ -32,11 +32,7 @@ const STUDY_ACTION_ICON_COLOR = '#70717a';
 type AurenHomeScreenProps = { session: Session };
 type SidebarProfile = { name: string; email: string; initials: string };
 
-const CHAT_MODE_OPTIONS: Array<{ mode: AurenChatMode; title: string; icon: keyof typeof Ionicons.glyphMap }> = [
-  { mode: 'personal', title: 'Personal', icon: 'chatbubble-outline' },
-  { mode: 'study', title: 'Study', icon: 'school-outline' },
-  { mode: 'money', title: 'Money', icon: 'wallet-outline' },
-];
+const STUDY_CHAT_ICON: keyof typeof Ionicons.glyphMap = 'school-outline';
 
 const serifFont = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
 
@@ -52,10 +48,6 @@ function createMessageId(role: AurenMessage['role']) {
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error && error.message.trim() ? error.message : 'Auren had trouble connecting. Try again in a moment.';
-}
-
-function getModeOption(mode: AurenChatMode) {
-  return CHAT_MODE_OPTIONS.find((option) => option.mode === mode) ?? CHAT_MODE_OPTIONS[1];
 }
 
 function getEmailLocalName(email: string) {
@@ -141,7 +133,7 @@ export function AurenHomeScreen({ session }: AurenHomeScreenProps) {
   const anySheetExpanded = plusSheetStage === 'expanded' || controlsSheetStage === 'expanded' || focusSetupOpen;
   const hasMessages = messages.length > 0;
   const profile = createSidebarProfile(session);
-  const recentChats = chats.map((chat) => ({ id: chat.id, title: chat.title, time: formatChatTime(chat.updated_at), icon: getModeOption(chat.mode).icon }));
+  const recentChats = chats.map((chat) => ({ id: chat.id, title: chat.title, time: formatChatTime(chat.updated_at), icon: STUDY_CHAT_ICON }));
 
   async function refreshChats() {
     setChats(await listUserChats(session.user.id));
