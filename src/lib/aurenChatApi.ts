@@ -3,7 +3,7 @@ import type { AurenMode, AurenThinkingEvent } from './auren-agent/core/types';
 import { clearAurenThinkingState, setAurenThinkingState } from './aurenThinkingStateStore';
 import { supabase } from './supabase';
 
-export type AurenChatMode = 'personal' | 'study' | 'money';
+export type AurenChatMode = 'study';
 
 type AurenChatApiMessage = {
   role: 'user' | 'assistant';
@@ -23,9 +23,7 @@ type AurenChatStreamOptions = {
 
 const DEFAULT_AUREN_CHAT_MODE: AurenChatMode = 'study';
 
-function mapChatModeToAgentMode(mode: AurenChatMode): AurenMode {
-  if (mode === 'money') return 'money';
-
+function mapChatModeToAgentMode(_mode: AurenChatMode): AurenMode {
   return 'study';
 }
 
