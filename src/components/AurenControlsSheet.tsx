@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import {
   Animated,
   Easing,
+  Image,
   PanResponder,
   Pressable,
   ScrollView,
@@ -20,24 +21,11 @@ type AurenControlsSheetProps = {
   onStageChange: (stage: ControlsSheetStage) => void;
 };
 
-type SourceStatus = 'Connected' | 'Available' | 'Connect';
-type IoniconName = keyof typeof Ionicons.glyphMap;
-
-type ControlItem = {
-  id: string;
-  title: string;
-  description: string;
-  state: string;
-  icon: IoniconName;
-  active?: boolean;
-};
-
-type SourceItem = {
+type ServiceItem = {
   id: string;
   name: string;
   description: string;
-  status: SourceStatus;
-  icon: IoniconName;
+  iconUri: string;
 };
 
 const PEEK_HEIGHT_RATIO = 0.54;
@@ -48,60 +36,39 @@ const EXPANDED_MIN_HEIGHT = 690;
 const DRAG_THRESHOLD = 72;
 const FAST_SWIPE_VELOCITY = 0.85;
 
-const CONTROL_ITEMS: ControlItem[] = [
-  {
-    id: 'study-context',
-    title: 'Study context',
-    description: 'Use your focus, recent chats and study progress.',
-    state: 'On',
-    icon: 'school-outline',
-    active: true,
-  },
-  {
-    id: 'calendar-aware',
-    title: 'Calendar aware',
-    description: 'Let Auren notice exams, free time and deadlines.',
-    state: 'On',
-    icon: 'calendar-outline',
-    active: true,
-  },
-  {
-    id: 'web-search',
-    title: 'Web search',
-    description: 'Use current sources only when you ask for them.',
-    state: 'Off',
-    icon: 'search-outline',
-  },
-];
-
-const SOURCE_ITEMS: SourceItem[] = [
+const STUDY_SOURCES: ServiceItem[] = [
   {
     id: 'google-calendar',
     name: 'Google Calendar',
-    description: 'Exams, lessons and study sessions',
-    status: 'Connected',
-    icon: 'calendar-outline',
+    description: 'Events, exams and deadlines',
+    iconUri: 'https://raw.githubusercontent.com/miromnb-coder/Auren/main/assets/services/google-calendar.PNG',
   },
   {
     id: 'google-drive',
     name: 'Google Drive',
     description: 'Notes, PDFs and assignments',
-    status: 'Connected',
-    icon: 'folder-open-outline',
+    iconUri: 'https://raw.githubusercontent.com/miromnb-coder/Auren/main/assets/services/google-drive.PNG',
   },
   {
     id: 'gmail',
     name: 'Gmail',
-    description: 'School messages and deadlines',
-    status: 'Connected',
-    icon: 'mail-outline',
+    description: 'School emails and reminders',
+    iconUri: 'https://raw.githubusercontent.com/miromnb-coder/Auren/main/assets/services/gmail.PNG',
+  },
+];
+
+const MORE_SOURCES: ServiceItem[] = [
+  {
+    id: 'outlook-calendar',
+    name: 'Outlook Calendar',
+    description: 'Work or school calendar',
+    iconUri: 'https://raw.githubusercontent.com/miromnb-coder/Auren/main/assets/services/outlook-calendar.PNG',
   },
   {
-    id: 'notes',
-    name: 'Notes',
-    description: 'Quick notes and saved explanations',
-    status: 'Available',
-    icon: 'document-text-outline',
+    id: 'outlook-mail',
+    name: 'Outlook Mail',
+    description: 'Work or school email',
+    iconUri: 'https://raw.githubusercontent.com/miromnb-coder/Auren/main/assets/services/outlook-mail.PNG',
   },
 ];
 
@@ -109,45 +76,20 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-function statusStyle(status: SourceStatus) {
-  if (status === 'Connected') return [styles.statusPill, styles.statusPillConnected];
-  if (status === 'Available') return [styles.statusPill, styles.statusPillAvailable];
-  return [styles.statusPill, styles.statusPillMuted];
-}
-
-function ControlRow({ item, last }: { item: ControlItem; last: boolean }) {
+function ServiceRow({ item, last }: { item: ServiceItem; last: boolean }) {
   return (
-    <Pressable style={({ pressed }) => [styles.controlRow, !last && styles.rowBorder, pressed && styles.pressed]}>
-      <View style={[styles.controlIconTile, item.active && styles.controlIconTileActive]}>
-        <Ionicons name={item.icon} size={21} color={item.active ? '#111113' : '#777b84'} />
+    <Pressable style={({ pressed }) => [styles.serviceRow, !last && styles.rowBorder, pressed && styles.pressed]}>
+      <View style={styles.iconSlot}>
+        <Image source={{ uri: item.iconUri }} style={styles.serviceIcon} resizeMode="contain" />
       </View>
 
-      <View style={styles.rowTextWrap}>
-        <Text style={styles.rowTitle}>{item.title}</Text>
-        <Text style={styles.rowDescription} numberOfLines={2}>{item.description}</Text>
+      <View style={styles.serviceTextWrap}>
+        <Text style={styles.serviceName} numberOfLines={1}>{item.name}</Text>
+        <Text style={styles.serviceDescription} numberOfLines={1}>{item.description}</Text>
       </View>
 
-      <View style={[styles.statePill, item.active && styles.statePillActive]}>
-        <Text style={[styles.statePillText, item.active && styles.statePillTextActive]}>{item.state}</Text>
-      </View>
-    </Pressable>
-  );
-}
-
-function SourceRow({ item, last }: { item: SourceItem; last: boolean }) {
-  return (
-    <Pressable style={({ pressed }) => [styles.sourceRow, !last && styles.rowBorder, pressed && styles.pressed]}>
-      <View style={styles.sourceIconTile}>
-        <Ionicons name={item.icon} size={21} color="#3f424a" />
-      </View>
-
-      <View style={styles.rowTextWrap}>
-        <Text style={styles.rowTitle}>{item.name}</Text>
-        <Text style={styles.rowDescription} numberOfLines={1}>{item.description}</Text>
-      </View>
-
-      <View style={statusStyle(item.status)}>
-        <Text style={styles.statusText}>{item.status}</Text>
+      <View style={styles.connectButton}>
+        <Text style={styles.connectButtonText}>Connect</Text>
       </View>
     </Pressable>
   );
@@ -278,40 +220,34 @@ export function AurenControlsSheet({ stage, onStageChange }: AurenControlsSheetP
       <View style={styles.solidFill} />
       <View style={styles.handle} />
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
-      >
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.headerBlock}>
-          <Text style={styles.eyebrow}>Auren controls</Text>
-          <Text style={styles.title}>Study setup</Text>
-          <Text style={styles.subtitle}>Choose what Auren can use when it helps you plan, explain and revise.</Text>
+          <Text style={styles.eyebrow}>Auren sources</Text>
+          <Text style={styles.title}>Sources</Text>
+          <Text style={styles.subtitle}>Connect the apps Auren can use to help with your studies.</Text>
         </View>
 
-        <View style={styles.statusCard}>
-          <View style={styles.statusIconCircle}>
-            <Ionicons name="sparkles-outline" size={28} color="#111113" />
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryIconCircle}>
+            <Ionicons name="layers-outline" size={28} color="#111113" />
           </View>
-          <View style={styles.statusTextWrap}>
-            <Text style={styles.statusTitle}>Study agent ready</Text>
-            <Text style={styles.statusSubtitle}>Calendar, files and study context are available for smarter answers.</Text>
+          <View style={styles.summaryTextWrap}>
+            <Text style={styles.summaryTitle}>5 sources available</Text>
+            <Text style={styles.summarySubtitle}>Calendar, files and mail can make Auren more useful.</Text>
           </View>
-          <View style={styles.readyPill}>
-            <Text style={styles.readyPillText}>Ready</Text>
-          </View>
-        </View>
-
-        <Text style={styles.sectionLabel}>Chat controls</Text>
-        <View style={styles.groupCard}>
-          {CONTROL_ITEMS.map((item, index) => (
-            <ControlRow key={item.id} item={item} last={index === CONTROL_ITEMS.length - 1} />
-          ))}
         </View>
 
         <Text style={styles.sectionLabel}>Study sources</Text>
         <View style={styles.groupCard}>
-          {SOURCE_ITEMS.map((item, index) => (
-            <SourceRow key={item.id} item={item} last={index === SOURCE_ITEMS.length - 1} />
+          {STUDY_SOURCES.map((item, index) => (
+            <ServiceRow key={item.id} item={item} last={index === STUDY_SOURCES.length - 1} />
+          ))}
+        </View>
+
+        <Text style={styles.sectionLabel}>More sources</Text>
+        <View style={styles.groupCard}>
+          {MORE_SOURCES.map((item, index) => (
+            <ServiceRow key={item.id} item={item} last={index === MORE_SOURCES.length - 1} />
           ))}
         </View>
 
@@ -319,7 +255,7 @@ export function AurenControlsSheet({ stage, onStageChange }: AurenControlsSheetP
           <Ionicons name="shield-checkmark-outline" size={22} color="#686b75" />
           <View style={styles.privacyTextWrap}>
             <Text style={styles.privacyTitle}>You stay in control</Text>
-            <Text style={styles.privacySubtitle}>Auren only uses connected sources to help with your study tasks.</Text>
+            <Text style={styles.privacySubtitle}>Auren only uses sources you choose to connect.</Text>
           </View>
         </View>
 
@@ -327,7 +263,7 @@ export function AurenControlsSheet({ stage, onStageChange }: AurenControlsSheetP
           <View style={styles.addMoreIcon}>
             <Ionicons name="add" size={21} color="#ffffff" />
           </View>
-          <Text style={styles.addMoreText}>Add study source</Text>
+          <Text style={styles.addMoreText}>Add another source</Text>
           <Ionicons name="chevron-forward" size={22} color="#727680" />
         </Pressable>
       </ScrollView>
@@ -397,10 +333,10 @@ const styles = StyleSheet.create({
   },
   title: {
     color: '#111217',
-    fontSize: 39,
-    lineHeight: 44,
+    fontSize: 42,
+    lineHeight: 47,
     fontWeight: '700',
-    letterSpacing: -1.25,
+    letterSpacing: -1.35,
   },
   subtitle: {
     marginTop: 12,
@@ -410,8 +346,8 @@ const styles = StyleSheet.create({
     lineHeight: 23,
     letterSpacing: -0.24,
   },
-  statusCard: {
-    minHeight: 108,
+  summaryCard: {
+    minHeight: 104,
     borderRadius: 24,
     paddingHorizontal: 18,
     paddingVertical: 16,
@@ -419,7 +355,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...cardSurface,
   },
-  statusIconCircle: {
+  summaryIconCircle: {
     width: 58,
     height: 58,
     borderRadius: 19,
@@ -428,39 +364,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  statusTextWrap: {
+  summaryTextWrap: {
     flex: 1,
     minWidth: 0,
   },
-  statusTitle: {
+  summaryTitle: {
     color: '#18191f',
     fontSize: 19,
     lineHeight: 24,
     fontWeight: '650',
     letterSpacing: -0.38,
   },
-  statusSubtitle: {
+  summarySubtitle: {
     marginTop: 4,
     color: '#7d8089',
     fontSize: 13.5,
     lineHeight: 18,
     letterSpacing: -0.12,
-  },
-  readyPill: {
-    height: 31,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    backgroundColor: '#111113',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 12,
-  },
-  readyPillText: {
-    color: '#ffffff',
-    fontSize: 12.5,
-    lineHeight: 16,
-    fontWeight: '650',
-    letterSpacing: -0.08,
   },
   sectionLabel: {
     marginTop: 24,
@@ -477,16 +397,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...cardSurface,
   },
-  controlRow: {
+  serviceRow: {
     minHeight: 78,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.42)',
-  },
-  sourceRow: {
-    minHeight: 74,
-    paddingHorizontal: 16,
+    paddingHorizontal: 15,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.42)',
@@ -495,100 +408,57 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(17,24,39,0.07)',
   },
-  controlIconTile: {
-    width: 44,
-    height: 44,
-    borderRadius: 15,
+  iconSlot: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     marginRight: 14,
-    backgroundColor: '#f1f0f3',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  controlIconTileActive: {
-    backgroundColor: '#ecebf0',
-  },
-  sourceIconTile: {
-    width: 44,
-    height: 44,
-    borderRadius: 15,
-    marginRight: 14,
-    backgroundColor: '#f4f3f5',
     borderWidth: 1,
-    borderColor: 'rgba(17,24,39,0.035)',
+    borderColor: 'rgba(17,24,39,0.045)',
+    backgroundColor: 'rgba(255,255,255,0.72)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rowTextWrap: {
+  serviceIcon: {
+    width: 34,
+    height: 34,
+  },
+  serviceTextWrap: {
     flex: 1,
     minWidth: 0,
+    marginRight: 10,
   },
-  rowTitle: {
+  serviceName: {
     color: '#202126',
-    fontSize: 16.8,
-    lineHeight: 21,
-    fontWeight: '620',
-    letterSpacing: -0.32,
+    fontSize: 17.2,
+    lineHeight: 22,
+    fontWeight: '650',
+    letterSpacing: -0.38,
   },
-  rowDescription: {
+  serviceDescription: {
     marginTop: 4,
     color: '#858891',
     fontSize: 13.2,
     lineHeight: 17,
     letterSpacing: -0.1,
   },
-  statePill: {
-    minWidth: 47,
-    height: 30,
+  connectButton: {
+    height: 34,
+    minWidth: 78,
     borderRadius: 999,
-    paddingHorizontal: 11,
-    marginLeft: 10,
+    paddingHorizontal: 14,
     borderWidth: 1,
-    borderColor: 'rgba(17,24,39,0.08)',
-    backgroundColor: 'rgba(245,245,247,0.8)',
+    borderColor: 'rgba(17,24,39,0.105)',
+    backgroundColor: 'rgba(246,247,249,0.86)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  statePillActive: {
-    backgroundColor: '#111113',
-    borderColor: '#111113',
-  },
-  statePillText: {
-    color: '#7b7e87',
-    fontSize: 12.4,
-    lineHeight: 15,
+  connectButtonText: {
+    color: '#3f424a',
+    fontSize: 13.2,
+    lineHeight: 16,
     fontWeight: '650',
-    letterSpacing: -0.08,
-  },
-  statePillTextActive: {
-    color: '#ffffff',
-  },
-  statusPill: {
-    height: 30,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    marginLeft: 10,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statusPillConnected: {
-    backgroundColor: '#111113',
-    borderColor: '#111113',
-  },
-  statusPillAvailable: {
-    backgroundColor: 'rgba(245,245,247,0.88)',
-    borderColor: 'rgba(17,24,39,0.08)',
-  },
-  statusPillMuted: {
-    backgroundColor: 'rgba(245,245,247,0.72)',
-    borderColor: 'rgba(17,24,39,0.075)',
-  },
-  statusText: {
-    color: '#ffffff',
-    fontSize: 11.8,
-    lineHeight: 15,
-    fontWeight: '650',
-    letterSpacing: -0.05,
+    letterSpacing: -0.12,
   },
   privacyCard: {
     marginTop: 22,
