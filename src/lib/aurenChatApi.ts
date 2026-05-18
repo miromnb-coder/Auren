@@ -1,5 +1,5 @@
-import { runAurenAgent } from './auren-agent/core/runAurenAgent';
-import type { AurenMode, AurenThinkingEvent } from './auren-agent/core/types';
+import type { AurenThinkingEvent } from './auren-agent/core/types';
+import { runAurenStudyAgent } from './auren-study-agent';
 import { clearAurenThinkingState, setAurenThinkingState } from './aurenThinkingStateStore';
 import { supabase } from './supabase';
 
@@ -20,12 +20,6 @@ type AurenChatStreamOptions = {
   messageId?: string;
   browserSearch?: boolean;
 };
-
-const DEFAULT_AUREN_CHAT_MODE: AurenChatMode = 'study';
-
-function mapChatModeToAgentMode(_mode: AurenChatMode): AurenMode {
-  return 'study';
-}
 
 function getLatestUserMessage(messages: AurenChatApiMessage[]) {
   const latestUserMessage = [...messages].reverse().find((message) => message.role === 'user');
@@ -58,14 +52,10 @@ function publishThinkingState(
   onThinkingState?.(thinkingState);
 }
 
-export async function sendAurenChatMessage(
-  messages: AurenChatApiMessage[],
-  mode: AurenChatMode = DEFAULT_AUREN_CHAT_MODE,
-) {
-  const result = await runAurenAgent({
+export async function sendAurenChatMessage(messages: AurenChatApiMessage[]) {
+  const result = await runAurenStudyAgent({
     message: getLatestUserMessage(messages),
     userId: await getCurrentUserId(),
-    mode: mapChatModeToAgentMode(mode),
     conversation: messages,
   });
 
@@ -80,16 +70,16 @@ export async function sendAurenChatMessageStream(
   clearAurenThinkingState();
   options.onThinkingState?.(null);
 
-  const result = await runAurenAgent(
+  const result = await runAurenStudyAgent(
     {
       message: getLatestUserMessage(messages),
       userId: await getCurrentUserId(options.userId),
-      mode: mapChatModeToAgentMode(options.mode ?? DEFAULT_AUREN_CHAT_MODE),
       conversation: messages,
       metadata: {
         chatId: options.chatId,
         messageId: options.messageId,
         browserSearch: options.browserSearch === true,
+        mode: options.mode ?? 'study',
       },
     },
     {
