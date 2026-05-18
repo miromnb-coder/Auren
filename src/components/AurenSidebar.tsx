@@ -99,43 +99,47 @@ function AurenStudyBrief() {
       </View>
 
       <Pressable style={({ pressed }) => [styles.studyHeroCard, pressed && styles.pressed]}>
-        <View style={styles.studyHeroIconTile}>
-          <Ionicons name="book-outline" size={25} color="#111113" />
+        <View style={styles.studyHeroTopRow}>
+          <View style={styles.studyHeroIconTile}>
+            <Ionicons name="book-outline" size={23} color="#111113" />
+          </View>
+
+          <View style={styles.studyHeroTextWrap}>
+            <Text style={styles.studyHeroTitle}>Math revision</Text>
+            <Text style={styles.studyHeroSubtitle}>Algebra &amp; functions · 25 min</Text>
+          </View>
         </View>
 
-        <View style={styles.studyHeroTextWrap}>
-          <Text style={styles.studyHeroTitle} numberOfLines={1}>Math revision</Text>
-          <Text style={styles.studyHeroSubtitle} numberOfLines={1}>Algebra &amp; functions · 25 min</Text>
+        <View style={styles.studyHeroActionRow}>
+          <Pressable style={({ pressed }) => [styles.studyStartButton, pressed && styles.pressed]}>
+            <Text style={styles.studyStartButtonText}>Start</Text>
+          </Pressable>
         </View>
-
-        <Pressable style={({ pressed }) => [styles.studyStartButton, pressed && styles.pressed]}>
-          <Text style={styles.studyStartButtonText}>Start</Text>
-        </Pressable>
       </Pressable>
 
       <Pressable style={({ pressed }) => [styles.studyMiniCard, pressed && styles.pressed]}>
         <View style={styles.studyMiniIconTile}>
-          <Ionicons name="calendar-outline" size={21} color="#111113" />
+          <Ionicons name="calendar-outline" size={20} color="#111113" />
         </View>
         <View style={styles.studyMiniTextWrap}>
           <Text style={styles.studyMiniLabel}>Next deadline</Text>
-          <Text style={styles.studyMiniValue} numberOfLines={1}>Math exam · Fri 09:00</Text>
+          <Text style={styles.studyMiniValue}>Math exam · Fri 09:00</Text>
         </View>
-        <Ionicons name="chevron-forward" size={21} color="#777a84" />
+        <Ionicons name="chevron-forward" size={20} color="#777a84" />
       </Pressable>
 
       <Pressable style={({ pressed }) => [styles.studyMiniCard, styles.studyProgressCard, pressed && styles.pressed]}>
         <View style={styles.studyMiniIconTile}>
-          <Ionicons name="stats-chart-outline" size={21} color="#111113" />
+          <Ionicons name="stats-chart-outline" size={20} color="#111113" />
         </View>
         <View style={styles.studyMiniTextWrap}>
           <Text style={styles.studyMiniLabel}>Progress</Text>
-          <Text style={styles.studyMiniValue} numberOfLines={1}>5 day streak · 42% weekly goal</Text>
+          <Text style={styles.studyMiniValue}>5 day streak · 42% weekly goal</Text>
           <View style={styles.studyProgressTrack}>
             <View style={styles.studyProgressFill} />
           </View>
         </View>
-        <Ionicons name="chevron-forward" size={21} color="#777a84" />
+        <Ionicons name="chevron-forward" size={20} color="#777a84" />
       </Pressable>
     </View>
   );
@@ -460,7 +464,7 @@ const styles = StyleSheet.create({
   drawerInner: {
     flex: 1,
     paddingTop: 72,
-    paddingHorizontal: 28,
+    paddingHorizontal: 24,
     paddingBottom: 42,
   },
   drawerHeader: {
@@ -564,11 +568,10 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   studyHeroCard: {
-    minHeight: 108,
+    minHeight: 130,
     borderRadius: 21,
-    paddingHorizontal: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
     backgroundColor: 'rgba(255,255,255,0.67)',
     borderWidth: 1,
     borderColor: 'rgba(17,24,39,0.07)',
@@ -578,11 +581,20 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 9 },
     elevation: 4,
   },
+  studyHeroTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  studyHeroActionRow: {
+    marginTop: 12,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
   studyHeroIconTile: {
-    width: 60,
-    height: 60,
-    borderRadius: 18,
-    marginRight: 16,
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    marginRight: 12,
     backgroundColor: 'rgba(241,240,243,0.78)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -590,28 +602,27 @@ const styles = StyleSheet.create({
   studyHeroTextWrap: {
     flex: 1,
     minWidth: 0,
-    marginRight: 10,
   },
   studyHeroTitle: {
     color: '#1d1d20',
     fontFamily: 'Georgia',
-    fontSize: 22,
-    lineHeight: 28,
-    letterSpacing: -0.7,
+    fontSize: 21,
+    lineHeight: 26,
+    letterSpacing: -0.65,
   },
   studyHeroSubtitle: {
-    marginTop: 5,
+    marginTop: 4,
     color: '#777b84',
-    fontSize: 13.5,
-    lineHeight: 18,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '450',
     letterSpacing: -0.12,
   },
   studyStartButton: {
-    height: 45,
-    minWidth: 74,
+    height: 39,
+    minWidth: 70,
     borderRadius: 15,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     backgroundColor: '#111113',
     alignItems: 'center',
     justifyContent: 'center',
@@ -623,17 +634,17 @@ const styles = StyleSheet.create({
   },
   studyStartButtonText: {
     color: '#ffffff',
-    fontSize: 15.5,
+    fontSize: 15,
     lineHeight: 20,
     fontWeight: '520',
     letterSpacing: -0.14,
   },
   studyMiniCard: {
-    minHeight: 64,
+    minHeight: 68,
     marginTop: 11,
     borderRadius: 17,
-    paddingLeft: 13,
-    paddingRight: 15,
+    paddingLeft: 11,
+    paddingRight: 11,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.58)',
@@ -646,14 +657,14 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   studyProgressCard: {
-    minHeight: 73,
+    minHeight: 86,
     alignItems: 'center',
   },
   studyMiniIconTile: {
-    width: 45,
-    height: 45,
+    width: 41,
+    height: 41,
     borderRadius: 13,
-    marginRight: 13,
+    marginRight: 11,
     backgroundColor: 'rgba(246,245,247,0.7)',
     borderWidth: 1,
     borderColor: 'rgba(17,24,39,0.035)',
@@ -666,7 +677,7 @@ const styles = StyleSheet.create({
   },
   studyMiniLabel: {
     color: '#777b84',
-    fontSize: 13.5,
+    fontSize: 13.2,
     lineHeight: 17,
     fontWeight: '450',
     letterSpacing: -0.11,
@@ -674,8 +685,8 @@ const styles = StyleSheet.create({
   studyMiniValue: {
     marginTop: 3,
     color: '#111113',
-    fontSize: 14.5,
-    lineHeight: 19,
+    fontSize: 13.4,
+    lineHeight: 17,
     fontWeight: '450',
     letterSpacing: -0.14,
   },
